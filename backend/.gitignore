@@ -39,31 +39,3 @@ build/
 ### OS ###
 .DS_Store
 Thumbs.db
-
-### Node & React Native ###
-node_modules/
-npm-debug.log
-yarn-error.log
-
-# Android/Java build
-.gradle/
-android/app/build/
-android/build/
-*.apk
-*.aab
-*.keystore
-local.properties
-
-# iOS build
-ios/Pods/
-ios/build/
-*.xcworkspace/xcuserdata/
-*.pbxuser
-*.mode1v3
-*.mode2v3
-*.perspectivev3
-
-# Metro Bundler
-.expo/
-.expo-shared/
-.watchmanconfig

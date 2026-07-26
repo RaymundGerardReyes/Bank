@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: banking-backend
+  namespace: banking-prod
+  labels:
+    app: banking-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: banking-backend
+  template:
+    metadata:
+      labels:
+        app: banking-backend
+    spec:
+      containers:
+        - name: banking-backend
+          image: myregistry.azurecr.io/banking-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: banking-backend-secrets
+            - configMapRef:
+                name: banking-backend-config
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
