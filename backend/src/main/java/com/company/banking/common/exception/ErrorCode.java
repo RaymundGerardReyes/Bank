@@ -14,7 +14,10 @@ public enum ErrorCode {
     FORBIDDEN("ERR_403", "Access denied", HttpStatus.FORBIDDEN),
     INSUFFICIENT_FUNDS("ERR_BANK_001", "Insufficient account balance for transaction", HttpStatus.BAD_REQUEST),
     ACCOUNT_SUSPENDED("ERR_BANK_002", "Account is suspended or inactive", HttpStatus.BAD_REQUEST),
-    DUPLICATE_TRANSACTION("ERR_BANK_003", "Duplicate transaction detected via idempotency check", HttpStatus.CONFLICT);
+    DUPLICATE_TRANSACTION("ERR_BANK_003", "Duplicate transaction detected via idempotency check", HttpStatus.CONFLICT),
+    FRAUD_DETECTED("ERR_BANK_004", "Transaction flagged as fraudulent", HttpStatus.FORBIDDEN),
+    PAYMENT_GATEWAY_ERROR("ERR_BANK_005", "External payment gateway rejected the transaction", HttpStatus.BAD_GATEWAY),
+    SYSTEM_ERROR("ERR_SYS_001", "System configuration or administrative error", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;
     private final String defaultMessage;

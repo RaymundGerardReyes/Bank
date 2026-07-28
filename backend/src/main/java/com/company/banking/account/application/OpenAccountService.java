@@ -2,6 +2,7 @@ package com.company.banking.account.application;
 
 import com.company.banking.account.api.dto.AccountResponse;
 import com.company.banking.account.api.dto.OpenAccountRequest;
+import com.company.banking.account.application.port.in.OpenAccountUseCase;
 import com.company.banking.account.application.port.out.AccountPersistencePort;
 import com.company.banking.account.domain.Account;
 import com.company.banking.common.enums.AccountStatus;
@@ -14,16 +15,17 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class OpenAccountService {
+public class OpenAccountService implements OpenAccountUseCase {
 
     private final AccountPersistencePort accountPersistencePort;
 
+    @Override
     @Transactional
-    public AccountResponse openAccount(Long customerId, OpenAccountRequest request) {
+    public AccountResponse openAccount(OpenAccountRequest request) {
         String accountNumber = "ACCT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         
         Account account = Account.builder()
-                .customerId(customerId)
+                .customerId(request.getCustomerId())
                 .accountNumber(accountNumber)
                 .currency(request.getCurrency())
                 .balance(request.getInitialDeposit() != null ? request.getInitialDeposit() : BigDecimal.ZERO)

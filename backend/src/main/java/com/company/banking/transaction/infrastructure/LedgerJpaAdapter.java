@@ -14,12 +14,17 @@ public class LedgerJpaAdapter implements LedgerPersistencePort {
     private final TransactionJpaRepository transactionJpaRepository;
 
     @Override
-    public Transaction saveTransaction(Transaction transaction) {
+    public Transaction save(Transaction transaction) {
         return transactionJpaRepository.save(transaction);
     }
 
     @Override
     public Optional<Transaction> findByIdempotencyKey(String idempotencyKey) {
         return transactionJpaRepository.findByIdempotencyKey(idempotencyKey);
+    }
+
+    @Override
+    public boolean existsByIdempotencyKey(String idempotencyKey) {
+        return transactionJpaRepository.findByIdempotencyKey(idempotencyKey).isPresent();
     }
 }

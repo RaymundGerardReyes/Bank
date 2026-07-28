@@ -1,5 +1,6 @@
 package com.company.banking.account.application;
 
+import com.company.banking.account.application.port.in.ChangeAccountStatusUseCase;
 import com.company.banking.account.application.port.out.AccountPersistencePort;
 import com.company.banking.account.domain.Account;
 import com.company.banking.common.enums.AccountStatus;
@@ -10,10 +11,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class ChangeAccountStatusService {
+public class ChangeAccountStatusService implements ChangeAccountStatusUseCase {
 
     private final AccountPersistencePort accountPersistencePort;
 
+    @Override
     @Transactional
     public void changeStatus(String accountNumber, AccountStatus newStatus) {
         Account account = accountPersistencePort.findByAccountNumber(accountNumber)

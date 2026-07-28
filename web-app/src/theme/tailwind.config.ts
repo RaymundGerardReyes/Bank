@@ -1,0 +1,1 @@
+// This file has been moved to the root directory web-app/tailwind.config.ts

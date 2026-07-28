@@ -8,6 +8,7 @@ import com.company.banking.common.exception.ErrorCode;
 import com.company.banking.common.exception.NotFoundException;
 import com.company.banking.transaction.api.dto.ExternalPaymentRequest;
 import com.company.banking.transaction.api.dto.TransactionResponse;
+import com.company.banking.transaction.application.port.in.ExternalPaymentUseCase;
 import com.company.banking.transaction.application.port.out.FraudScreeningPort;
 import com.company.banking.transaction.application.port.out.LedgerPersistencePort;
 import com.company.banking.transaction.application.port.out.PaymentGatewayPort;
@@ -22,7 +23,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class ExternalPaymentService {
+public class ExternalPaymentService implements ExternalPaymentUseCase {
 
     private final AccountPersistencePort accountPersistencePort;
     private final LedgerPersistencePort ledgerPersistencePort;
@@ -30,6 +31,7 @@ public class ExternalPaymentService {
     private final FraudScreeningPort fraudScreeningPort;
     private final SufficientFundsPolicy sufficientFundsPolicy;
 
+    @Override
     @Transactional
     public TransactionResponse processPayment(ExternalPaymentRequest request) {
         if (ledgerPersistencePort.existsByIdempotencyKey(request.getIdempotencyKey())) {

@@ -73,7 +73,7 @@ public class InternalTransferService implements TransactionUseCase {
                 .description(request.getDescription())
                 .build();
 
-        Transaction savedTx = ledgerPersistencePort.saveTransaction(transaction);
+        Transaction savedTx = ledgerPersistencePort.save(transaction);
 
         return TransactionResponse.fromEntity(savedTx);
     }

@@ -1,6 +1,7 @@
 package com.company.banking.account.application;
 
 import com.company.banking.account.api.dto.AccountSummaryResponse;
+import com.company.banking.account.application.port.in.ListCustomerAccountsUseCase;
 import com.company.banking.account.application.port.out.AccountPersistencePort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -11,10 +12,11 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class ListCustomerAccountsService {
+public class ListCustomerAccountsService implements ListCustomerAccountsUseCase {
 
     private final AccountPersistencePort accountPersistencePort;
 
+    @Override
     @Transactional(readOnly = true)
     public List<AccountSummaryResponse> listAccounts(Long customerId) {
         return accountPersistencePort.findByCustomerId(customerId).stream()

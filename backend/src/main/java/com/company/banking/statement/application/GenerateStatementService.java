@@ -3,8 +3,11 @@ package com.company.banking.statement.application;
 import com.company.banking.common.exception.NotFoundException;
 import com.company.banking.statement.api.dto.StatementResponse;
 import com.company.banking.statement.domain.Statement;
-import com.company.banking.statement.infrastructure.StatementJpaRepository;
+import com.company.banking.statement.application.port.in.StatementUseCase;
+import com.company.banking.statement.application.port.out.StatementGeneratorPort;
+import com.company.banking.statement.application.port.out.StatementPersistencePort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,9 +17,11 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class GenerateStatementService {
+@Slf4j
+public class GenerateStatementService implements StatementUseCase {
 
-    private final StatementJpaRepository statementJpaRepository;
+    private final StatementPersistencePort statementPersistencePort;
+    private final StatementGeneratorPort statementGeneratorPort;
 
     @Transactional
     public StatementResponse generateStatement(String accountNumber, LocalDate startDate, LocalDate endDate) {
@@ -27,13 +32,16 @@ public class GenerateStatementService {
                 .pdfStoragePath("/storage/statements/" + accountNumber + "_" + startDate + "_" + endDate + ".pdf")
                 .build();
 
-        Statement saved = statementJpaRepository.save(statement);
+        byte[] pdfBytes = statementGeneratorPort.generatePdf(statement);
+        log.info("Generated PDF statement size: {} bytes", pdfBytes.length);
+
+        Statement saved = statementPersistencePort.save(statement);
         return StatementResponse.fromEntity(saved);
     }
 
     @Transactional(readOnly = true)
     public List<StatementResponse> getAccountStatements(String accountNumber) {
-        return statementJpaRepository.findByAccountNumber(accountNumber)
+        return statementPersistencePort.findByAccountNumber(accountNumber)
                 .stream()
                 .map(StatementResponse::fromEntity)
                 .collect(Collectors.toList());
@@ -41,7 +49,7 @@ public class GenerateStatementService {
 
     @Transactional(readOnly = true)
     public Statement getStatementById(Long id) {
-        return statementJpaRepository.findById(id)
+        return statementPersistencePort.findById(id)
                 .orElseThrow(() -> new NotFoundException("Statement not found with id: " + id));
     }
 }

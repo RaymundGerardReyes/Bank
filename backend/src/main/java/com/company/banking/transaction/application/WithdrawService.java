@@ -8,6 +8,7 @@ import com.company.banking.common.exception.ErrorCode;
 import com.company.banking.common.exception.NotFoundException;
 import com.company.banking.transaction.api.dto.TransactionResponse;
 import com.company.banking.transaction.api.dto.WithdrawRequest;
+import com.company.banking.transaction.application.port.in.WithdrawUseCase;
 import com.company.banking.transaction.application.port.out.LedgerPersistencePort;
 import com.company.banking.transaction.domain.SufficientFundsPolicy;
 import com.company.banking.transaction.domain.Transaction;
@@ -20,12 +21,13 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class WithdrawService {
+public class WithdrawService implements WithdrawUseCase {
 
     private final AccountPersistencePort accountPersistencePort;
     private final LedgerPersistencePort ledgerPersistencePort;
     private final SufficientFundsPolicy sufficientFundsPolicy;
 
+    @Override
     @Transactional
     public TransactionResponse withdraw(WithdrawRequest request) {
         if (ledgerPersistencePort.existsByIdempotencyKey(request.getIdempotencyKey())) {

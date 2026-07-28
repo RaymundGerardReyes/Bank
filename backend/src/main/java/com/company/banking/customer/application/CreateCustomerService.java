@@ -6,7 +6,7 @@ import com.company.banking.common.exception.ErrorCode;
 import com.company.banking.common.exception.NotFoundException;
 import com.company.banking.customer.api.dto.CustomerCreateRequest;
 import com.company.banking.customer.api.dto.CustomerResponse;
-import com.company.banking.customer.application.port.in.CustomerUseCase;
+import com.company.banking.customer.application.port.in.CreateCustomerUseCase;
 import com.company.banking.customer.application.port.out.CustomerPersistencePort;
 import com.company.banking.customer.domain.Customer;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class CreateCustomerService implements CustomerUseCase {
+public class CreateCustomerService implements CreateCustomerUseCase {
 
     private final CustomerPersistencePort customerPersistencePort;
     private final PasswordEncoder passwordEncoder;
@@ -40,12 +40,5 @@ public class CreateCustomerService implements CustomerUseCase {
         return CustomerResponse.fromEntity(saved);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public CustomerResponse getCustomerProfile(Long id) {
-        Customer customer = customerPersistencePort.findById(id)
-                .orElseThrow(() -> new NotFoundException("Customer not found with id: " + id));
 
-        return CustomerResponse.fromEntity(customer);
-    }
 }

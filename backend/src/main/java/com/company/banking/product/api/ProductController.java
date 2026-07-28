@@ -1,7 +1,7 @@
 package com.company.banking.product.api;
 
 import com.company.banking.common.response.ApiResponse;
-import com.company.banking.product.application.GetProductCatalogService;
+import com.company.banking.product.application.port.in.ProductUseCase;
 import com.company.banking.product.domain.BankProduct;
 import com.company.banking.web.filter.CorrelationIdFilter;
 import lombok.RequiredArgsConstructor;
@@ -18,12 +18,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductController {
 
-    private final GetProductCatalogService getProductCatalogService;
+    private final ProductUseCase productUseCase;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<BankProduct>>> getActiveProducts() {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        List<BankProduct> products = getProductCatalogService.getActiveProducts();
+        List<BankProduct> products = productUseCase.getActiveProducts();
         return ResponseEntity.ok(ApiResponse.success(products, correlationId));
     }
 }

@@ -1,7 +1,7 @@
 package com.company.banking.reporting.api;
 
 import com.company.banking.common.response.ApiResponse;
-import com.company.banking.reporting.application.GenerateMonthlyReportService;
+import com.company.banking.reporting.application.port.in.ReportingUseCase;
 import com.company.banking.reporting.domain.ReportRequest;
 import com.company.banking.web.filter.CorrelationIdFilter;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +20,7 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 public class ReportingController {
 
-    private final GenerateMonthlyReportService generateMonthlyReportService;
+    private final ReportingUseCase reportingUseCase;
 
     @PostMapping("/generate")
     @PreAuthorize("hasRole('ADMIN')")
@@ -28,7 +28,7 @@ public class ReportingController {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
         
         // Fire and forget for async report generation
-        CompletableFuture<String> futureReport = generateMonthlyReportService.generate(request);
+        CompletableFuture<String> futureReport = reportingUseCase.generate(request);
         
         return ResponseEntity.accepted().body(
             ApiResponse.success("Report generation triggered asynchronously", "Report requested", correlationId)

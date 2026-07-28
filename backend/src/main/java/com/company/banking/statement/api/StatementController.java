@@ -2,7 +2,7 @@ package com.company.banking.statement.api;
 
 import com.company.banking.common.response.ApiResponse;
 import com.company.banking.statement.api.dto.StatementResponse;
-import com.company.banking.statement.application.GenerateStatementService;
+import com.company.banking.statement.application.port.in.StatementUseCase;
 import com.company.banking.web.filter.CorrelationIdFilter;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
@@ -18,7 +18,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StatementController {
 
-    private final GenerateStatementService generateStatementService;
+    private final StatementUseCase statementUseCase;
 
     @PostMapping("/generate")
     public ResponseEntity<ApiResponse<StatementResponse>> generateStatement(
@@ -27,14 +27,14 @@ public class StatementController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        StatementResponse response = generateStatementService.generateStatement(accountNumber, startDate, endDate);
+        StatementResponse response = statementUseCase.generateStatement(accountNumber, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(response, "Statement generated successfully", correlationId));
     }
 
     @GetMapping("/account/{accountNumber}")
     public ResponseEntity<ApiResponse<List<StatementResponse>>> getAccountStatements(@PathVariable String accountNumber) {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        List<StatementResponse> response = generateStatementService.getAccountStatements(accountNumber);
+        List<StatementResponse> response = statementUseCase.getAccountStatements(accountNumber);
         return ResponseEntity.ok(ApiResponse.success(response, correlationId));
     }
 }

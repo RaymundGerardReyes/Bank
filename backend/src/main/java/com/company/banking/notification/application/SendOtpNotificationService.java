@@ -1,6 +1,6 @@
 package com.company.banking.notification.application;
 
-import com.company.banking.notification.infrastructure.SmsProviderAdapter;
+import com.company.banking.notification.application.port.out.SmsPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -8,10 +8,10 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SendOtpNotificationService {
 
-    private final SmsProviderAdapter smsProviderAdapter;
+    private final SmsPort smsPort;
 
     public void sendOtp(String phoneNumber, String otpCode) {
         String message = "Your banking verification code is: " + otpCode + ". Do not share this with anyone.";
-        smsProviderAdapter.sendSms(phoneNumber, message);
+        smsPort.sendSms(phoneNumber, message);
     }
 }

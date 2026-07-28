@@ -6,6 +6,7 @@ import com.company.banking.common.exception.ConflictException;
 import com.company.banking.common.exception.NotFoundException;
 import com.company.banking.transaction.api.dto.DepositRequest;
 import com.company.banking.transaction.api.dto.TransactionResponse;
+import com.company.banking.transaction.application.port.in.DepositUseCase;
 import com.company.banking.transaction.application.port.out.LedgerPersistencePort;
 import com.company.banking.transaction.domain.Transaction;
 import com.company.banking.transaction.domain.TransactionStatus;
@@ -17,11 +18,12 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class DepositService {
+public class DepositService implements DepositUseCase {
 
     private final AccountPersistencePort accountPersistencePort;
     private final LedgerPersistencePort ledgerPersistencePort;
 
+    @Override
     @Transactional
     public TransactionResponse deposit(DepositRequest request) {
         if (ledgerPersistencePort.existsByIdempotencyKey(request.getIdempotencyKey())) {

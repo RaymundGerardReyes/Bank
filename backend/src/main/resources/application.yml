@@ -10,7 +10,8 @@ spring:
     allow-bean-definition-overriding: false
 
 server:
-  port: 8080
+  port: ${PORT:8085}
+  address: 0.0.0.0  # <-- ADD THIS EXACT LINE
   servlet:
     context-path: /
   error:

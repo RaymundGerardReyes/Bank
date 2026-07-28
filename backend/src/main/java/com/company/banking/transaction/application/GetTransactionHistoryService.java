@@ -2,6 +2,7 @@ package com.company.banking.transaction.application;
 
 import com.company.banking.common.response.PagedResponse;
 import com.company.banking.transaction.api.dto.TransactionResponse;
+import com.company.banking.transaction.application.port.in.GetTransactionHistoryUseCase;
 import com.company.banking.transaction.infrastructure.TransactionJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -16,11 +17,12 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class GetTransactionHistoryService {
+public class GetTransactionHistoryService implements GetTransactionHistoryUseCase {
 
     private final TransactionJpaRepository transactionJpaRepository;
 
     @Transactional(readOnly = true)
+    @Override
     public PagedResponse<TransactionResponse> getHistory(String accountNumber, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         
