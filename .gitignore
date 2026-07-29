@@ -1,60 +1,59 @@
-HELP.md
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# ==========================================
+# 🚀 Bank Monorepo Global .gitignore
+# ==========================================
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
-
-### Environment ###
+# 1. Environment & Secrets
 .env
 .env.local
-
-### OS ###
-.DS_Store
-Thumbs.db
-
-### Node & React Native ###
-node_modules/
-npm-debug.log
-yarn-error.log
-
-# Android/Java build
-.gradle/
-android/app/build/
-android/build/
-*.apk
-*.aab
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
 *.keystore
 local.properties
 
-# iOS build
+# 2. IDE & OS Files
+.idea/
+.vscode/
+*.iws
+*.iml
+*.ipr
+.settings/
+.project
+.classpath
+.factorypath
+.sts4-cache
+.apt_generated
+.springBeans
+.DS_Store
+Thumbs.db
+
+# 3. Node & JavaScript ecosystem (Frontend & Mobile)
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+.pnp
+.pnp.js
+coverage/
+
+# 4. Next.js (Web App)
+web-app/.next/
+web-app/out/
+web-app/build/
+web-app/.swc/
+.next/
+out/
+build/
+
+# 5. Expo & React Native (Mobile App)
+.expo/
+.expo-shared/
+.watchmanconfig
+ExpoBankingApp/web-build/
+ExpoBankingApp/dist/
+android/app/build/
+android/build/
 ios/Pods/
 ios/build/
 *.xcworkspace/xcuserdata/
@@ -62,8 +61,29 @@ ios/build/
 *.mode1v3
 *.mode2v3
 *.perspectivev3
+*.apk
+*.aab
 
-# Metro Bundler
-.expo/
-.expo-shared/
-.watchmanconfig
+# 6. Spring Boot & Java (Backend)
+backend/build/
+backend/out/
+backend/target/
+backend/.gradle/
+backend/bin/
+build/
+target/
+.gradle/
+!**/src/main/**/build/
+!**/src/test/**/build/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.log
+
+# 7. Other Cache & Logs
+logs/
+*.log
+.eslintcache
+.stylelintcache
