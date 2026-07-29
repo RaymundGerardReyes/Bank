@@ -42,6 +42,21 @@ public class Customer implements UserDetails {
     @Column(nullable = false)
     private RoleType role;
 
+    @Column(name = "employment_status")
+    private String employmentStatus;
+
+    @Column(name = "job_title")
+    private String jobTitle;
+
+    @Column(name = "monthly_income")
+    private String monthlyIncome;
+
+    @Column(name = "source_of_funds")
+    private String sourceOfFunds;
+
+    @Column(name = "kyc_status")
+    private String kycStatus;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

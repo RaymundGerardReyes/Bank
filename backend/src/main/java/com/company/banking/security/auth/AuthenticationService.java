@@ -1,5 +1,6 @@
 package com.company.banking.security.auth;
 
+import com.company.banking.customer.api.dto.CustomerResponse;
 import com.company.banking.customer.application.port.out.CustomerPersistencePort;
 import com.company.banking.customer.domain.Customer;
 import com.company.banking.security.auth.dto.AuthenticationRequest;
@@ -26,11 +27,12 @@ public class AuthenticationService {
                         request.getPassword()
                 )
         );
-
         Customer customer = customerPersistencePort.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + request.getEmail()));
 
         String jwtToken = jwtTokenProvider.generateToken(customer);
-        return AuthenticationResponse.bearer(jwtToken);
+        
+        // Pass the mapped Customer details into the final response
+        return AuthenticationResponse.bearer(jwtToken, CustomerResponse.fromEntity(customer));
     }
 }

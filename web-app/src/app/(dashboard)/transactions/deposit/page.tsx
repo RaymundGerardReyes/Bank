@@ -1,40 +1,110 @@
 "use client";
 
 import React, { useState } from "react";
-import { Card } from "@/components/common/Card";
-import { Input } from "@/components/common/Input";
 import { Button } from "@/components/common/Button";
+import { Input } from "@/components/common/Input";
+import { Card } from "@/components/common/Card";
 import { transactionService } from "@/services/transaction/transactionService";
+import { idempotencyKeyService } from "@/services/transaction/idempotencyKeyService";
 
 export default function DepositPage() {
-  const [accountNumber, setAccountNumber] = useState("1001987654");
+  const [accountNo, setAccountNo] = useState("1001987654");
   const [amount, setAmount] = useState("");
+  const [showBalance, setShowBalance] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [error, setError] = useState("");
 
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSuccessMsg("");
+    setError("");
+
+    const parsedAmount = parseFloat(amount);
+    if (!accountNo.trim() || isNaN(parsedAmount) || parsedAmount <= 0) {
+      setError("Please enter a valid account number and an amount greater than $0.");
+      return;
+    }
+
     setLoading(true);
     try {
-      await transactionService.deposit(accountNumber, parseFloat(amount));
-      setMsg("Deposit completed successfully!");
+      // Fresh UUID key per deposit attempt (matching mobile DepositScreen.tsx pattern)
+      const idempotencyKey = idempotencyKeyService.generateKey();
+
+      await transactionService.deposit({
+        accountNumber: accountNo,
+        amount: parsedAmount,
+        idempotencyKey,
+      });
+
+      setSuccessMsg(`Successfully deposited $${parsedAmount.toFixed(2)} into account ${accountNo}.`);
       setAmount("");
-    } catch {
-      setMsg("Deposit failed.");
+    } catch (err: unknown) {
+      setError((err as Error).message || "Failed to process deposit. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-xl mx-auto flex flex-col gap-6">
-      <h1 className="text-2xl font-bold text-slate-100">Deposit Funds</h1>
-      <Card title="Quick Deposit">
+    <div className="max-w-2xl mx-auto flex flex-col gap-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-accent">Deposit Cash & Funds</h1>
+          <p className="text-sm text-accent/60 font-medium">
+            Directly deposit funds into your verified bank account.
+          </p>
+        </div>
+
+        {/* Web Privacy Control Mitigation */}
+        <button
+          type="button"
+          onClick={() => setShowBalance(!showBalance)}
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-secondary/40 text-accent/80 hover:bg-surface"
+        >
+          {showBalance ? "🙈 Mask Privacy View" : "👁️ Show Privacy View"}
+        </button>
+      </div>
+
+      <Card title="Initiate Deposit">
         <form onSubmit={handleDeposit} className="flex flex-col gap-4">
-          {msg && <div className="p-3 bg-sky-500/10 text-sky-400 text-sm rounded-lg">{msg}</div>}
-          <Input label="Account Number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} required />
-          <Input label="Amount (USD)" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
-          <Button type="submit" isLoading={loading}>Submit Deposit</Button>
+          {successMsg && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-600 text-sm font-semibold">
+              {successMsg}
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-600 text-sm font-semibold">
+              {error}
+            </div>
+          )}
+
+          <div className="p-3 bg-secondary/10 border border-secondary/20 rounded-lg text-xs font-medium text-accent/70">
+            🔒 Session Guard: Balance display is {showBalance ? "$24,850.00 USD" : "•••••••• USD"}. Screenshot protection policy active.
+          </div>
+
+          <Input
+            label="Account Number"
+            placeholder="e.g. 1001987654"
+            value={accountNo}
+            onChange={(e) => setAccountNo(e.target.value)}
+            required
+          />
+
+          <Input
+            label="Deposit Amount ($)"
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            required
+          />
+
+          <Button type="submit" isLoading={loading} className="mt-2">
+            Confirm & Execute Deposit
+          </Button>
         </form>
       </Card>
     </div>

@@ -15,10 +15,10 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const baseStyles = "px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-50 disabled:cursor-not-allowed";
   const variants = {
-    primary: "bg-sky-600 hover:bg-sky-500 text-white shadow-md shadow-sky-600/20",
-    secondary: "bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600",
+    primary: "bg-accent hover:bg-accent/90 text-dominant shadow-md shadow-accent/20",
+    secondary: "bg-secondary/10 hover:bg-secondary/20 text-accent border border-secondary/30",
     danger: "bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20",
-    ghost: "bg-transparent hover:bg-slate-800 text-slate-300",
+    ghost: "bg-transparent hover:bg-surface text-accent/80 hover:text-accent",
   };
 
   return (

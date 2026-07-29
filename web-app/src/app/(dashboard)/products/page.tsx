@@ -10,12 +10,12 @@ export default function ProductsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold text-slate-100">Banking Products</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <h1 className="text-2xl font-bold text-accent">Banking Products</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {products.map((prod, idx) => (
           <Card key={idx} title={prod.title}>
-            <div className="text-2xl font-bold text-sky-400 mb-2">{prod.rate}</div>
-            <p className="text-sm text-slate-300">{prod.desc}</p>
+            <div className="text-2xl font-bold text-secondary mb-2">{prod.rate}</div>
+            <p className="text-sm text-accent/80">{prod.desc}</p>
           </Card>
         ))}
       </div>

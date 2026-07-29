@@ -27,4 +27,15 @@ public class CustomerCreateRequest {
     @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password must be at least 8 characters long")
     private String password;
+
+    @NotBlank(message = "Employment status is required for KYC")
+    private String employmentStatus;
+
+    @NotBlank(message = "Job title is required for KYC")
+    private String jobTitle;
+
+    @NotBlank(message = "Monthly income is required for KYC")
+    private String monthlyIncome;
+
+    private String sourceOfFunds;
 }

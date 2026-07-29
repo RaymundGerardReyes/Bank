@@ -31,6 +31,10 @@ public class ApiResponse<T> {
         return success(data, "Success", correlationId);
     }
 
+    public static <T> ApiResponse<T> success(T data) {
+        return success(data, "Success", null);
+    }
+
     public static <T> ApiResponse<T> error(String message, String errorCode, String correlationId) {
         return ApiResponse.<T>builder()
                 .success(false)

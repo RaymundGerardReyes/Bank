@@ -6,13 +6,12 @@ import { useTransactions } from '../../hooks/useTransactions';
 import { Transaction } from '../../models/Transaction';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
-import { formatCurrency, formatDate } from '../../utils/formatters';
+import { formatCurrency, formatDate, maskAccountNumber } from '../../utils/formatters';
 
 export const TransactionHistoryScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
 
-  // Dynamically pull account number from route, fallback to a default if testing standalone
   const accountNumber = route.params?.accountNumber || 'ACCT-100200';
   const { transactions, isLoading, refetch } = useTransactions(accountNumber);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -28,7 +27,21 @@ export const TransactionHistoryScreen = () => {
   };
 
   const renderItem = ({ item }: { item: Transaction }) => {
-    const isCredit = item.type === 'DEPOSIT';
+    // 1. Safe Directional Logic without relying on undefined 'type'
+    const isCredit = item.destinationAccountNumber === accountNumber;
+
+    // 2. Format the opposing target account
+    const targetAccount = isCredit ? item.sourceAccountNumber : (item.destinationAccountNumber || (item as any).recipientAccount);
+    let formattedTarget = 'External Bank';
+    if (targetAccount === 'CASH') formattedTarget = 'Cash Transaction';
+    else if (targetAccount) formattedTarget = maskAccountNumber(targetAccount);
+
+    // 3. Safe fallback description
+    let defaultTitle = 'Bank Transfer';
+    if (item.sourceAccountNumber === 'CASH') defaultTitle = 'Cash Deposit';
+    if (item.destinationAccountNumber === 'CASH') defaultTitle = 'Cash Withdrawal';
+    const displayTitle = item.description || defaultTitle;
+
     return (
       <TouchableOpacity
         style={styles.txnCard}
@@ -37,16 +50,17 @@ export const TransactionHistoryScreen = () => {
       >
         <View style={styles.txnLeft}>
           <View style={[styles.iconBg, isCredit ? styles.iconBgCredit : styles.iconBgDebit]}>
-            <Text style={styles.iconText}>{isCredit ? '📥' : '↗️'}</Text>
+            <Text style={styles.iconText}>{isCredit ? '↓' : '↑'}</Text>
           </View>
           <View>
-            <Text style={styles.txnDesc} numberOfLines={1}>{item.description || item.type}</Text>
-            <Text style={styles.txnDate}>{formatDate(item.timestamp)}</Text>
+            <Text style={styles.txnDesc} numberOfLines={1}>{displayTitle}</Text>
+            <Text style={styles.txnTarget}>{isCredit ? 'From: ' : 'To: '} {formattedTarget}</Text>
+            <Text style={styles.txnDate}>{formatDate(item.timestamp || (item as any).createdAt)}</Text>
           </View>
         </View>
         <View style={styles.txnRight}>
           <Text style={[styles.txnAmount, isCredit ? styles.creditText : styles.debitText]}>
-            {isCredit ? '+' : '-'}{formatCurrency(item.amount, item.currency)}
+            {isCredit ? '+' : '-'}{formatCurrency(item.amount, item.currency || 'USD')}
           </Text>
           <Text style={styles.txnStatus}>{item.status}</Text>
         </View>
@@ -57,8 +71,8 @@ export const TransactionHistoryScreen = () => {
   return (
     <SecureScreenWrapper style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Ledger Feed</Text>
-        <Text style={styles.subtitle}>Showing history for {accountNumber}</Text>
+        <Text style={styles.title}>Account History</Text>
+        <Text style={styles.subtitle}>Showing ledger for {maskAccountNumber(accountNumber)}</Text>
       </View>
 
       <FlatList
@@ -74,7 +88,8 @@ export const TransactionHistoryScreen = () => {
           !isLoading ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>📭</Text>
-              <Text style={styles.emptyText}>No transactions found for this account.</Text>
+              <Text style={styles.emptyTitle}>No Transactions Found</Text>
+              <Text style={styles.emptyText}>Your ledger history for this account is completely clear.</Text>
             </View>
           ) : null
         }
@@ -86,17 +101,17 @@ export const TransactionHistoryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dominant, // 60% White
+    backgroundColor: colors.dominant,
   },
   header: {
     padding: spacing.lg,
     paddingTop: spacing.xl,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.secondary, // 30% Soft Blue structure
+    borderBottomColor: colors.secondary,
   },
   title: {
-    color: colors.accent, // 10% Deep Navy
+    color: colors.accent,
     fontSize: 28,
     fontWeight: '900',
     letterSpacing: -0.5,
@@ -118,7 +133,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dominant,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9', // Very soft divider
+    borderBottomColor: '#F1F5F9',
   },
   txnLeft: {
     flexDirection: 'row',
@@ -135,10 +150,10 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   iconBgCredit: {
-    backgroundColor: '#ECFCCB', // Soft green tint
+    backgroundColor: '#ECFCCB',
   },
   iconBgDebit: {
-    backgroundColor: '#F0F8FF', // Soft blue tint
+    backgroundColor: '#F0F8FF',
   },
   iconText: {
     fontSize: 16,
@@ -147,12 +162,18 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 15,
     fontWeight: '700',
+    marginBottom: 2,
+  },
+  txnTarget: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 2,
   },
   txnDate: {
     color: colors.textMuted,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
-    marginTop: 2,
   },
   txnRight: {
     alignItems: 'flex-end',
@@ -160,6 +181,7 @@ const styles = StyleSheet.create({
   txnAmount: {
     fontSize: 15,
     fontWeight: '800',
+    marginBottom: 4,
   },
   creditText: {
     color: colors.success,
@@ -171,18 +193,27 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 10,
     fontWeight: '800',
-    marginTop: 4,
   },
+  // Upgraded Empty State Styles mapped perfectly to Notifications
   emptyState: {
     alignItems: 'center',
-    marginTop: 60,
+    justifyContent: 'center',
+    paddingTop: 60,
   },
   emptyIcon: {
     fontSize: 48,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  emptyTitle: {
+    color: colors.accent,
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: spacing.xs,
   },
   emptyText: {
     color: colors.textMuted,
     fontSize: 14,
+    textAlign: 'center',
+    paddingHorizontal: spacing.xl,
   },
 });

@@ -8,7 +8,8 @@ export function useAccounts() {
     queryKey: ["accounts"],
     queryFn: async () => {
       const res = await accountService.getAccounts();
-      return res.data;
+      return res.data || [];
     },
   });
 }
+

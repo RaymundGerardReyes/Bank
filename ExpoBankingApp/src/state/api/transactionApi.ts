@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { ENV } from '../../config/env';
 import { ApiResponse } from '../../models/ApiResponse';
-import { Transaction, InternalTransferRequest, ExternalPaymentRequest } from '../../models/Transaction';
+import { ExternalPaymentRequest, InternalTransferRequest, Transaction } from '../../models/Transaction';
 import { tokenStorageService } from '../../services/auth/tokenStorageService';
 
 export const transactionApi = createApi({
@@ -21,6 +21,13 @@ export const transactionApi = createApi({
     getTransactionHistory: builder.query<ApiResponse<Transaction[]>, string>({
       query: (accountNumber) => `/transactions/history/${accountNumber}`,
       providesTags: ['Transactions'],
+      transformResponse: (response: any) => {
+        // Map Spring Boot's PagedResponse content to the standard array expected by the frontend
+        return {
+          ...response,
+          data: response.data?.content || [],
+        };
+      },
     }),
     transferInternal: builder.mutation<ApiResponse<Transaction>, InternalTransferRequest>({
       query: (body) => ({

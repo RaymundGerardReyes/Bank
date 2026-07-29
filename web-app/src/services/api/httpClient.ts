@@ -21,7 +21,12 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
     headers["Idempotency-Key"] = idempotencyKey;
   }
 
-  const url = endpoint.startsWith("http") ? endpoint : `${env.appUrl}/api/proxy${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const apiPath = cleanEndpoint.startsWith("/auth") 
+    ? `/api${cleanEndpoint}` 
+    : `/api/proxy${cleanEndpoint}`;
+
+  const url = endpoint.startsWith("http") ? endpoint : `${env.appUrl}${apiPath}`;
 
   const response = await fetch(url, {
     ...restOptions,

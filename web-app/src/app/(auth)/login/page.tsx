@@ -9,7 +9,7 @@ import { authService } from "@/services/auth/authService";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,10 +20,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await authService.login(username, password);
+      await authService.login(email, password);
       router.push("/accounts");
     } catch (err: unknown) {
-      setError((err as Error).message || "Invalid username or password");
+      setError((err as Error).message || "Invalid email or password");
     } finally {
       setLoading(false);
     }
@@ -39,11 +39,11 @@ export default function LoginPage() {
             </div>
           )}
           <Input
-            label="Username"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Enter your username"
+            label="Email Address"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="user@example.com"
             required
           />
           <Input

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Providers } from "@/providers/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,8 +15,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       {/* We set a clean white background and deep navy text as the global default */}
-      <body className="antialiased bg-[#FFFFFF] text-[#003366] min-h-screen">
-        {children}
+      <body className="antialiased bg-dominant text-accent min-h-screen">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

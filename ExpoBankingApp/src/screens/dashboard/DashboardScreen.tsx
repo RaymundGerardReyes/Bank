@@ -1,4 +1,4 @@
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import {
   RefreshControl,
@@ -12,60 +12,60 @@ import { AccountBalanceCard } from '../../components/accounts/AccountBalanceCard
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useAuth } from '../../hooks/useAuth';
+import { transactionService } from '../../services/transaction/transactionService';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
-import { formatCurrency, formatDate, generateUUID } from '../../utils/formatters';
+import { formatCurrency, formatDate, generateUUID, maskAccountNumber } from '../../utils/formatters';
 
 export const DashboardScreen = () => {
   const { accounts, isLoading, refetch } = useAccounts();
   const { user } = useAuth();
-
-  // Initialize the navigation hook so we can route buttons to screens
   const navigation = useNavigation<any>();
 
   const [refreshing, setRefreshing] = React.useState(false);
   const [lastSynced, setLastSynced] = React.useState(new Date().toISOString());
+  const [recentTransactions, setRecentTransactions] = React.useState<any[]>([]);
+  const [loadingTxns, setLoadingTxns] = React.useState(false);
 
-  // Static trace ID for UI demonstration of CorrelationId tracking
   const [traceId] = React.useState(generateUUID().split('-')[0].toUpperCase());
-
-  // Check if user has backend RBAC permissions for conditional UI
   const isAdminOrTeller = user?.role === 'ADMIN' || user?.role === 'TELLER';
 
-  // Calculate total net balance across all active accounts
   const totalNetBalance = React.useMemo(() => {
     if (!accounts || accounts.length === 0) return 0;
     return accounts.reduce((acc, current) => acc + (current.balance || 0), 0);
   }, [accounts]);
 
+  const fetchLiveTransactions = React.useCallback(async () => {
+    if (!accounts || accounts.length === 0) return;
+    setLoadingTxns(true);
+    try {
+      const primaryAccNumber = accounts[0].accountNumber;
+      const history = await transactionService.getTransactionHistory(primaryAccNumber);
+      if (history && history.length > 0) {
+        setRecentTransactions(history.slice(0, 5));
+      }
+    } catch (err) {
+      console.log('Fetching live transactions fallback:', err);
+    } finally {
+      setLoadingTxns(false);
+    }
+  }, [accounts]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (refetch) refetch();
+      fetchLiveTransactions();
+      setLastSynced(new Date().toISOString());
+    }, [refetch, fetchLiveTransactions])
+  );
+
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    if (refetch) {
-      await refetch();
-      setLastSynced(new Date().toISOString()); // Update offline-aware cache timestamp
-    }
+    if (refetch) await refetch();
+    await fetchLiveTransactions();
+    setLastSynced(new Date().toISOString());
     setRefreshing(false);
-  }, [refetch]);
-
-  // Mock recent transactions mirroring Spring Boot /api/v1/transactions/history
-  const recentTransactions = [
-    {
-      id: 'TXN-90812',
-      description: 'Payroll Direct Deposit',
-      type: 'CREDIT',
-      amount: 3250.00,
-      date: 'Today, 09:30 AM',
-      status: 'COMPLETED',
-    },
-    {
-      id: 'TXN-90811',
-      description: 'Internal Transfer to Savings',
-      type: 'DEBIT',
-      amount: 500.00,
-      date: 'Yesterday',
-      status: 'COMPLETED',
-    },
-  ];
+  }, [refetch, fetchLiveTransactions]);
 
   return (
     <SecureScreenWrapper style={styles.container}>
@@ -73,14 +73,9 @@ export const DashboardScreen = () => {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.accent}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
         }
       >
-        {/* Header Section with User Greeting & Security Trust Badge */}
         <View style={styles.headerContainer}>
           <View style={styles.headerLeft}>
             <Text style={styles.greeting}>Good Morning,</Text>
@@ -94,13 +89,11 @@ export const DashboardScreen = () => {
           </View>
         </View>
 
-        {/* Security Alert Banner */}
         <View style={styles.alertBanner}>
-          <Text style={styles.alertIcon}>🔔</Text>
+          <Text style={styles.alertIcon}>🛡️</Text>
           <Text style={styles.alertText}>New sign-in detected on Android SM-G998B</Text>
         </View>
 
-        {/* Total Net Balance Card (Premium Elevation) */}
         <View style={styles.netWorthCard}>
           <View style={styles.netWorthHeader}>
             <Text style={styles.netWorthLabel}>Total Net Liquidity</Text>
@@ -111,80 +104,42 @@ export const DashboardScreen = () => {
           </Text>
           <View style={styles.netWorthFooter}>
             <Text style={styles.netWorthFooterText}>
-              🛡️ TLS Pinned • Root: PASS • {traceId}
+              TLS Pinned • Root: PASS • {traceId}
             </Text>
           </View>
         </View>
 
-        {/* Quick Money Movement Actions */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
         </View>
 
         <View style={styles.quickActionsGrid}>
-          {/* Routes to TransferFormScreen */}
-          <TouchableOpacity
-            style={styles.actionBtn}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Transfers')}
-          >
-            <View style={styles.actionIconBg}>
-              <Text style={styles.actionIconText}>↗️</Text>
-            </View>
+          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Transfers')}>
+            <View style={styles.actionIconBg}><Text style={styles.actionIconText}>💸</Text></View>
             <Text style={styles.actionText}>Transfer</Text>
           </TouchableOpacity>
-
-          {/* Routes to DepositScreen */}
-          <TouchableOpacity
-            style={styles.actionBtn}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Deposit')}
-          >
-            <View style={styles.actionIconBg}>
-              <Text style={styles.actionIconText}>📥</Text>
-            </View>
+          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Deposit')}>
+            <View style={styles.actionIconBg}><Text style={styles.actionIconText}>📥</Text></View>
             <Text style={styles.actionText}>Deposit</Text>
           </TouchableOpacity>
-
-          {/* Routes to StatementListScreen */}
-          <TouchableOpacity
-            style={styles.actionBtn}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Statements')}
-          >
-            <View style={styles.actionIconBg}>
-              <Text style={styles.actionIconText}>📄</Text>
-            </View>
+          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Statements')}>
+            <View style={styles.actionIconBg}><Text style={styles.actionIconText}>📄</Text></View>
             <Text style={styles.actionText}>Statements</Text>
           </TouchableOpacity>
 
-          {/* Conditional Admin UI */}
           {isAdminOrTeller ? (
-            <TouchableOpacity
-              style={styles.actionBtn}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('AuditLogs')}
-            >
-              <View style={[styles.actionIconBg, styles.adminIconBg]}>
-                <Text style={styles.actionIconText}>🛡️</Text>
-              </View>
+            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('AuditLogs')}>
+              <View style={[styles.actionIconBg, styles.adminIconBg]}><Text style={styles.actionIconText}>⚡</Text></View>
               <Text style={styles.actionText}>Audit Logs</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity
-              style={styles.actionBtn}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('Profile')}
-            >
-              <View style={styles.actionIconBg}>
-                <Text style={styles.actionIconText}>⚙️</Text>
-              </View>
+            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Profile')}>
+              <View style={styles.actionIconBg}><Text style={styles.actionIconText}>⚙️</Text></View>
               <Text style={styles.actionText}>Security</Text>
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Accounts Section */}
         <View style={styles.sectionHeaderBetween}>
           <Text style={styles.sectionTitle}>Your Accounts</Text>
           <Text style={styles.syncText}>Synced {formatDate(lastSynced).split(',')[1]}</Text>
@@ -195,7 +150,6 @@ export const DashboardScreen = () => {
         ) : accounts && accounts.length > 0 ? (
           accounts.map((acc) => (
             <View key={acc.accountNumber} style={styles.cardWrapper}>
-              {/* Wire up the Account Card actions to the navigation too! */}
               <AccountBalanceCard
                 account={acc}
                 onTransfer={(accountNumber) => navigation.navigate('Transfers', { sourceAccountNumber: accountNumber })}
@@ -205,12 +159,20 @@ export const DashboardScreen = () => {
             </View>
           ))
         ) : (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No accounts associated with this session.</Text>
+          <View style={styles.hardenedEmptyCard}>
+            <View style={styles.warningIconContainer}>
+              <Text style={styles.warningIconText}>⚠️</Text>
+            </View>
+            <Text style={styles.emptyCardTitle}>No Active Accounts Found</Text>
+            <Text style={styles.emptyCardDescription}>
+              We could not locate a checking or savings account linked to your profile. This can happen if your registration was incomplete or your account is pending manual KYC verification.
+            </Text>
+            <TouchableOpacity style={styles.contactSupportBtn} activeOpacity={0.8}>
+              <Text style={styles.contactSupportText}>Contact Support / Complete KYC</Text>
+            </TouchableOpacity>
           </View>
         )}
 
-        {/* Recent Ledger Activity Section */}
         <View style={styles.sectionHeaderBetween}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
@@ -219,32 +181,66 @@ export const DashboardScreen = () => {
         </View>
 
         <View style={styles.activityCard}>
-          {recentTransactions.map((txn, index) => (
-            <View
-              key={txn.id}
-              style={[
-                styles.txnRow,
-                index < recentTransactions.length - 1 && styles.txnBorder,
-              ]}
-            >
-              <View style={styles.txnLeft}>
-                <Text style={styles.txnDesc}>{txn.description}</Text>
-                <Text style={styles.txnDate}>{txn.date}</Text>
-              </View>
-              <View style={styles.txnRight}>
-                <Text
+          {recentTransactions.length === 0 && !loadingTxns ? (
+            <View style={{ padding: spacing.xl, alignItems: 'center' }}>
+              <Text style={styles.emptyIcon}>📭</Text>
+              <Text style={styles.emptyCardTitle}>No Recent Activity</Text>
+            </View>
+          ) : (
+            recentTransactions.map((txn, index) => {
+              // 1. Identify primary account to calculate direction correctly
+              const primaryAccNumber = accounts[0]?.accountNumber || '';
+
+              // 2. TRUE Directional logic without relying on the missing 'type' field!
+              const isCredit = txn.destinationAccountNumber === primaryAccNumber;
+
+              // 3. Format the opposing Target Account securely
+              const targetAccount = isCredit ? txn.sourceAccountNumber : (txn.destinationAccountNumber || txn.recipientAccount);
+              let formattedTarget = 'External Bank';
+              if (targetAccount === 'CASH') formattedTarget = 'Cash Transaction';
+              else if (targetAccount) formattedTarget = maskAccountNumber(targetAccount);
+
+              // 4. Safe fallback title logic
+              let defaultTitle = 'Bank Transfer';
+              if (txn.sourceAccountNumber === 'CASH') defaultTitle = 'Cash Deposit';
+              if (txn.destinationAccountNumber === 'CASH') defaultTitle = 'Cash Withdrawal';
+              const displayTitle = txn.description || defaultTitle;
+
+              return (
+                <TouchableOpacity
+                  key={txn.transactionReference || txn.id || index}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('TransactionDetail', { transaction: txn, isCredit })}
                   style={[
-                    styles.txnAmount,
-                    txn.type === 'CREDIT' ? styles.creditText : styles.debitText,
+                    styles.txnRow,
+                    index < recentTransactions.length - 1 && styles.txnBorder,
                   ]}
                 >
-                  {txn.type === 'CREDIT' ? '+' : '-'}{formatCurrency(txn.amount, 'USD')}
-                </Text>
-                <Text style={styles.txnStatus}>{txn.status}</Text>
-              </View>
-            </View>
-          ))}
+                  <View style={styles.txnLeft}>
+                    <Text style={styles.txnDesc} numberOfLines={1}>{displayTitle}</Text>
+                    {/* Contextual routing info added here */}
+                    <Text style={styles.txnTarget}>
+                      {isCredit ? 'From: ' : 'To: '} {formattedTarget}
+                    </Text>
+                    <Text style={styles.txnDate}>{formatDate(txn.createdAt || txn.timestamp)}</Text>
+                  </View>
+                  <View style={styles.txnRight}>
+                    <Text
+                      style={[
+                        styles.txnAmount,
+                        isCredit ? styles.creditText : styles.debitText,
+                      ]}
+                    >
+                      {isCredit ? '+' : '-'}{formatCurrency(txn.amount, txn.currency || 'USD')}
+                    </Text>
+                    <Text style={styles.txnStatus}>{txn.status}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
         </View>
+
       </ScrollView>
     </SecureScreenWrapper>
   );
@@ -444,19 +440,59 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
   },
-  emptyCard: {
+  hardenedEmptyCard: {
     backgroundColor: '#F8FAFC',
     padding: spacing.xl,
-    borderRadius: spacing.borderRadius.md,
+    borderRadius: spacing.borderRadius.lg,
     alignItems: 'center',
-    borderStyle: 'dashed',
     borderWidth: 1,
-    borderColor: colors.textMuted,
+    borderColor: '#E2E8F0',
+    marginBottom: spacing.xl,
   },
-  emptyText: {
-    color: colors.textMuted,
+  warningIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FFF1F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  warningIconText: {
+    fontSize: 28,
+  },
+  emptyCardTitle: {
+    color: colors.accent,
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  emptyCardDescription: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.sm,
+  },
+  contactSupportBtn: {
+    backgroundColor: colors.accent,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: spacing.borderRadius.md,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  contactSupportText: {
+    color: colors.dominant,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '700',
   },
   activityCard: {
     backgroundColor: colors.dominant,
@@ -489,6 +525,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 4,
   },
+  txnTarget: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
   txnDate: {
     color: colors.textMuted,
     fontSize: 12,
@@ -513,5 +555,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     textTransform: 'uppercase',
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.sm,
   },
 });

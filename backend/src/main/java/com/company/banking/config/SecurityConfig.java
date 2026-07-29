@@ -1,5 +1,6 @@
 package com.company.banking.config;
 
+import com.company.banking.apigateway.security.ApiKeyAuthenticationFilter;
 import com.company.banking.security.jwt.JwtAuthenticationFilter;
 import com.company.banking.web.filter.CorrelationIdFilter;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final ApiKeyAuthenticationFilter apiKeyAuthFilter;
     private final CorrelationIdFilter correlationIdFilter;
     private final AuthenticationProvider authenticationProvider;
 
@@ -27,7 +29,7 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/actuator/health").permitAll()
+                .requestMatchers("/api/v1/auth/**", "/api/v1/apikeys/**", "/v3/api-docs/**", "/swagger-ui/**", "/actuator/health").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
@@ -35,6 +37,7 @@ public class SecurityConfig {
             )
             .authenticationProvider(authenticationProvider)
             .addFilterBefore(correlationIdFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

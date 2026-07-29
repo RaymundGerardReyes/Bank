@@ -18,9 +18,10 @@ export const endpoints = {
     deposit: API_ENDPOINTS.TRANSACTIONS_DEPOSIT,
     withdraw: API_ENDPOINTS.TRANSACTIONS_WITHDRAW,
     externalPayment: API_ENDPOINTS.TRANSACTIONS_EXTERNAL,
+    history: (accountNumber: string) => `/transactions/history/${accountNumber}`,
   },
   statements: {
-    byAccount: (accountNumber: string) => `${API_ENDPOINTS.STATEMENTS}/account/${accountNumber}`,
+    byAccount: (accountNumber: string) => `/statements/account/${accountNumber}`,
   },
   products: API_ENDPOINTS.PRODUCTS,
   admin: {

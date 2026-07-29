@@ -1,10 +1,14 @@
-import { NextResponse } from "next/server";
 import { env } from "@/config/env";
+import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const requestId = crypto.randomUUID();
+    const payload = {
+      email: body.email || body.username,
+      password: body.password,
+    };
 
     const response = await fetch(`${env.backendApiBaseUrl}/auth/login`, {
       method: "POST",
@@ -12,7 +16,7 @@ export async function POST(request: Request) {
         "Content-Type": "application/json",
         "X-Request-Id": requestId,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();
@@ -21,14 +25,17 @@ export async function POST(request: Request) {
       return NextResponse.json(data, { status: response.status });
     }
 
-    // Set httpOnly session cookie
+    // FIX: Accurately extract the real JWT from the nested ApiResponse structure
+    const actualToken = data.data?.token || data.token;
+
     const res = NextResponse.json({
       success: true,
       message: "Login successful",
       data: data.data || data,
     });
 
-    res.cookies.set("bank_session", data.token || "demo-session-token", {
+    // Save the REAL token into the HttpOnly session cookie
+    res.cookies.set("bank_session", actualToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",

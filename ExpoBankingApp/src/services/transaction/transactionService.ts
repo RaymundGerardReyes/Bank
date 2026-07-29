@@ -1,13 +1,13 @@
-import { apiClient } from '../api/apiClient';
-import { ENDPOINTS } from '../api/endpoints';
 import { ApiResponse } from '../../models/ApiResponse';
 import {
-  Transaction,
-  InternalTransferRequest,
   DepositRequest,
-  WithdrawRequest,
   ExternalPaymentRequest,
+  InternalTransferRequest,
+  Transaction,
+  WithdrawRequest,
 } from '../../models/Transaction';
+import { apiClient } from '../api/apiClient';
+import { ENDPOINTS } from '../api/endpoints';
 
 export const transactionService = {
   transferInternal: async (request: InternalTransferRequest): Promise<Transaction> => {
@@ -43,9 +43,11 @@ export const transactionService = {
   },
 
   getTransactionHistory: async (accountNumber: string): Promise<Transaction[]> => {
-    const response = await apiClient.get<ApiResponse<Transaction[]>>(
+    // We use <any> here to bypass strict typing so we can unwrap the PagedResponse
+    const response = await apiClient.get<any>(
       ENDPOINTS.TRANSACTIONS.HISTORY(accountNumber)
     );
-    return response.data.data;
+    // Extract the 'content' array from Spring Boot's PagedResponse wrapper
+    return response.data?.data?.content || [];
   },
 };

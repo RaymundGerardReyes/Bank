@@ -29,23 +29,29 @@ export interface Account {
 }
 
 export interface Transaction {
-  id: string;
-  transactionRef: string;
-  accountNumber: string;
-  type: "DEPOSIT" | "WITHDRAWAL" | "INTERNAL_TRANSFER" | "EXTERNAL_PAYMENT";
+  id?: string;
+  transactionRef?: string;
+  transactionReference?: string;
+  sourceAccountNumber?: string;
+  destinationAccountNumber?: string;
+  accountNumber?: string;
+  type?: "DEPOSIT" | "WITHDRAWAL" | "INTERNAL_TRANSFER" | "EXTERNAL_PAYMENT";
   amount: number;
-  currency: string;
-  status: "PENDING" | "COMPLETED" | "FAILED";
-  description: string;
+  currency?: string;
+  status: "PENDING" | "COMPLETED" | "FAILED" | "SCHEDULED" | string;
+  description?: string;
   recipientAccount?: string;
   createdAt: string;
 }
 
 export interface Statement {
-  id: string;
+  id: string | number;
   accountNumber: string;
-  periodStart: string;
-  periodEnd: string;
-  downloadUrl: string;
-  generatedAt: string;
+  startDate?: string;
+  endDate?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  pdfUrl?: string;
+  downloadUrl?: string;
+  generatedAt?: string;
 }

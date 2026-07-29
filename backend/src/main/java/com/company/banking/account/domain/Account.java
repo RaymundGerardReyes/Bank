@@ -37,6 +37,16 @@ public class Account {
 
     @Column(nullable = false)
     private String currency;
+    
+    // NEW ENTERPRISE CARD & ROUTING FIELDS
+    @Column(name = "swift_code")
+    private String swiftCode;
+    
+    @Column(name = "card_expiry")
+    private String cardExpiry;
+    
+    @Column(name = "card_cvv")
+    private String cardCvv;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

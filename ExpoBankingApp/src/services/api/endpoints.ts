@@ -34,4 +34,7 @@ export const ENDPOINTS = {
   ADMIN: {
     AUDIT_LOGS: '/admin/audit',
   },
+  NOTIFICATIONS: {
+    BASE: '/notifications',
+  },
 };

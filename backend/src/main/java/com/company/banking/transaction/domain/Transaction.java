@@ -45,6 +45,11 @@ public class Transaction {
 
     private String description;
 
+    @Builder.Default
+    private boolean isDisputed = false;
+
+    private String disputeReason;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

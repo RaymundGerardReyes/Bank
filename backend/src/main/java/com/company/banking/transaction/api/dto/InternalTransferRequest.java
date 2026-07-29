@@ -30,4 +30,6 @@ public class InternalTransferRequest {
     private String idempotencyKey;
 
     private String description;
+
+    private String scheduledDate;
 }

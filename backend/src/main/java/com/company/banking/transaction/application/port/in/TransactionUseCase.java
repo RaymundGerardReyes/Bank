@@ -5,4 +5,5 @@ import com.company.banking.transaction.api.dto.TransactionResponse;
 
 public interface TransactionUseCase {
     TransactionResponse processInternalTransfer(InternalTransferRequest request);
+    TransactionResponse getByIdempotencyKey(String idempotencyKeyPrefix);
 }

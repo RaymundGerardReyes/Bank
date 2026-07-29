@@ -27,7 +27,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
-
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    
+    // ADD THIS EXACT LINE FOR GOOGLE SMTP MAIL SUPPORT:
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
     // OpenAPI
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
 

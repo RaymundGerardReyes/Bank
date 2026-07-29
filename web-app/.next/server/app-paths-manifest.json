@@ -1,6 +1,8 @@
 {
-  "/page": "app/page.js",
-  "/developers/page": "app/developers/page.js",
+  "/api/proxy/accounts/route": "app/api/proxy/accounts/route.js",
   "/(auth)/login/page": "app/(auth)/login/page.js",
-  "/_not-found/page": "app/_not-found/page.js"
+  "/(dashboard)/statements/page": "app/(dashboard)/statements/page.js",
+  "/(dashboard)/transactions/history/page": "app/(dashboard)/transactions/history/page.js",
+  "/(dashboard)/transfers/page": "app/(dashboard)/transfers/page.js",
+  "/(dashboard)/accounts/page": "app/(dashboard)/accounts/page.js"
 }

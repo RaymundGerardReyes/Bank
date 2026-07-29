@@ -1,0 +1,280 @@
+.
+|-- com
+|   `-- company
+|       `-- banking
+|           |-- BankingApplication.java
+|           |-- account
+|           |   |-- api
+|           |   |   |-- AccountController.java
+|           |   |   `-- dto
+|           |   |       |-- AccountResponse.java
+|           |   |       |-- AccountSummaryResponse.java
+|           |   |       `-- OpenAccountRequest.java
+|           |   |-- application
+|           |   |   |-- ChangeAccountStatusService.java
+|           |   |   |-- GetAccountDetailsService.java
+|           |   |   |-- ListCustomerAccountsService.java
+|           |   |   |-- OpenAccountService.java
+|           |   |   `-- port
+|           |   |       |-- in
+|           |   |       |   |-- AccountUseCase.java
+|           |   |       |   |-- ChangeAccountStatusUseCase.java
+|           |   |       |   |-- GetAccountDetailsUseCase.java
+|           |   |       |   |-- ListCustomerAccountsUseCase.java
+|           |   |       |   `-- OpenAccountUseCase.java
+|           |   |       `-- out
+|           |   |           `-- AccountPersistencePort.java
+|           |   |-- domain
+|           |   |   |-- Account.java
+|           |   |   |-- AccountBalance.java
+|           |   |   |-- AccountLimit.java
+|           |   |   `-- AccountPolicy.java
+|           |   `-- infrastructure
+|           |       |-- AccountJpaRepository.java
+|           |       `-- AccountPersistenceAdapter.java
+|           |-- admin
+|           |   |-- api
+|           |   |   `-- AdminAuditController.java
+|           |   |-- application
+|           |   |   |-- ReviewAuditLogService.java
+|           |   |   `-- port
+|           |   |       |-- in
+|           |   |       |   `-- AdminUseCase.java
+|           |   |       `-- out
+|           |   |           `-- AuditLogPersistencePort.java
+|           |   `-- infrastructure
+|           |       `-- AuditLogPersistenceAdapter.java
+|           |-- banking
+|           |   `-- orchestration
+|           |       `-- domain
+|           |           `-- RoutingRule.java
+|           |-- common
+|           |   |-- audit
+|           |   |   |-- AuditContext.java
+|           |   |   |-- AuditEvent.java
+|           |   |   `-- AuditEventPublisher.java
+|           |   |-- enums
+|           |   |   |-- AccountStatus.java
+|           |   |   |-- RoleType.java
+|           |   |   `-- TransactionType.java
+|           |   |-- exception
+|           |   |   |-- BusinessException.java
+|           |   |   |-- ConflictException.java
+|           |   |   |-- ErrorCode.java
+|           |   |   |-- ForbiddenException.java
+|           |   |   |-- GlobalExceptionHandler.java
+|           |   |   `-- NotFoundException.java
+|           |   |-- mapper
+|           |   |   `-- BaseMapper.java
+|           |   |-- response
+|           |   |   |-- ApiResponse.java
+|           |   |   `-- PagedResponse.java
+|           |   `-- util
+|           |       |-- DateUtils.java
+|           |       |-- IdempotencyKeyUtils.java
+|           |       |-- MaskingUtils.java
+|           |       `-- MoneyUtils.java
+|           |-- config
+|           |   |-- ActuatorSecurityConfig.java
+|           |   |-- AsyncConfig.java
+|           |   |-- CacheConfig.java
+|           |   |-- CorsConfig.java
+|           |   |-- DataInitializer.java
+|           |   |-- JacksonConfig.java
+|           |   |-- OpenApiConfig.java
+|           |   |-- RateLimitConfig.java
+|           |   |-- SecretsConfig.java
+|           |   `-- SecurityConfig.java
+|           |-- customer
+|           |   |-- api
+|           |   |   |-- CustomerController.java
+|           |   |   `-- dto
+|           |   |       |-- CustomerCreateRequest.java
+|           |   |       |-- CustomerResponse.java
+|           |   |       `-- CustomerUpdateRequest.java
+|           |   |-- application
+|           |   |   |-- CreateCustomerService.java
+|           |   |   |-- GetCustomerProfileService.java
+|           |   |   |-- UpdateCustomerProfileService.java
+|           |   |   `-- port
+|           |   |       |-- in
+|           |   |       |   |-- CreateCustomerUseCase.java
+|           |   |       |   |-- CustomerUseCase.java
+|           |   |       |   `-- GetCustomerProfileUseCase.java
+|           |   |       `-- out
+|           |   |           `-- CustomerPersistencePort.java
+|           |   |-- domain
+|           |   |   |-- Customer.java
+|           |   |   |-- CustomerPolicy.java
+|           |   |   `-- CustomerProfile.java
+|           |   `-- infrastructure
+|           |       |-- CustomerJpaRepository.java
+|           |       `-- CustomerPersistenceAdapter.java
+|           |-- legacy
+|           |   |-- README.md
+|           |   `-- v1-deprecated
+|           |-- notification
+|           |   |-- application
+|           |   |   |-- SendOtpNotificationService.java
+|           |   |   |-- SendStatementReadyNotificationService.java
+|           |   |   |-- SendTransactionAlertService.java
+|           |   |   `-- port
+|           |   |       `-- out
+|           |   |           |-- EmailPort.java
+|           |   |           |-- PushNotificationPort.java
+|           |   |           `-- SmsPort.java
+|           |   `-- infrastructure
+|           |       |-- EmailProviderAdapter.java
+|           |       |-- PushNotificationAdapter.java
+|           |       `-- SmsProviderAdapter.java
+|           |-- orchestration
+|           |   |-- api
+|           |   |   |-- OrchestrationController.java
+|           |   |   `-- dto
+|           |   |       |-- OrchestrationRequest.java
+|           |   |       `-- OrchestrationResponse.java
+|           |   |-- application
+|           |   |   |-- PaymentOrchestrationService.java
+|           |   |   `-- port
+|           |   |       |-- in
+|           |   |       |   `-- PaymentOrchestrationUseCase.java
+|           |   |       `-- out
+|           |   |           |-- MultiRailGatewayPort.java
+|           |   |           `-- RoutingRulePersistencePort.java
+|           |   |-- domain
+|           |   |   |-- PaymentGateway.java
+|           |   |   `-- PaymentRail.java
+|           |   `-- infrastructure
+|           |       |-- MultiRailGatewayAdapter.java
+|           |       |-- RoutingRuleJpaAdapter.java
+|           |       `-- RoutingRuleJpaRepository.java
+|           |-- product
+|           |   |-- api
+|           |   |   `-- ProductController.java
+|           |   |-- application
+|           |   |   |-- GetProductCatalogService.java
+|           |   |   `-- port
+|           |   |       |-- in
+|           |   |       |   `-- ProductUseCase.java
+|           |   |       `-- out
+|           |   |           `-- ProductPersistencePort.java
+|           |   |-- domain
+|           |   |   |-- BankProduct.java
+|           |   |   `-- ProductType.java
+|           |   `-- infrastructure
+|           |       |-- ProductJpaRepository.java
+|           |       `-- ProductPersistenceAdapter.java
+|           |-- reporting
+|           |   |-- api
+|           |   |   `-- ReportingController.java
+|           |   |-- application
+|           |   |   |-- GenerateMonthlyReportService.java
+|           |   |   `-- port
+|           |   |       |-- in
+|           |   |       |   `-- ReportingUseCase.java
+|           |   |       `-- out
+|           |   |           `-- ReportingPersistencePort.java
+|           |   |-- domain
+|           |   |   `-- ReportRequest.java
+|           |   `-- infrastructure
+|           |       `-- ReportingPersistenceAdapter.java
+|           |-- security
+|           |   |-- auth
+|           |   |   |-- ApplicationSecurityBeansConfig.java
+|           |   |   |-- AuthenticationController.java
+|           |   |   |-- AuthenticationService.java
+|           |   |   |-- AuthorizationService.java
+|           |   |   |-- CustomUserDetailsService.java
+|           |   |   |-- LoginAttemptService.java
+|           |   |   `-- dto
+|           |   |       |-- AuthenticationRequest.java
+|           |   |       `-- AuthenticationResponse.java
+|           |   |-- jwt
+|           |   |   |-- JwtAuthenticationFilter.java
+|           |   |   |-- JwtClaimsFactory.java
+|           |   |   |-- JwtTokenProvider.java
+|           |   |   `-- TokenBlacklistService.java
+|           |   |-- mfa
+|           |   |   |-- DeviceTrustService.java
+|           |   |   |-- OtpService.java
+|           |   |   `-- OtpVerificationService.java
+|           |   `-- policy
+|           |       |-- AccessPolicy.java
+|           |       |-- PasswordPolicy.java
+|           |       `-- SegregationOfDutiesPolicy.java
+|           |-- statement
+|           |   |-- api
+|           |   |   |-- StatementController.java
+|           |   |   `-- dto
+|           |   |       `-- StatementResponse.java
+|           |   |-- application
+|           |   |   |-- GenerateStatementService.java
+|           |   |   |-- GetStatementService.java
+|           |   |   `-- port
+|           |   |       |-- in
+|           |   |       |   `-- StatementUseCase.java
+|           |   |       `-- out
+|           |   |           |-- StatementGeneratorPort.java
+|           |   |           `-- StatementPersistencePort.java
+|           |   |-- domain
+|           |   |   `-- Statement.java
+|           |   `-- infrastructure
+|           |       |-- PdfStatementGenerator.java
+|           |       |-- StatementJpaRepository.java
+|           |       `-- StatementPersistenceAdapter.java
+|           |-- transaction
+|           |   |-- api
+|           |   |   |-- TransactionController.java
+|           |   |   |-- TransferController.java
+|           |   |   `-- dto
+|           |   |       |-- DepositRequest.java
+|           |   |       |-- ExternalPaymentRequest.java
+|           |   |       |-- InternalTransferRequest.java
+|           |   |       |-- TransactionResponse.java
+|           |   |       `-- WithdrawRequest.java
+|           |   |-- application
+|           |   |   |-- DepositService.java
+|           |   |   |-- ExternalPaymentService.java
+|           |   |   |-- GetTransactionHistoryService.java
+|           |   |   |-- IdempotencyGuardService.java
+|           |   |   |-- InternalTransferService.java
+|           |   |   |-- ReverseTransactionService.java
+|           |   |   |-- WithdrawService.java
+|           |   |   `-- port
+|           |   |       |-- in
+|           |   |       |   |-- DepositUseCase.java
+|           |   |       |   |-- ExternalPaymentUseCase.java
+|           |   |       |   |-- GetTransactionHistoryUseCase.java
+|           |   |       |   |-- TransactionUseCase.java
+|           |   |       |   `-- WithdrawUseCase.java
+|           |   |       `-- out
+|           |   |           |-- FraudScreeningPort.java
+|           |   |           |-- LedgerPersistencePort.java
+|           |   |           `-- PaymentGatewayPort.java
+|           |   |-- domain
+|           |   |   |-- EntryType.java
+|           |   |   |-- LedgerEntry.java
+|           |   |   |-- SufficientFundsPolicy.java
+|           |   |   |-- Transaction.java
+|           |   |   |-- TransactionStatus.java
+|           |   |   `-- TransferPolicy.java
+|           |   `-- infrastructure
+|           |       |-- FraudScreeningAdapter.java
+|           |       |-- LedgerEntryJpaRepository.java
+|           |       |-- LedgerJpaAdapter.java
+|           |       |-- LedgerJpaRepository.java
+|           |       |-- PaymentGatewayAdapter.java
+|           |       `-- TransactionJpaRepository.java
+|           `-- web
+|               |-- advice
+|               |   `-- ResponseSanitizerAdvice.java
+|               |-- filter
+|               |   |-- CorrelationIdFilter.java
+|               |   |-- RateLimitFilter.java
+|               |   |-- RequestLoggingFilter.java
+|               |   `-- SecurityHeadersFilter.java
+|               `-- interceptor
+|                   `-- AuditInterceptor.java
+`-- structure.md
+
+99 directories, 178 files

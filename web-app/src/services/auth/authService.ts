@@ -3,10 +3,10 @@ import { ApiResponse, UserProfile } from "@/models/ApiResponse";
 import { endpoints } from "@/services/api/endpoints";
 
 export const authService = {
-  login: async (username: string, password: string): Promise<ApiResponse<UserProfile>> => {
+  login: async (email: string, password: string): Promise<ApiResponse<UserProfile>> => {
     return apiFetch<ApiResponse<UserProfile>>(endpoints.auth.login, {
       method: "POST",
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email, password }),
     });
   },
 

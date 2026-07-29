@@ -2,16 +2,25 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
-    // This tells Tailwind to specifically scan inside your src/ folder!
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}"
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        dominant: "rgb(var(--color-dominant) / <alpha-value>)",
+        surface: "rgb(var(--color-surface) / <alpha-value>)",
+        secondary: "rgb(var(--color-secondary) / <alpha-value>)",
+        accent: "rgb(var(--color-accent) / <alpha-value>)",
+        success: "rgb(var(--color-success) / <alpha-value>)",
+        danger: "rgb(var(--color-danger) / <alpha-value>)",
+        warning: "rgb(var(--color-warning) / <alpha-value>)",
+      },
+      // Volume I: Chapter 12 - Spacing System
+      spacing: {
+        18: "4.5rem",
+        22: "5.5rem",
       },
     },
   },
