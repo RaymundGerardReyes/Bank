@@ -9,6 +9,7 @@ export const ENDPOINTS = {
     REGISTER: '/customers',
     ME: '/customers/me',
     UPDATE_PROFILE: '/customers/profile',
+    DEVICE_TOKEN: '/customers/device-token'
   },
   ACCOUNTS: {
     BASE: '/accounts',

@@ -10,114 +10,65 @@ import { formatCurrency } from '../../utils/formatters';
 export const TransferReviewScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-
-  // Extract the dynamic data passed from the Form Screen
   const { sourceAccountNumber, destinationAccountNumber, amount, description, idempotencyKey } = route.params || {};
 
-  const handleConfirmNavigate = () => {
-    navigation.navigate('TransferConfirm', route.params);
-  };
+  // Formats PANs cleanly for reading
+  const displaySource = sourceAccountNumber?.match(/.{1,4}/g)?.join(' ') || sourceAccountNumber;
+  const displayDest = destinationAccountNumber?.match(/.{1,4}/g)?.join(' ') || destinationAccountNumber;
 
   return (
     <SecureScreenWrapper style={styles.container}>
-      <Text style={styles.title}>Review Transfer</Text>
-      <Text style={styles.warningText}>Please verify the details below before authorizing.</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Review Transfer</Text>
+        <Text style={styles.subtitle}>Verify details before biometric authorization.</Text>
+      </View>
 
-      <View style={styles.card}>
+      <View style={styles.receiptCard}>
         <View style={styles.row}>
-          <Text style={styles.label}>From Account:</Text>
-          <Text style={styles.value}>{sourceAccountNumber}</Text>
+          <Text style={styles.label}>From Account</Text>
+          <Text style={styles.value}>{displaySource}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>To Account:</Text>
-          <Text style={styles.value}>{destinationAccountNumber}</Text>
+          <Text style={styles.label}>To Account</Text>
+          <Text style={styles.value}>{displayDest}</Text>
         </View>
         {description ? (
           <View style={styles.row}>
-            <Text style={styles.label}>Memo:</Text>
+            <Text style={styles.label}>Memo</Text>
             <Text style={styles.value}>{description}</Text>
           </View>
         ) : null}
 
-        <View style={styles.divider} />
+        <View style={styles.dashedDivider} />
 
-        <View style={styles.row}>
-          <Text style={styles.totalLabel}>Total Amount:</Text>
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>Total Amount</Text>
           <Text style={styles.totalValue}>{formatCurrency(amount, 'USD')}</Text>
         </View>
       </View>
 
       <Text style={styles.idempotencyText}>Trace Ref: {idempotencyKey?.split('-')[0]}</Text>
 
-      <Button
-        title="Proceed to Biometric Authorization"
-        onPress={handleConfirmNavigate}
-        style={styles.btn}
-      />
+      <View style={styles.footer}>
+        <Button title="Authorize with Passkey" onPress={() => navigation.navigate('TransferConfirm', route.params)} />
+      </View>
     </SecureScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: spacing.lg,
-    backgroundColor: colors.dominant,
-  },
-  title: {
-    color: colors.accent,
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: spacing.xs,
-  },
-  warningText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    marginBottom: spacing.xl,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderRadius: spacing.borderRadius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.secondary,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  label: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  value: {
-    color: colors.accent,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.secondary,
-    marginVertical: spacing.md,
-  },
-  totalLabel: {
-    color: colors.accent,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  totalValue: {
-    color: colors.accent,
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  idempotencyText: {
-    color: colors.textMuted,
-    fontSize: 10,
-    textAlign: 'center',
-    marginTop: spacing.md,
-  },
-  btn: {
-    marginTop: 'auto',
-  },
+  container: { flex: 1, backgroundColor: colors.dominant },
+  header: { padding: spacing.lg, marginTop: spacing.md, marginBottom: spacing.sm },
+  title: { color: colors.accent, fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
+  subtitle: { color: colors.textSecondary, fontSize: 15, fontWeight: '600', marginTop: 4 },
+  receiptCard: { marginHorizontal: spacing.lg, backgroundColor: colors.surface, padding: spacing.xl, borderRadius: spacing.borderRadius.lg, borderWidth: 1, borderColor: `${colors.secondary}40` },
+  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
+  label: { color: colors.textSecondary, fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  value: { color: colors.accent, fontSize: 14, fontWeight: '800' },
+  dashedDivider: { height: 1, borderWidth: 1, borderColor: colors.secondary, borderStyle: 'dashed', marginVertical: spacing.lg, opacity: 0.4 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  totalLabel: { color: colors.accent, fontSize: 16, fontWeight: '900' },
+  totalValue: { color: colors.accent, fontSize: 28, fontWeight: '900', letterSpacing: -1 },
+  idempotencyText: { color: colors.textMuted, fontSize: 10, textAlign: 'center', marginTop: spacing.xl, fontFamily: 'monospace', fontWeight: '700' },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: spacing.lg, backgroundColor: colors.dominant, borderTopWidth: 1, borderColor: `${colors.secondary}30` },
 });

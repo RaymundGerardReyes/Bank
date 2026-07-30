@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
@@ -12,93 +12,109 @@ export const DepositScreen = () => {
   const [accountNo, setAccountNo] = React.useState('');
   const [amount, setAmount] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [success, setSuccess] = React.useState(false);
 
   const handleDeposit = async () => {
+    setError('');
     const parsedAmount = parseFloat(amount);
+    const cleanAccount = accountNo.replace(/\s/g, '');
 
-    if (!accountNo || isNaN(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert('Validation Error', 'Please enter a valid account number and an amount greater than $0.');
+    if (!cleanAccount || isNaN(parsedAmount) || parsedAmount <= 0) {
+      setError('Please enter a valid account number and an amount greater than $0.');
       return;
     }
 
     setLoading(true);
     try {
-      // The backend requires an Idempotency-Key for all money movement
       await transactionService.deposit({
-        accountNumber: accountNo,
+        accountNumber: cleanAccount,
         amount: parsedAmount,
         idempotencyKey: generateUUID(),
       });
-
-      Alert.alert('Success', `Successfully deposited $${parsedAmount.toFixed(2)} into ${accountNo}.`);
-
-      // Reset form on success
-      setAccountNo('');
-      setAmount('');
-    } catch (error: any) {
-      const errorMsg = error?.response?.data?.message || 'Failed to process deposit. Please try again.';
-      Alert.alert('Deposit Failed', errorMsg);
+      setSuccess(true);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to process deposit.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
+  if (success) {
+    return (
+      <SecureScreenWrapper style={styles.successContainer}>
+        <View style={styles.successIconBg}><Text style={styles.successIcon}>✓</Text></View>
+        <Text style={styles.title}>Deposit Successful</Text>
+        <Text style={styles.subtitle}>Funds have been added to your account.</Text>
+        <View style={styles.footer}>
+          <Button title="Done" onPress={() => { setSuccess(false); setAmount(''); }} />
+        </View>
+      </SecureScreenWrapper>
+    );
+  }
+
   return (
     <SecureScreenWrapper style={styles.container}>
-      <Text style={styles.title}>Deposit Cash</Text>
-      <Text style={styles.subtitle}>Securely deposit funds into your account.</Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <View style={styles.header}>
+            <Text style={styles.title}>Deposit Cash</Text>
+            <Text style={styles.subtitle}>Add funds to your secure wallet.</Text>
+          </View>
 
-      <View style={styles.formContainer}>
-        <Input
-          label="Account Number"
-          placeholder="e.g. ACCT-100200"
-          value={accountNo}
-          onChangeText={setAccountNo}
-        />
-        <Input
-          label="Amount ($)"
-          placeholder="0.00"
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="numeric"
-        />
-      </View>
+          {error ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
 
-      <Button
-        title="Confirm Deposit"
-        onPress={handleDeposit}
-        loading={loading}
-        style={styles.button}
-      />
+          <View style={styles.amountContainer}>
+            <Text style={styles.currencySymbol}>$</Text>
+            <TextInput
+              style={styles.amountInput}
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="decimal-pad"
+              placeholder="0.00"
+              placeholderTextColor={`${colors.secondary}80`}
+            />
+          </View>
+
+          <View style={styles.card}>
+            <Input
+              label="Target Account Number"
+              placeholder="e.g. 4859 2200 1337 1001"
+              value={accountNo}
+              onChangeText={setAccountNo}
+            />
+          </View>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <Button title="Confirm Deposit" onPress={handleDeposit} loading={loading} />
+        </View>
+      </KeyboardAvoidingView>
     </SecureScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: spacing.lg,
-    backgroundColor: colors.dominant, // 60% White
-  },
-  title: {
-    color: colors.accent, // 10% Deep Navy
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    marginBottom: spacing.xl,
-  },
-  formContainer: {
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderRadius: spacing.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.secondary, // 30% Soft Blue
-    marginBottom: spacing.xl,
-  },
-  button: {
-    marginTop: 'auto',
-  },
+  container: { flex: 1, backgroundColor: colors.dominant },
+  flex: { flex: 1 },
+  scrollContent: { padding: spacing.lg, paddingBottom: 120 },
+  header: { marginBottom: spacing.xl, marginTop: spacing.md },
+  title: { color: colors.accent, fontSize: 28, fontWeight: '900', letterSpacing: -0.5, textAlign: 'center' },
+  subtitle: { color: colors.textSecondary, fontSize: 16, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+  errorBanner: { backgroundColor: '#FEF2F2', padding: spacing.md, borderRadius: spacing.borderRadius.md, borderWidth: 1, borderColor: '#FECACA', marginBottom: spacing.lg },
+  errorText: { color: colors.danger, fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  amountContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xxl },
+  currencySymbol: { fontSize: 48, fontWeight: '800', color: colors.accent, marginRight: 8, marginTop: -8 },
+  amountInput: { fontSize: 64, fontWeight: '900', color: colors.accent, minWidth: 160 },
+  card: { backgroundColor: colors.surface, borderRadius: spacing.borderRadius.lg, padding: spacing.lg, borderWidth: 1, borderColor: `${colors.secondary}40` },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: spacing.lg, backgroundColor: colors.dominant, borderTopWidth: 1, borderColor: `${colors.secondary}30` },
+
+  successContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, backgroundColor: colors.dominant },
+  successIconBg: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#ECFCCB', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.lg },
+  successIcon: { fontSize: 40, color: colors.success },
 });

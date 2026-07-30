@@ -3,6 +3,7 @@ import { ENDPOINTS } from '../api/endpoints';
 import { ApiResponse } from '../../models/ApiResponse';
 import { LoginResponse, User } from '../../models/User';
 import { tokenStorageService } from './tokenStorageService';
+import { pushNotificationService } from '../notification/pushNotificationService';
 
 export const authService = {
   login: async (username: string, passwordHash: string): Promise<LoginResponse> => {
@@ -10,8 +11,21 @@ export const authService = {
       email: username,
       password: passwordHash,
     });
+    
     const data = response.data.data;
     await tokenStorageService.saveTokens(data.token, data.refreshToken);
+
+    // --- ENTERPRISE PUSH NOTIFICATION WORKFLOW ---
+    // Step 1: Mobile App registers device and obtains FCM token
+    // Step 2: Mobile App securely transmits token to Backend after authentication
+    try {
+        const fcmToken = await pushNotificationService.registerToken();
+        await pushNotificationService.syncTokenWithBackend(fcmToken);
+    } catch (e) {
+        // Token registration failure should never block the primary login process
+        console.error("Failed to setup FCM token during login", e);
+    }
+
     return data;
   },
 
