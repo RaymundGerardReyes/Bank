@@ -30,9 +30,13 @@ export const TransferConfirmScreen = () => {
     if (passed) {
       setStatus('LOADING');
       try {
+        // 🔥 FIX 1: Auto-Sanitize whitespace so backend doesn't throw a 404
+        const cleanSource = sourceAccountNumber.replace(/\s/g, '');
+        const cleanDest = destinationAccountNumber.replace(/\s/g, '');
+
         const txData = await transactionService.transferInternal({
-          sourceAccountNumber,
-          destinationAccountNumber,
+          sourceAccountNumber: cleanSource,
+          destinationAccountNumber: cleanDest,
           amount,
           description,
           idempotencyKey,
@@ -46,9 +50,9 @@ export const TransferConfirmScreen = () => {
         idempotencyKeyService.resetKey();
       } catch (error: any) {
         setStatus('ERROR');
-        // 🔥 FIX: Deeply extract the Spring Boot JSON error payload to bypass Axios generic messages
-        const msg = error?.response?.data?.message || error?.message || 'Transaction declined by server.';
-        setErrorMessage(msg);
+        // 🔥 FIX 2: Deeply extract the Spring Boot JSON error payload to bypass generic Axios messages
+        const specificMsg = error?.response?.data?.message || error?.message || 'Transaction declined by server.';
+        setErrorMessage(specificMsg);
       }
     }
   };
@@ -107,7 +111,7 @@ export const TransferConfirmScreen = () => {
           <Text style={styles.errorMessage}>{errorMessage}</Text>
 
           <View style={styles.footer}>
-            <Button title="Try Again" onPress={() => navigation.goBack()} variant="danger" />
+            <Button title="Try Again" onPress={() => navigation.goBack()} variant="danger" style={{ width: '100%', marginTop: spacing.xl }} />
           </View>
         </View>
       )}
@@ -121,7 +125,6 @@ const styles = StyleSheet.create({
   title: { color: colors.accent, fontSize: 24, fontWeight: '900', marginBottom: spacing.xl },
   loadingText: { color: colors.accent, fontSize: 16, fontWeight: '700', marginTop: spacing.lg },
 
-  // Success UI
   successContainer: { flex: 1, paddingTop: 80 },
   successHeader: { alignItems: 'center', marginBottom: spacing.xl },
   successIconBg: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#ECFCCB', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
@@ -137,7 +140,6 @@ const styles = StyleSheet.create({
   valueMono: { color: colors.accent, fontSize: 13, fontWeight: '800', fontFamily: 'monospace' },
   dashedDivider: { height: 1, borderWidth: 1, borderColor: colors.secondary, borderStyle: 'dashed', marginVertical: spacing.md, opacity: 0.4 },
 
-  // Error UI
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   errorIconBg: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#FEF2F2', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md, borderWidth: 1, borderColor: '#FECACA' },
   errorIcon: { fontSize: 40, color: colors.danger, fontWeight: '900' },
