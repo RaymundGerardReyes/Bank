@@ -57,6 +57,10 @@ public class Customer implements UserDetails {
     @Column(name = "kyc_status")
     private String kycStatus;
 
+    // --- NEW: Push Notification Registration Token ---
+    @Column(name = "fcm_token")
+    private String fcmToken;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

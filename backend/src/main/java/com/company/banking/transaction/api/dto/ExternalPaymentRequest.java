@@ -28,5 +28,8 @@ public class ExternalPaymentRequest {
     @NotBlank(message = "Idempotency key is required")
     private String idempotencyKey;
     
+    @NotBlank(message = "Recipient name is required for SWIFT compliance")
+    private String recipientName;
+    
     private String description;
 }

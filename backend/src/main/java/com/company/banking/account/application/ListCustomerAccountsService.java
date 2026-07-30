@@ -25,6 +25,9 @@ public class ListCustomerAccountsService implements ListCustomerAccountsUseCase 
                         .balance(acc.getBalance())
                         .currency(acc.getCurrency())
                         .status(acc.getStatus())
+                        .swiftCode(acc.getSwiftCode())
+                        .cardExpiry(acc.getCardExpiry())
+                        .cardCvv(acc.getCardCvv())
                         .build())
                 .collect(Collectors.toList());
     }
