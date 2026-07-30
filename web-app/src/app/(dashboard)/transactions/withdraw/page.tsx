@@ -20,7 +20,8 @@ export default function WithdrawPage() {
     setError("");
 
     const parsedAmount = parseFloat(amount);
-    if (!sourceAccount.trim() || isNaN(parsedAmount) || parsedAmount <= 0) {
+    const cleanAccount = sourceAccount.replace(/\s/g, '');
+    if (!cleanAccount || isNaN(parsedAmount) || parsedAmount <= 0) {
       setError("Please enter a valid account number and an amount greater than $0.");
       return;
     }
@@ -30,7 +31,7 @@ export default function WithdrawPage() {
       const idempotencyKey = idempotencyKeyService.generateKey();
 
       await transactionService.withdraw({
-        accountNumber: sourceAccount,
+        accountNumber: cleanAccount,
         amount: parsedAmount,
         idempotencyKey,
       });

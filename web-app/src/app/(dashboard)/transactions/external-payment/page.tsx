@@ -23,11 +23,14 @@ export default function ExternalPaymentPage() {
     setError("");
 
     const parsedAmount = parseFloat(amount);
+    const cleanSource = sourceAcc.replace(/\s/g, '');
+    const cleanRouting = routingNo.replace(/\s/g, '');
+    const cleanDest = recipientAcc.replace(/\s/g, '');
 
     if (
-      !sourceAcc.trim() ||
-      !routingNo.trim() ||
-      !recipientAcc.trim() ||
+      !cleanSource ||
+      !cleanRouting ||
+      !cleanDest ||
       !recipientName.trim() ||
       isNaN(parsedAmount) ||
       parsedAmount <= 0
@@ -36,7 +39,7 @@ export default function ExternalPaymentPage() {
       return;
     }
 
-    if (routingNo.trim().length !== 9 || !/^\d+$/.test(routingNo.trim())) {
+    if (cleanRouting.length !== 9 || !/^\d+$/.test(cleanRouting)) {
       setError("Routing number must be exactly 9 numeric digits.");
       return;
     }
@@ -46,9 +49,9 @@ export default function ExternalPaymentPage() {
       const idempotencyKey = idempotencyKeyService.generateKey();
 
       await transactionService.externalPayment({
-        sourceAccountNumber: sourceAcc,
-        routingNumber: routingNo,
-        recipientAccountNumber: recipientAcc,
+        sourceAccountNumber: cleanSource,
+        routingNumber: cleanRouting,
+        recipientAccountNumber: cleanDest,
         recipientName,
         amount: parsedAmount,
         idempotencyKey,

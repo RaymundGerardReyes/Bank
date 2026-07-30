@@ -25,6 +25,10 @@ export interface Account {
   balance: number;
   currency: string;
   status: "ACTIVE" | "FROZEN" | "CLOSED";
+  // --- NEW ENTERPRISE ROUTING FIELDS ---
+  swiftCode?: string;
+  cardExpiry?: string;
+  cardCvv?: string;
   createdAt: string;
 }
 
@@ -36,6 +40,7 @@ export interface Transaction {
   destinationAccountNumber?: string;
   accountNumber?: string;
   type?: "DEPOSIT" | "WITHDRAWAL" | "INTERNAL_TRANSFER" | "EXTERNAL_PAYMENT";
+  entryType?: "CREDIT" | "DEBIT" | string;
   amount: number;
   currency?: string;
   status: "PENDING" | "COMPLETED" | "FAILED" | "SCHEDULED" | string;

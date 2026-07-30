@@ -21,7 +21,9 @@ export default function DepositPage() {
     setError("");
 
     const parsedAmount = parseFloat(amount);
-    if (!accountNo.trim() || isNaN(parsedAmount) || parsedAmount <= 0) {
+    const cleanAccount = accountNo.replace(/\s/g, '');
+
+    if (!cleanAccount || isNaN(parsedAmount) || parsedAmount <= 0) {
       setError("Please enter a valid account number and an amount greater than $0.");
       return;
     }
@@ -32,7 +34,7 @@ export default function DepositPage() {
       const idempotencyKey = idempotencyKeyService.generateKey();
 
       await transactionService.deposit({
-        accountNumber: accountNo,
+        accountNumber: cleanAccount,
         amount: parsedAmount,
         idempotencyKey,
       });

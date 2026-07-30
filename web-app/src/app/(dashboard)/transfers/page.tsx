@@ -39,23 +39,26 @@ export default function TransfersPage() {
     setError("");
 
     const parsedAmount = parseFloat(amount);
+    const cleanSource = sourceAccount.replace(/\s/g, '');
+    const cleanRecipient = recipientAccount.replace(/\s/g, '');
+
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       setError("Please enter a valid positive transfer amount.");
       return;
     }
-    if (!sourceAccount) {
+    if (!cleanSource) {
       setError("A valid source account is required.");
       return;
     }
-    if (!recipientAccount.trim()) {
+    if (!cleanRecipient) {
       setError("Please enter a recipient account number.");
       return;
     }
 
     const idempotencyKey = idempotencyKeyService.getOrCreateKey();
     const transferSession = {
-      sourceAccountNumber: sourceAccount,
-      recipientAccountNumber: recipientAccount,
+      sourceAccountNumber: cleanSource,
+      recipientAccountNumber: cleanRecipient,
       amount: parsedAmount,
       description,
       scheduledDate: scheduledDate || undefined,

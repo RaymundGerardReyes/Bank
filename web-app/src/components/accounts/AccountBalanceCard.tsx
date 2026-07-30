@@ -5,6 +5,7 @@ import { Account } from "@/models/ApiResponse";
 import { useAuthStore } from "@/state/authStore";
 import { useUIStore } from "@/state/uiStore";
 import { formatCurrency } from "@/utils/formatters";
+import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 
 interface AccountBalanceCardProps {
@@ -12,35 +13,43 @@ interface AccountBalanceCardProps {
 }
 
 export const AccountBalanceCard: React.FC<AccountBalanceCardProps> = ({ account }) => {
+  const router = useRouter();
   const { user } = useAuthStore();
   const { maskSensitiveData } = useUIStore();
+
+  // 3D Flip State
   const [isFlipped, setIsFlipped] = useState(false);
 
   const formattedBalance = formatCurrency(account.balance, account.currency);
   const isActionable = account.status === "ACTIVE";
 
-  // --- Dynamic ISO/IEC 7812 Formatting ---
-  // The backend now returns a real 16-digit PAN. We format it into blocks of 4.
+  // --- Dynamic ISO/IEC 7812 Formatting & Legacy Fallback ---
   const rawPan = account.accountNumber.replace(/\D/g, "");
-  const formattedPan = rawPan.match(/.{1,4}/g)?.join("  ") || rawPan;
-  const maskedPan = `••••  ••••  ••••  ${rawPan.slice(-4).padStart(4, "0")}`;
+  const isLegacy = rawPan.length < 16;
+
+  const formattedPan = isLegacy
+    ? account.accountNumber // Leave ACC-100200300 alone
+    : rawPan.match(/.{1,4}/g)?.join("  ") || rawPan; // Format 4859 2200 1337 1001
+
+  const maskedPan = isLegacy
+    ? `**** **** ${rawPan.slice(-4) || '****'}`
+    : `••••  ••••  ••••  ${rawPan.slice(-4).padStart(4, "0")}`;
+
   const displayPan = maskSensitiveData ? maskedPan : formattedPan;
 
-  // --- Dynamic Expiry & CVV ---
-  // Create an expiry date exactly 3 years from the account creation date
-  const creationDate = new Date(account.createdAt);
-  const expiryYear = String(creationDate.getFullYear() + 3).slice(-2);
-  const expiryMonth = String(creationDate.getMonth() + 1).padStart(2, "0");
+  // --- Map Backend Properties Safely (Handle DB Nulls from old accounts) ---
+  const swiftCode = account.swiftCode || "NOVBUS33XXX";
+  const cardExpiry = account.cardExpiry || "12/29";
+  const cardCvv = account.cardCvv || "000";
 
-  const displayExpiry = maskSensitiveData ? "**/**" : `${expiryMonth}/${expiryYear}`;
-  const displayCvv = maskSensitiveData ? "***" : "482"; // CVV is traditionally dynamically generated, mocked here for UI
+  // Toggle Visibility based on Global Privacy State
+  const displayExpiry = maskSensitiveData ? "**/**" : cardExpiry;
+  const displayCvv = maskSensitiveData ? "***" : cardCvv;
 
-  // --- Enterprise Banking Details ---
-  const swiftCode = "NOVBUS33XXX";
+  const cardholderName = user?.fullName || "Valued Member";
 
   return (
     <div className="flex flex-col gap-4">
-
       {/* 1. The 3D Interactive Physical Card */}
       <div
         className="relative w-full aspect-[1.586/1] rounded-2xl cursor-pointer group [perspective:1000px]"
@@ -53,6 +62,7 @@ export const AccountBalanceCard: React.FC<AccountBalanceCardProps> = ({ account 
           {/* FRONT OF CARD                              */}
           {/* ========================================== */}
           <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-950 border border-slate-700 rounded-2xl p-6 overflow-hidden flex flex-col">
+
             {/* Decorative Glassmorphic Orbs */}
             <div className="absolute -top-12 -right-12 w-40 h-40 bg-sky-500/20 rounded-full blur-3xl"></div>
             <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl"></div>
@@ -78,7 +88,7 @@ export const AccountBalanceCard: React.FC<AccountBalanceCardProps> = ({ account 
             </div>
 
             {/* ISO Standard PAN */}
-            <div className="font-mono text-[1.3rem] text-white tracking-widest relative z-10 drop-shadow-md">
+            <div className={`font-mono ${isLegacy ? 'text-lg tracking-wider' : 'text-[1.3rem] tracking-widest'} text-white relative z-10 drop-shadow-md transition-all`}>
               {displayPan}
             </div>
 
@@ -87,7 +97,7 @@ export const AccountBalanceCard: React.FC<AccountBalanceCardProps> = ({ account 
               <div className="flex flex-col">
                 <span className="text-[8px] text-white/50 uppercase tracking-widest font-bold mb-0.5">Cardholder</span>
                 <span className="text-white text-sm font-bold tracking-widest uppercase truncate max-w-[150px]">
-                  {user?.fullName || "Valued Member"}
+                  {cardholderName}
                 </span>
               </div>
               <div className="flex flex-col items-end">
@@ -126,7 +136,7 @@ export const AccountBalanceCard: React.FC<AccountBalanceCardProps> = ({ account 
               <div className="flex justify-between items-start text-white/60">
                 <div className="flex flex-col gap-1 text-[9px] uppercase tracking-wider">
                   <span>Routing: 021000021</span>
-                  <span>Account: {maskSensitiveData ? `****${rawPan.slice(-4)}` : rawPan}</span>
+                  <span>Account: {maskSensitiveData ? `****${rawPan.slice(-4) || '****'}` : rawPan}</span>
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">SWIFT / BIC</span>
@@ -161,18 +171,21 @@ export const AccountBalanceCard: React.FC<AccountBalanceCardProps> = ({ account 
         </div>
 
         <div className="flex items-center gap-2 pt-4 border-t border-secondary/20">
-          <button className="flex-1 text-xs font-bold text-accent bg-surface hover:bg-secondary/20 py-2 rounded-lg transition-colors">
+          <button
+            onClick={() => router.push("/transactions/history")}
+            className="flex-1 text-xs font-bold text-accent bg-surface hover:bg-secondary/20 py-2 rounded-lg transition-colors"
+          >
             History
           </button>
           <button
             disabled={!isActionable}
+            onClick={() => router.push("/transfers")}
             className="flex-1 text-xs font-bold text-dominant bg-accent hover:bg-accent/90 disabled:bg-secondary disabled:cursor-not-allowed py-2 rounded-lg transition-colors shadow-md"
           >
             Transfer
           </button>
         </div>
       </div>
-
     </div>
   );
 };
