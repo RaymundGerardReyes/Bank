@@ -37,14 +37,39 @@ public class Account {
 
     @Column(nullable = false)
     private String currency;
-    
-    // NEW ENTERPRISE CARD & ROUTING FIELDS
+
+// --- VAM & HIERARCHY FIELDS ---
+    @Column(name = "account_type")
+    private String accountType; // <-- ADD THIS FIELD (e.g., MAIN, PAYROLL, TREASURY)
+    // --- VAM & HIERARCHY FIELDS ---
+    @Column(name = "parent_account_id")
+    private String parentAccountId;
+
+    @Column(name = "account_name")
+    private String accountName;
+
+    @Column(name = "daily_limit")
+    private BigDecimal dailyLimit;
+
+    @Column(name = "monthly_limit")
+    private BigDecimal monthlyLimit;
+
+    @Column(name = "allow_incoming")
+    private boolean allowIncoming;
+
+    @Column(name = "allow_outgoing")
+    private boolean allowOutgoing;
+
+    @Column(name = "require_dual_approval")
+    private boolean requireDualApproval;
+
+    // --- CARD & ROUTING FIELDS ---
     @Column(name = "swift_code")
     private String swiftCode;
-    
+
     @Column(name = "card_expiry")
     private String cardExpiry;
-    
+
     @Column(name = "card_cvv")
     private String cardCvv;
 

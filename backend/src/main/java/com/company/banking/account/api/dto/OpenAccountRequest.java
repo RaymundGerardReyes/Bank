@@ -14,12 +14,25 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OpenAccountRequest {
-
     @NotNull(message = "Customer ID is required")
     private Long customerId;
-
+    
     @NotBlank(message = "Currency is required")
     private String currency;
-
+    
     private BigDecimal initialDeposit;
+
+    // --- NEW ENTERPRISE VAM FIELDS ---
+    @NotBlank(message = "Account type/template is required")
+    private String accountType;
+
+    private String parentAccountId; // Optional for root, Required for VAM
+    private String accountName;
+    private String nickname;
+    private BigDecimal dailyLimit;
+    private BigDecimal monthlyLimit;
+    private boolean allowIncoming;
+    private boolean allowOutgoing;
+    private boolean requireDualApproval;
+    private boolean issueVirtualCard;
 }

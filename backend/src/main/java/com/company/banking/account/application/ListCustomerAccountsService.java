@@ -28,6 +28,10 @@ public class ListCustomerAccountsService implements ListCustomerAccountsUseCase 
                         .swiftCode(acc.getSwiftCode())
                         .cardExpiry(acc.getCardExpiry())
                         .cardCvv(acc.getCardCvv())
+                        // --- MAP VAM FIELDS ---
+                        .accountType(acc.getAccountType() != null ? acc.getAccountType() : "MAIN")
+                        .parentAccountId(acc.getParentAccountId())
+                        .accountName(acc.getAccountName())
                         .build())
                 .collect(Collectors.toList());
     }

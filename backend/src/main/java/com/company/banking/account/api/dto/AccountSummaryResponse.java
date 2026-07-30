@@ -20,4 +20,9 @@ public class AccountSummaryResponse {
     private String swiftCode;
     private String cardExpiry;
     private String cardCvv;
+    
+    // --- EXPOSE VAM FIELDS TO NEXT.JS ---
+    private String accountType;
+    private String parentAccountId;
+    private String accountName;
 }
