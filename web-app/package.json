@@ -1,6 +1,6 @@
 {
   "name": "banking-web-app",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "Hardened Next.js + TypeScript + Tailwind CSS Web Frontend for Banking Platform",
   "scripts": {

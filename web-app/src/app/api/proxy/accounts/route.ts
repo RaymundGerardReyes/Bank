@@ -23,3 +23,27 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, message: "Backend offline" }, { status: 503 });
   }
 }
+
+export async function POST(request: Request) {
+  const cookieHeader = request.headers.get("cookie") || "";
+  const tokenMatch = cookieHeader.match(/bank_session=([^;]+)/);
+  const token = tokenMatch ? tokenMatch[1] : null;
+  const requestId = crypto.randomUUID();
+  const body = await request.json();
+
+  try {
+    const res = await fetch(`${env.backendApiBaseUrl}/accounts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Request-Id": requestId,
+        ...(token ? { "Authorization": `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    return NextResponse.json(data, { status: res.status });
+  } catch (err) {
+    return NextResponse.json({ success: false, message: "Backend offline" }, { status: 503 });
+  }
+}

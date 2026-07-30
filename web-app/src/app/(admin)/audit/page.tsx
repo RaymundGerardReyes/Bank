@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Card } from "@/components/common/Card";
 import { Input } from "@/components/common/Input";
 import { Button } from "@/components/common/Button";
-import { apiClient } from "@/services/api/apiClient";
+import { apiFetch } from "@/services/api/httpClient";
 
 interface TransactionResult {
   transactionReference: string;
@@ -38,9 +38,9 @@ export default function AdminAuditPage() {
     setMatchedTx(null);
 
     try {
-      const response = await apiClient.get<{ data: TransactionResult }>(`/api/v1/transactions/trace/${traceRef.trim()}`);
-      if (response.data?.data) {
-        setMatchedTx(response.data.data);
+      const response = await apiFetch<{ data: TransactionResult }>(`/v1/transactions/trace/${traceRef.trim()}`);
+      if (response?.data) {
+        setMatchedTx(response.data);
       } else {
         setError("No matching transaction found for trace ref.");
       }

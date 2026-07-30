@@ -1,6 +1,5 @@
 "use client";
 
-import { Card } from "@/components/common/Card";
 import { TransactionListItem } from "@/components/transactions/TransactionListItem";
 import { Transaction } from "@/models/ApiResponse";
 import { accountService } from "@/services/account/accountService";
@@ -28,7 +27,7 @@ export default function TransactionHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // <-- NEW: Track the currently active account to determine Credit/Debit Direction -->
+  // <-- ENTERPRISE FIX: Track the currently active account to determine Credit/Debit Direction -->
   const [activeAccount, setActiveAccount] = useState<string>("");
 
   useEffect(() => {
@@ -37,7 +36,7 @@ export default function TransactionHistoryPage() {
         const accRes = await accountService.getAccounts();
         if (accRes.data && accRes.data.length > 0) {
           const primaryAcc = accRes.data[0].accountNumber;
-          setActiveAccount(primaryAcc); // Save state
+          setActiveAccount(primaryAcc); // Save state context
 
           const histRes = await transactionService.getHistory(primaryAcc);
           if (histRes.data && histRes.data.content) {
@@ -83,27 +82,8 @@ export default function TransactionHistoryPage() {
 
       {!loading && error && (
         <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl flex flex-col items-center justify-center text-center animate-in zoom-in-95">
-          <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mb-3">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
           <p className="text-rose-600 font-bold">{error}</p>
         </div>
-      )}
-
-      {!loading && !error && transactions.length === 0 && (
-        <Card className="flex flex-col items-center justify-center text-center py-16 border-dashed border-secondary/40 shadow-none">
-          <div className="w-16 h-16 bg-surface border border-secondary/30 text-secondary rounded-full flex items-center justify-center mb-4">
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-extrabold text-accent mb-1">No Transactions Yet</h3>
-          <p className="text-accent/60 font-medium max-w-sm">
-            Once you make a deposit, withdrawal, or transfer, your immutable ledger history will appear here.
-          </p>
-        </Card>
       )}
 
       <div className="flex flex-col gap-3">

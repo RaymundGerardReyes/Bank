@@ -26,6 +26,23 @@ export default function AccountsPage() {
     return accounts.reduce((sum, account) => sum + (account.balance || 0), 0);
   }, [accounts]);
 
+  // Enterprise VAM Grouping
+  const mainAccounts = useMemo(() => {
+    return accounts.filter(acc => !acc.parentAccountId);
+  }, [accounts]);
+
+  const subAccountsByParent = useMemo(() => {
+    const map = new Map<string, Account[]>();
+    accounts.forEach(acc => {
+      if (acc.parentAccountId) {
+        const subs = map.get(acc.parentAccountId) || [];
+        subs.push(acc);
+        map.set(acc.parentAccountId, subs);
+      }
+    });
+    return map;
+  }, [accounts]);
+
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500">
 
@@ -68,11 +85,11 @@ export default function AccountsPage() {
         </div>
       </div>
 
-      {/* 2. Account Grid Section */}
+      {/* 2. Enterprise VAM Account Grid Section */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-extrabold text-accent">Active Accounts</h3>
-          <span className="text-xs font-bold text-accent/50">{accounts.length} Accounts Found</span>
+          <h3 className="text-xl font-extrabold text-accent">Corporate Ledgers</h3>
+          <span className="text-xs font-bold text-accent/50">{mainAccounts.length} Master Accounts Found</span>
         </div>
 
         {loading ? (
@@ -88,17 +105,65 @@ export default function AccountsPage() {
             </div>
             <h2 className="text-xl font-bold text-accent mb-2">No Accounts Found</h2>
             <p className="text-accent/60 max-w-md mb-6 font-medium">
-              We could not locate a checking or savings account linked to your profile. This usually occurs if KYC verification is still pending.
+              We could not locate a corporate master account linked to your profile.
             </p>
             <button className="px-6 py-3 bg-accent text-dominant font-bold rounded-xl hover:bg-accent/90 transition-colors shadow-lg">
               Contact Support
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {accounts.map((account) => (
-              <AccountBalanceCard key={account.accountNumber} account={account} />
-            ))}
+          <div className="flex flex-col gap-10">
+            {mainAccounts.map((mainAccount) => {
+              const subAccounts = subAccountsByParent.get(mainAccount.accountNumber) || [];
+              
+              return (
+                <div key={mainAccount.accountNumber} className="bg-surface border border-secondary/20 rounded-3xl p-6 md:p-8 flex flex-col gap-6 shadow-sm relative overflow-hidden">
+                  {/* Decorative faint background for Master Ledger context */}
+                  <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-secondary/5 rounded-full blur-[100px] pointer-events-none"></div>
+
+                  {/* Master Ledger Section */}
+                  <div className="relative z-10">
+                    <h3 className="text-lg font-extrabold text-accent mb-4 flex items-center gap-3">
+                       <div className="p-1.5 bg-accent text-dominant rounded-md">
+                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                       </div>
+                       {mainAccount.accountType || "MASTER"} LEDGER
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="md:col-span-1 lg:col-span-1">
+                        <AccountBalanceCard account={mainAccount} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sub-Ledgers Section */}
+                  {subAccounts.length > 0 && (
+                    <div className="relative z-10 pl-6 md:pl-12 border-l-2 border-dashed border-secondary/30 pt-2 flex flex-col gap-4 mt-2">
+                       <h4 className="text-xs font-bold text-accent/50 uppercase tracking-widest flex items-center gap-2">
+                         <div className="w-4 h-px bg-secondary/50"></div>
+                         Linked Virtual Accounts
+                       </h4>
+                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                         {subAccounts.map(sub => (
+                            <AccountBalanceCard key={sub.accountNumber} account={sub} />
+                         ))}
+                       </div>
+                    </div>
+                  )}
+
+                  {/* Provision Action */}
+                  <div className="relative z-10 pl-6 md:pl-12 pt-2">
+                    <button
+                      onClick={() => router.push(`/accounts/new?parent=${mainAccount.accountNumber}`)}
+                      className="px-5 py-3.5 border-2 border-dashed border-secondary/40 hover:border-accent hover:bg-secondary/10 text-accent font-bold rounded-xl transition-all flex items-center gap-2 text-sm shadow-sm"
+                    >
+                      <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
+                      Provision Sub-Account
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -21,10 +21,14 @@ export interface UserProfile {
 export interface Account {
   id: string;
   accountNumber: string;
-  accountType: "CHECKING" | "SAVINGS" | "INVESTMENT";
+  accountType: string;
   balance: number;
   currency: string;
   status: "ACTIVE" | "FROZEN" | "CLOSED";
+  
+  // --- NEW ENTERPRISE VAM HIERARCHY FIELDS ---
+  parentAccountId?: string | null;
+  accountName?: string | null;
   // --- NEW ENTERPRISE ROUTING FIELDS ---
   swiftCode?: string;
   cardExpiry?: string;

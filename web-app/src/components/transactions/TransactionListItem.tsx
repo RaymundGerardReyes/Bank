@@ -1,13 +1,13 @@
 "use client";
 
 import { Transaction } from "@/models/ApiResponse";
-import { formatCurrency, formatDate } from "@/utils/formatters";
+import { formatCurrency, formatDate, maskAccountNumber } from "@/utils/formatters";
 import { useRouter } from "next/navigation";
 import React from "react";
 
 interface TransactionListItemProps {
   transaction: Transaction;
-  currentAccount: string; // <-- ADDED: Crucial for directional logic
+  currentAccount: string;
 }
 
 export const TransactionListItem: React.FC<TransactionListItemProps> = ({ transaction, currentAccount }) => {
@@ -15,20 +15,30 @@ export const TransactionListItem: React.FC<TransactionListItemProps> = ({ transa
 
   // 1. TRUE Enterprise Directional Logic: Depends entirely on the account viewing the ledger
   const isCredit = transaction.destinationAccountNumber === currentAccount ||
-    (!transaction.destinationAccountNumber && transaction.type === "DEPOSIT");
+    (transaction.sourceAccountNumber === "CASH" && transaction.destinationAccountNumber === currentAccount);
 
-  // Safe fallback for references
   const txRef = transaction.transactionReference || transaction.transactionRef || transaction.id;
 
-  // 2. Dynamic Title Formatting
+  // 2. Format the opposing target account to display who the money went to / came from
+  const targetAccount = isCredit ? transaction.sourceAccountNumber : transaction.destinationAccountNumber;
+  let formattedTarget = "External Bank";
+
+  if (targetAccount === "CASH") {
+    formattedTarget = "Physical Cash / Branch";
+  } else if (targetAccount?.startsWith("EXT:")) {
+    formattedTarget = "External Wire Transfer";
+  } else if (targetAccount) {
+    formattedTarget = maskAccountNumber(targetAccount); // Masks to **** 6210
+  }
+
+  // 3. Dynamic Title Formatting
   let displayTitle = transaction.description;
   if (!displayTitle) {
     if (transaction.sourceAccountNumber === "CASH") displayTitle = "Cash Deposit";
     else if (transaction.destinationAccountNumber === "CASH") displayTitle = "Cash Withdrawal";
-    else displayTitle = isCredit ? "Inbound Payment" : "Outbound Payment";
+    else displayTitle = isCredit ? "Inbound Transfer" : "Outbound Transfer";
   }
 
-  // Ensure robust formatting
   const safeDate = formatDate(transaction.createdAt || "").toUpperCase();
 
   return (
@@ -38,7 +48,7 @@ export const TransactionListItem: React.FC<TransactionListItemProps> = ({ transa
       aria-label={`View receipt for transaction ${txRef}`}
     >
       <div className="flex items-center gap-4">
-        {/* Aesthetic Visual Indicator Icon (Matches Screenshot exactly) */}
+        {/* Aesthetic Visual Indicator Icon */}
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${isCredit
             ? "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100"
             : "bg-surface text-accent group-hover:bg-secondary/20"
@@ -60,9 +70,9 @@ export const TransactionListItem: React.FC<TransactionListItemProps> = ({ transa
             {displayTitle}
           </h5>
           <div className="flex items-center gap-2 text-[11px] font-bold text-accent/50 uppercase tracking-widest">
-            <span>{safeDate}</span>
-            <span className="w-1 h-1 rounded-full bg-secondary/40"></span>
-            <span className="font-mono">{txRef}</span>
+            <span>{isCredit ? 'From: ' : 'To: '} {formattedTarget}</span>
+            <span className="w-1 h-1 rounded-full bg-secondary/40 hidden sm:block"></span>
+            <span className="hidden sm:inline">{safeDate}</span>
           </div>
         </div>
       </div>
