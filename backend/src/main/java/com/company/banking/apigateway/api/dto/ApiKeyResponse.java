@@ -19,9 +19,10 @@ public class ApiKeyResponse {
     private String environment;
     private String keyPrefix;
     private String maskedHash;
-    private String rawKey; // Non-null only on creation
+    private String rawKey; 
     private String cidrWhitelist;
     private Set<String> scopes;
+    private String linkedAccountId; // <-- NEW
     private LocalDateTime expiresAt;
     private LocalDateTime revokedAt;
     private LocalDateTime lastUsedAt;

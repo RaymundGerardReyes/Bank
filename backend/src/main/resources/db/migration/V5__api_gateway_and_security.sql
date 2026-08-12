@@ -32,3 +32,4 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 
 CREATE INDEX idx_audit_logs_actor ON audit_logs(actor);
 CREATE INDEX idx_audit_logs_action ON audit_logs(action);
+

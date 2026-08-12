@@ -3,6 +3,7 @@ export type AuthStackParamList = {
   OtpVerification: { username: string };
   BiometricSetup: undefined;
   ForgotPassword: undefined;
+  FaceVerification: undefined;
 };
 
 export type MainTabParamList = {

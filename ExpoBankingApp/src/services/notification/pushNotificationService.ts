@@ -1,70 +1,86 @@
+import notifee, { AndroidImportance } from '@notifee/react-native';
+import { Client } from '@stomp/stompjs';
+import { ENV } from '../../config/env';
 import { navigate } from '../../navigation/navigationUtils';
 import { accountApi } from '../../state/api/accountApi';
 import { transactionApi } from '../../state/api/transactionApi';
 import { store } from '../../state/store';
 import { logger } from '../../utils/logger';
-import { apiClient } from '../api/apiClient';
-import { ENDPOINTS } from '../api/endpoints';
+
+let stompClient: Client | null = null;
 
 export const pushNotificationService = {
-  initialize: async (): Promise<void> => {
-    logger.info('Initializing Enterprise FCM Push Notification Architecture...');
+  initialize: async (userIdentifier?: string): Promise<void> => {
+    logger.info('Initializing Enterprise STOMP WebSocket connection...');
+    await notifee.requestPermission();
 
-    // =========================================================================
-    // STEP 10: USER INTERACTION (App launched from background/quit state)
-    // In a live build using @react-native-firebase/messaging, this maps to:
-    // messaging().onNotificationOpenedApp(remoteMessage => { ... })
-    // =========================================================================
-    const handleNotificationInteraction = (remoteMessage: any) => {
-      logger.info('[FCM] User tapped notification. Payload intercepted:', remoteMessage);
+    // Prevent duplicate connections by deactivating any hanging client
+    if (stompClient && stompClient.connected) {
+      await stompClient.deactivate();
+    }
 
-      // STEP 11: RETRIEVE LATEST DATA (Data Synchronization)
-      // We instruct RTK Query to instantly drop its cache. 
-      // The moment the screen mounts, it will fetch the fresh settled balances from Spring Boot.
-      logger.info('[FCM] Invalidating local cache to retrieve latest banking data...');
-      store.dispatch(transactionApi.util.invalidateTags(['Transactions']));
-      store.dispatch(accountApi.util.invalidateTags(['Accounts']));
+    const wsUrl = ENV.API_BASE_URL.replace('http', 'ws').replace('/api/v1', '/ws');
 
-      // STEP 12: UPDATE THE INTERFACE (Deep Linking)
-      // The backend sent { "route": "/transactions/history" } in the payload data
-      const targetRoute = remoteMessage?.data?.route;
+    stompClient = new Client({
+      brokerURL: wsUrl,
+      forceBinaryWSFrames: true,
+      appendMissingNULLonIncoming: true,
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+      onConnect: () => {
+        logger.info('[STOMP] Connected securely to Spring Boot Broker.');
 
-      if (targetRoute === '/transactions/history') {
-        navigate('Transactions');
-      } else if (targetRoute === '/notifications') {
-        navigate('Notifications');
+        // This dynamically targets the exact user who just logged in
+        const topic = userIdentifier ? `/topic/user_${userIdentifier}` : '/topic/global';
+
+        stompClient?.subscribe(topic, async (message) => {
+          const payload = JSON.parse(message.body);
+          logger.info('[STOMP] Real-time payload intercepted:', payload);
+
+          // Force the UI to refresh immediately
+          store.dispatch(transactionApi.util.invalidateTags(['Transactions']));
+          store.dispatch(accountApi.util.invalidateTags(['Accounts']));
+
+          // Throw the Native OS Push Banner
+          const channelId = await notifee.createChannel({
+            id: 'enterprise_alerts',
+            name: 'Enterprise Security Alerts',
+            importance: AndroidImportance.HIGH,
+          });
+
+          await notifee.displayNotification({
+            title: payload.title,
+            body: payload.body,
+            data: { route: payload.route },
+            android: {
+              channelId,
+              smallIcon: 'ic_launcher',
+              pressAction: { id: 'default' },
+            },
+          });
+        });
+      },
+      onStompError: (frame: any) => {
+        logger.error('[STOMP] Broker reported error: ' + frame.headers['message']);
       }
-    };
+    });
 
-    // =========================================================================
-    // FOREGROUND HANDLER (App is already open and running)
-    // messaging().onMessage(async remoteMessage => { ... })
-    // =========================================================================
-    const handleForegroundMessage = (remoteMessage: any) => {
-      logger.info('[FCM] Foreground notification received. Silent sync initiated.');
-      // Silently sync data without interrupting the user's current flow
-      store.dispatch(transactionApi.util.invalidateTags(['Transactions']));
-      store.dispatch(accountApi.util.invalidateTags(['Accounts']));
-    };
+    stompClient.activate();
 
-    // Note: Mock invocation of handlers for structural demonstration
-    // handleNotificationInteraction({ data: { route: '/transactions/history' } });
+    notifee.onForegroundEvent(({ type, detail }) => {
+      if (type === 1 && detail.notification?.data?.route) {
+        const targetRoute = detail.notification.data.route;
+        if (targetRoute === '/transactions/history') navigate('Transactions');
+        else if (targetRoute === '/notifications') navigate('Notifications');
+      }
+    });
   },
 
-  // Step 1: Register the Device
-  registerToken: async (): Promise<string> => {
-    const mockFcmToken = `fcm_token_${Math.random().toString(36).substring(2, 15)}`;
-    logger.info(`FCM Device Registration Token generated: ${mockFcmToken}`);
-    return mockFcmToken;
-  },
-
-  // Step 2 & 3: Store and Associate Token
-  syncTokenWithBackend: async (token: string): Promise<void> => {
-    try {
-      await apiClient.post(ENDPOINTS.CUSTOMERS.DEVICE_TOKEN, { fcmToken: token });
-      logger.info('FCM Token securely transmitted and associated with enterprise backend.');
-    } catch (error) {
-      logger.error('Failed to sync FCM token with backend', error);
+  disconnect: () => {
+    if (stompClient) {
+      stompClient.deactivate();
+      logger.info('[STOMP] Disconnected from broker.');
     }
   }
 };

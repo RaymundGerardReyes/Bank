@@ -21,6 +21,7 @@ public class ReverseTransactionService {
 
     private final LedgerPersistencePort ledgerPersistencePort;
     private final AccountPersistencePort accountPersistencePort;
+    private final TransactionAccountResolver accountResolver;
 
     @Transactional
     public TransactionResponse reverse(String originalTransactionReference) {

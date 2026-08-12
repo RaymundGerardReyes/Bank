@@ -45,6 +45,8 @@ public class TransferFlowIT {
                 .balance(new BigDecimal("1000.00"))
                 .currency("USD")
                 .status(AccountStatus.ACTIVE)
+                .allowIncoming(true)
+                .allowOutgoing(true)
                 .build());
 
         Account dest = accountPersistencePort.save(Account.builder()
@@ -53,6 +55,8 @@ public class TransferFlowIT {
                 .balance(new BigDecimal("500.00"))
                 .currency("USD")
                 .status(AccountStatus.ACTIVE)
+                .allowIncoming(true)
+                .allowOutgoing(true)
                 .build());
 
         InternalTransferRequest request = InternalTransferRequest.builder()

@@ -47,6 +47,7 @@ public class ApiKeyJpaAdapter implements ApiKeyPersistencePort {
                 .environment(domain.getEnvironment())
                 .cidrWhitelist(domain.getCidrWhitelist())
                 .scopes(scopesStr)
+                .linkedAccountId(domain.getLinkedAccountId()) // <-- MAP IT
                 .expiresAt(domain.getExpiresAt())
                 .revokedAt(domain.getRevokedAt())
                 .lastUsedAt(domain.getLastUsedAt())
@@ -67,6 +68,7 @@ public class ApiKeyJpaAdapter implements ApiKeyPersistencePort {
                 .environment(entity.getEnvironment())
                 .cidrWhitelist(entity.getCidrWhitelist())
                 .scopes(scopesSet)
+                .linkedAccountId(entity.getLinkedAccountId()) // <-- MAP IT BACK
                 .expiresAt(entity.getExpiresAt())
                 .revokedAt(entity.getRevokedAt())
                 .lastUsedAt(entity.getLastUsedAt())

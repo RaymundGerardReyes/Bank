@@ -3,14 +3,16 @@ package com.company.banking.transaction.application;
 import com.company.banking.account.application.port.out.AccountPersistencePort;
 import com.company.banking.account.domain.Account;
 import com.company.banking.common.exception.ConflictException;
-import com.company.banking.common.exception.NotFoundException;
 import com.company.banking.transaction.api.dto.DepositRequest;
 import com.company.banking.transaction.api.dto.TransactionResponse;
 import com.company.banking.transaction.application.port.in.DepositUseCase;
 import com.company.banking.transaction.application.port.out.LedgerPersistencePort;
+// --- ADD THIS IMPORT ---
+import com.company.banking.notification.application.port.out.PushNotificationPort;
 import com.company.banking.transaction.domain.Transaction;
 import com.company.banking.transaction.domain.TransactionStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,10 @@ public class DepositService implements DepositUseCase {
 
     private final AccountPersistencePort accountPersistencePort;
     private final LedgerPersistencePort ledgerPersistencePort;
+    private final TransactionAccountResolver accountResolver;
+    
+    // --- INJECT PUSH PORT ---
+    private final PushNotificationPort pushNotificationPort;
 
     @Override
     @Transactional
@@ -30,8 +36,7 @@ public class DepositService implements DepositUseCase {
             throw new ConflictException("Deposit with this idempotency key already processed");
         }
 
-        Account account = accountPersistencePort.findByAccountNumber(request.getAccountNumber())
-                .orElseThrow(() -> new NotFoundException("Account not found"));
+        Account account = accountResolver.resolveAndAuthorizeSource(request.getAccountNumber());
 
         account.setBalance(account.getBalance().add(request.getAmount()));
         accountPersistencePort.save(account);
@@ -48,6 +53,17 @@ public class DepositService implements DepositUseCase {
                 .build();
 
         Transaction saved = ledgerPersistencePort.save(transaction);
+
+        // --- FIRE WEBSOCKET PUSH ---
+        String actor = SecurityContextHolder.getContext().getAuthentication().getName();
+        if (actor != null && !actor.equals("anonymousUser")) {
+            pushNotificationPort.sendPush(
+                    actor,
+                    "Deposit Processed",
+                    String.format("Successfully deposited $%.2f into your account.", request.getAmount())
+            );
+        }
+
         return TransactionResponse.fromEntity(saved);
     }
 }

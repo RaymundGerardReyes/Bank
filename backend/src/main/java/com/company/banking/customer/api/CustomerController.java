@@ -2,8 +2,6 @@ package com.company.banking.customer.api;
 
 import com.company.banking.common.response.ApiResponse;
 import com.company.banking.customer.application.port.in.GetCustomerAlertsUseCase;
-import com.company.banking.customer.application.port.in.RegisterDeviceTokenUseCase;
-import com.company.banking.customer.api.dto.DeviceTokenRequest;
 import com.company.banking.customer.api.dto.NotificationResponse;
 import com.company.banking.web.filter.CorrelationIdFilter;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,7 +22,6 @@ import java.util.List;
 public class CustomerController {
 
     private final GetCustomerAlertsUseCase getCustomerAlertsUseCase;
-    private final RegisterDeviceTokenUseCase registerDeviceTokenUseCase;
 
     // Preserved for backward compatibility with the Web App
     @GetMapping("/notifications")
@@ -35,14 +32,4 @@ public class CustomerController {
         return ResponseEntity.ok(ApiResponse.success(alerts));
     }
 
-    @PostMapping("/customers/device-token")
-    @Operation(summary = "Register Mobile Device Token for Push Notifications", description = "Associates an FCM token with the authenticated user.")
-    public ResponseEntity<ApiResponse<Void>> registerDeviceToken(@Valid @RequestBody DeviceTokenRequest request, Authentication authentication) {
-        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        String customerEmail = authentication.getName();
-        
-        registerDeviceTokenUseCase.registerToken(customerEmail, request.getFcmToken());
-        
-        return ResponseEntity.ok(ApiResponse.success(null, "Device token securely associated with customer profile", correlationId));
-    }
 }

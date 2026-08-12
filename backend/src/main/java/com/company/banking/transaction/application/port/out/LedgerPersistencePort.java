@@ -7,7 +7,7 @@ import java.util.Optional;
 
 public interface LedgerPersistencePort {
     Transaction save(Transaction transaction);
-    void saveLedgerEntry(LedgerEntry entry);
+    void saveLedgerEntries(java.util.List<LedgerEntry> entries);
     Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
     Optional<Transaction> findById(Long id);
     boolean existsByIdempotencyKey(String idempotencyKey);

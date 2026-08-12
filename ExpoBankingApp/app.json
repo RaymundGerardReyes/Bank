@@ -21,10 +21,23 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.rayger.ExpoBankingApp",
+      "usesCleartextTraffic": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-font",
+      "./plugins/withNotifeeMaven",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "Allow NovaBank to access your camera for secure biometric authentication.",
+          "enableMicrophonePermission": false
+        }
+      ]
+    ]
   }
 }

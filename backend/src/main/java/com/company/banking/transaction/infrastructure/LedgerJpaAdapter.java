@@ -21,8 +21,30 @@ public class LedgerJpaAdapter implements LedgerPersistencePort {
     }
 
     @Override
-    public void saveLedgerEntry(LedgerEntry entry) {
-        ledgerEntryJpaRepository.save(entry);
+    public void saveLedgerEntries(java.util.List<LedgerEntry> entries) {
+        if (entries == null || entries.isEmpty()) {
+            throw new IllegalArgumentException("Cannot save empty ledger entries");
+        }
+
+        java.math.BigDecimal totalDebits = java.math.BigDecimal.ZERO;
+        java.math.BigDecimal totalCredits = java.math.BigDecimal.ZERO;
+
+        for (LedgerEntry entry : entries) {
+            if ("DEBIT".equals(entry.getEntryType().name())) {
+                totalDebits = totalDebits.add(entry.getAmount());
+            } else if ("CREDIT".equals(entry.getEntryType().name())) {
+                totalCredits = totalCredits.add(entry.getAmount());
+            }
+        }
+
+        if (totalDebits.compareTo(totalCredits) != 0) {
+            throw new com.company.banking.common.exception.BusinessException(
+                com.company.banking.common.exception.ErrorCode.INVALID_REQUEST, 
+                "Ledger integrity violation: Debits (" + totalDebits + ") do not equal Credits (" + totalCredits + ")"
+            );
+        }
+
+        ledgerEntryJpaRepository.saveAll(entries);
     }
 
     @Override

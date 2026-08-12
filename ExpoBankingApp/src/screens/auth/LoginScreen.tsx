@@ -1,5 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
-import { StyleSheet, Text, View, KeyboardAvoidingView, Platform } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
@@ -8,11 +11,12 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 
 export const LoginScreen = () => {
+  const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-
   const { login } = useAuth();
 
   const handleLogin = async () => {
@@ -38,41 +42,77 @@ export const LoginScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <View style={styles.headerContainer}>
-          <View style={styles.logoPlaceholder}>
-            <Text style={styles.logoText}>MB</Text>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header Branding */}
+          <View style={styles.headerContainer}>
+            <View style={styles.logoPlaceholder}>
+              <Ionicons name="shield-checkmark" size={36} color={colors.accent} />
+            </View>
+            <Text style={styles.title}>NovaBank Enterprise</Text>
+            <Text style={styles.subtitle}>Secure Corporate Banking</Text>
           </View>
-          <Text style={styles.title}>Mobile Banking</Text>
-          <Text style={styles.subtitle}>Secure, Fast, and Reliable</Text>
-        </View>
 
-        <View style={styles.formContainer}>
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {/* Secure Form Card */}
+          <View style={styles.formContainer}>
+            {error ? (
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle" size={16} color={colors.danger} style={{ marginRight: 6 }} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
 
-          <Input
-            label="Email Address"
-            placeholder="user@example.com"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
+            <Input
+              label="Email Address"
+              placeholder="Enter your registered email"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <Input
+              label="Password"
+              placeholder="••••••••"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
 
-          <Input
-            label="Password"
-            placeholder="••••••••••••"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+            <TouchableOpacity style={styles.forgotBtn}>
+              <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
 
-          <Button
-            title="Sign In"
-            onPress={handleLogin}
-            loading={loading}
-            style={styles.button}
-          />
-        </View>
+            <Button
+              title="Secure Sign In"
+              onPress={handleLogin}
+              loading={loading}
+              style={styles.primaryButton}
+            />
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* INTEGRATED FACE VERIFICATION ENTRY POINT */}
+            <TouchableOpacity
+              style={styles.biometricBtn}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('FaceVerification')}
+            >
+              <Ionicons name="scan-outline" size={20} color={colors.accent} style={{ marginRight: 8 }} />
+              <Text style={styles.biometricText}>Sign In with Face ID</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.footerContainer}>
+            <Text style={styles.footerText}>Secure TLS Connection Established.</Text>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SecureScreenWrapper>
   );
@@ -81,60 +121,131 @@ export const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dominant, // 60% White
+    backgroundColor: '#F8FAFC', // Sleek off-white modern background
   },
   keyboardView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
   },
   headerContainer: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.xxl,
   },
   logoPlaceholder: {
-    width: 64,
-    height: 64,
-    backgroundColor: colors.secondary, // 30% Soft Blue
-    borderRadius: spacing.borderRadius.lg,
+    width: 72,
+    height: 72,
+    backgroundColor: colors.surface,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  logoText: {
-    color: colors.accent, // 10% Deep Navy Text
-    fontSize: 24,
-    fontWeight: 'bold',
+  title: {
+    color: colors.accent,
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    textAlign: 'center',
+  },
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    textAlign: 'center',
+    fontWeight: '500',
+    marginTop: 4,
   },
   formContainer: {
     backgroundColor: colors.dominant,
     borderRadius: spacing.borderRadius.lg,
-    padding: spacing.lg,
-    borderWidth: 2,
-    borderColor: colors.secondary, // 30% Soft Blue Border
+    padding: spacing.xl,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
+    elevation: 5,
   },
-  title: {
-    color: colors.accent, // 10% Deep Navy for High Contrast
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: colors.secondary, // 30% Soft Blue for subtitles
-    fontSize: 16,
-    textAlign: 'center',
-    fontWeight: '600',
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    marginBottom: spacing.md,
   },
   errorText: {
     color: colors.danger,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
   },
-  button: {
-    marginTop: spacing.md,
-    backgroundColor: colors.accent, // 10% Deep Navy for primary action
+  forgotBtn: {
+    alignSelf: 'flex-end',
+    marginBottom: spacing.xl,
+    marginTop: -8,
   },
+  forgotText: {
+    color: colors.secondary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  primaryButton: {
+    backgroundColor: colors.accent,
+    borderRadius: 12,
+    paddingVertical: 16,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E2E8F0',
+  },
+  dividerText: {
+    color: colors.textMuted,
+    paddingHorizontal: 12,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  biometricBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  biometricText: {
+    color: colors.accent,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  footerContainer: {
+    marginTop: spacing.xxl,
+    alignItems: 'center',
+  },
+  footerText: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: 'monospace',
+  }
 });
 
 export default LoginScreen;

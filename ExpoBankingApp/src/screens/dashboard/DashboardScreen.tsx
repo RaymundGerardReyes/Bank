@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // <-- IMPORT THIS
 import { AccountBalanceCard } from '../../components/accounts/AccountBalanceCard';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
 import { useAccounts } from '../../hooks/useAccounts';
@@ -21,13 +22,14 @@ export const DashboardScreen = () => {
   const { accounts, isLoading, refetch } = useAccounts();
   const { user } = useAuth();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets(); // <-- HOOK TO GET OS NAVIGATION BAR HEIGHT
 
   const [refreshing, setRefreshing] = React.useState(false);
   const [lastSynced, setLastSynced] = React.useState(new Date().toISOString());
   const [recentTransactions, setRecentTransactions] = React.useState<any[]>([]);
   const [loadingTxns, setLoadingTxns] = React.useState(false);
-
   const [traceId] = React.useState(generateUUID().split('-')[0].toUpperCase());
+
   const isAdminOrTeller = user?.role === 'ADMIN' || user?.role === 'TELLER';
 
   const totalNetBalance = React.useMemo(() => {
@@ -70,7 +72,8 @@ export const DashboardScreen = () => {
   return (
     <SecureScreenWrapper style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        // <-- ENTERPRISE FIX: DYNAMIC BOTTOM PADDING -->
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
@@ -109,32 +112,45 @@ export const DashboardScreen = () => {
           </View>
         </View>
 
+        {/* --- UPGRADED QUICK ACTIONS UI --- */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
         </View>
 
         <View style={styles.quickActionsGrid}>
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Transfers')}>
-            <View style={styles.actionIconBg}><Text style={styles.actionIconText}>💸</Text></View>
+            <View style={[styles.actionIconBg, { backgroundColor: '#F0F9FF' }]}>
+              <Text style={styles.actionIconText}>💸</Text>
+            </View>
             <Text style={styles.actionText}>Transfer</Text>
           </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Deposit')}>
-            <View style={styles.actionIconBg}><Text style={styles.actionIconText}>📥</Text></View>
+            <View style={[styles.actionIconBg, { backgroundColor: '#ECFCCB' }]}>
+              <Text style={styles.actionIconText}>📥</Text>
+            </View>
             <Text style={styles.actionText}>Deposit</Text>
           </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Statements')}>
-            <View style={styles.actionIconBg}><Text style={styles.actionIconText}>📄</Text></View>
+            <View style={[styles.actionIconBg, { backgroundColor: '#F3F4F6' }]}>
+              <Text style={styles.actionIconText}>📄</Text>
+            </View>
             <Text style={styles.actionText}>Statements</Text>
           </TouchableOpacity>
 
           {isAdminOrTeller ? (
             <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('AuditLogs')}>
-              <View style={[styles.actionIconBg, styles.adminIconBg]}><Text style={styles.actionIconText}>⚡</Text></View>
+              <View style={[styles.actionIconBg, { backgroundColor: '#FFFBEB', borderColor: '#FDE68A', borderWidth: 1 }]}>
+                <Text style={styles.actionIconText}>⚡</Text>
+              </View>
               <Text style={styles.actionText}>Audit Logs</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Profile')}>
-              <View style={styles.actionIconBg}><Text style={styles.actionIconText}>⚙️</Text></View>
+              <View style={[styles.actionIconBg, { backgroundColor: '#F8FAFC' }]}>
+                <Text style={styles.actionIconText}>⚙️</Text>
+              </View>
               <Text style={styles.actionText}>Security</Text>
             </TouchableOpacity>
           )}
@@ -188,22 +204,18 @@ export const DashboardScreen = () => {
             </View>
           ) : (
             recentTransactions.map((txn, index) => {
-              // 1. Identify primary account to calculate direction correctly
               const primaryAccNumber = accounts[0]?.accountNumber || '';
-
-              // 2. TRUE Directional logic without relying on the missing 'type' field!
               const isCredit = txn.destinationAccountNumber === primaryAccNumber;
-
-              // 3. Format the opposing Target Account securely
               const targetAccount = isCredit ? txn.sourceAccountNumber : (txn.destinationAccountNumber || txn.recipientAccount);
+
               let formattedTarget = 'External Bank';
               if (targetAccount === 'CASH') formattedTarget = 'Cash Transaction';
               else if (targetAccount) formattedTarget = maskAccountNumber(targetAccount);
 
-              // 4. Safe fallback title logic
               let defaultTitle = 'Bank Transfer';
               if (txn.sourceAccountNumber === 'CASH') defaultTitle = 'Cash Deposit';
               if (txn.destinationAccountNumber === 'CASH') defaultTitle = 'Cash Withdrawal';
+
               const displayTitle = txn.description || defaultTitle;
 
               return (
@@ -218,7 +230,6 @@ export const DashboardScreen = () => {
                 >
                   <View style={styles.txnLeft}>
                     <Text style={styles.txnDesc} numberOfLines={1}>{displayTitle}</Text>
-                    {/* Contextual routing info added here */}
                     <Text style={styles.txnTarget}>
                       {isCredit ? 'From: ' : 'To: '} {formattedTarget}
                     </Text>
@@ -240,7 +251,6 @@ export const DashboardScreen = () => {
             })
           )}
         </View>
-
       </ScrollView>
     </SecureScreenWrapper>
   );
@@ -254,7 +264,7 @@ const styles = StyleSheet.create({
   scroll: {
     padding: spacing.lg,
     paddingTop: spacing.xl,
-    paddingBottom: spacing.xxl,
+    // Bottom padding dynamically handled by insets now!
   },
   headerContainer: {
     flexDirection: 'row',
@@ -400,30 +410,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
+    paddingHorizontal: spacing.sm, // Added slight padding
   },
   actionBtn: {
     alignItems: 'center',
-    width: '23%',
+    width: '22%', // Adjusted for better spacing
   },
   actionIconBg: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#F0F8FF',
+    width: 60, // Refined circular size
+    height: 60,
+    borderRadius: 30, // Perfect circle
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.sm,
-    shadowColor: colors.secondary,
+    marginBottom: 8,
+    shadowColor: colors.accent, // Sleek shadow
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  adminIconBg: {
-    backgroundColor: '#FFFBEB',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   actionIconText: {
-    fontSize: 24,
+    fontSize: 26,
   },
   actionText: {
     color: colors.accent,

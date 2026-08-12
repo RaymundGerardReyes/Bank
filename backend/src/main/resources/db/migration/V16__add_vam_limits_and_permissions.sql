@@ -13,3 +13,15 @@ ALTER TABLE accounts
 
 -- Index for fast hierarchy lookups
 CREATE INDEX IF NOT EXISTS idx_accounts_parent_id ON accounts(parent_account_id);
+
+-- Merged from V16__add_disputes_schema.sql
+CREATE TABLE IF NOT EXISTS dispute_cases (
+    id BIGSERIAL PRIMARY KEY,
+    customer_id BIGINT NOT NULL,
+    transaction_reference VARCHAR(255) NOT NULL,
+    reason TEXT NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    filed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP,
+    resolution_notes TEXT
+);

@@ -37,3 +37,12 @@ CREATE TABLE IF NOT EXISTS orchestration_events (
 );
 
 CREATE INDEX idx_orch_events_tx ON orchestration_events(transaction_reference);
+
+-- BSP Payment Rail Configuration: InstaPay, PESONet, SWIFT, QR Ph P2M
+CREATE TABLE IF NOT EXISTS payment_rail_configurations (
+    id BIGSERIAL PRIMARY KEY,
+    rail_name VARCHAR(100) NOT NULL UNIQUE,
+    processing_type VARCHAR(50) NOT NULL, -- 'REAL_TIME', 'BATCH'
+    max_amount_per_tx NUMERIC(19, 4),
+    active BOOLEAN NOT NULL DEFAULT TRUE
+);

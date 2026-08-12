@@ -2,12 +2,20 @@
 # 🚀 Bank Monorepo Global .gitignore
 # ==========================================
 
-# 1. Environment & Secrets
+# 1. Environment & Secrets  (centralized via dotenvx — root .env only)
+# ── Block the one real .env and any accidental per-app copies ──
 .env
 .env.local
+.env.staging
+.env.production
+.env.development
+.env.test
 .env.development.local
 .env.test.local
 .env.production.local
+# ── Always allow example/pointer files ──
+!.env.example
+!**/.env.example
 *.pem
 *.keystore
 local.properties

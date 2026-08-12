@@ -5,5 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface LedgerEntryJpaRepository extends JpaRepository<LedgerEntry, Long> {
+public interface LedgerEntryJpaRepository extends org.springframework.data.jpa.repository.JpaRepository<LedgerEntry, Long> {
+    java.util.List<LedgerEntry> findByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
 }

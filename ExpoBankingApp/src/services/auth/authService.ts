@@ -1,9 +1,9 @@
-import { apiClient } from '../api/apiClient';
-import { ENDPOINTS } from '../api/endpoints';
 import { ApiResponse } from '../../models/ApiResponse';
 import { LoginResponse, User } from '../../models/User';
-import { tokenStorageService } from './tokenStorageService';
+import { apiClient } from '../api/apiClient';
+import { ENDPOINTS } from '../api/endpoints';
 import { pushNotificationService } from '../notification/pushNotificationService';
+import { tokenStorageService } from './tokenStorageService';
 
 export const authService = {
   login: async (username: string, passwordHash: string): Promise<LoginResponse> => {
@@ -11,19 +11,17 @@ export const authService = {
       email: username,
       password: passwordHash,
     });
-    
+
     const data = response.data.data;
     await tokenStorageService.saveTokens(data.token, data.refreshToken);
 
-    // --- ENTERPRISE PUSH NOTIFICATION WORKFLOW ---
-    // Step 1: Mobile App registers device and obtains FCM token
-    // Step 2: Mobile App securely transmits token to Backend after authentication
+    // --- ENTERPRISE WEBSOCKET WORKFLOW ---
+    // Instead of registering an FCM token, we instantly open the STOMP WebSocket pipeline
+    // using the authenticated user's email/ID as the routing topic.
     try {
-        const fcmToken = await pushNotificationService.registerToken();
-        await pushNotificationService.syncTokenWithBackend(fcmToken);
+      pushNotificationService.initialize(data.user.email);
     } catch (e) {
-        // Token registration failure should never block the primary login process
-        console.error("Failed to setup FCM token during login", e);
+      console.error("Failed to initialize STOMP WebSocket during login", e);
     }
 
     return data;
@@ -43,6 +41,8 @@ export const authService = {
       // Ignore network failure on logout
     } finally {
       await tokenStorageService.clearTokens();
+      // Disconnect the active WebSocket
+      pushNotificationService.disconnect();
     }
   },
 

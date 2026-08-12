@@ -73,6 +73,10 @@ public class Account {
     @Column(name = "card_cvv")
     private String cardCvv;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean frozen = false;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

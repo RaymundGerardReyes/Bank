@@ -6,6 +6,9 @@ import { ApiTestResponse, executeApiTest } from "@/services/docs/apiTestRunner";
 import React, { useState } from "react";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+type SdkLanguage = "cURL" | "Python" | "Go" | "C# .NET" | "TypeScript" | "JavaScript";
+
+const SDK_LANGUAGES: SdkLanguage[] = ["cURL", "Python", "Go", "C# .NET", "TypeScript", "JavaScript"];
 
 interface ApiEndpoint {
   method: HttpMethod;
@@ -23,8 +26,32 @@ interface DomainModule {
 
 const DOMAINS: DomainModule[] = [
   {
+    id: "domain-vam",
+    title: "1. Virtual Account Management (VAM)",
+    description: "Provision dynamic, isolated sub-ledgers tied to your master corporate account.",
+    endpoints: [
+      {
+        method: "POST",
+        path: "/v1/accounts",
+        label: "Provision VAM",
+        defaultPayload: {
+          accountType: "PAYROLL",
+          accountName: "Contractor Payroll 2026",
+          currency: "USD",
+          parentAccountId: "4859220013371001",
+          dailyLimit: 250000.0,
+          allowIncoming: false,
+          allowOutgoing: true,
+          issueVirtualCard: true,
+          requireDualApproval: false
+        }
+      },
+      { method: "GET", path: "/v1/accounts", label: "List Hierarchy" },
+    ],
+  },
+  {
     id: "domain-payments",
-    title: "1. Payment Processing",
+    title: "2. Payment Processing",
     description: "Core lifecycle management: Authorization, Capture, Void, Refund, and Dispute handling.",
     endpoints: [
       { method: "POST", path: "/v1/payments", label: "Create Intent", defaultPayload: { amount: 100.0, currency: "USD", sourceAccount: "1001987654" } },
@@ -34,7 +61,7 @@ const DOMAINS: DomainModule[] = [
   },
   {
     id: "domain-payroll",
-    title: "2. Bulk Distribution & Payroll",
+    title: "3. Bulk Distribution & Payroll",
     description: "CSV/JSON batch uploads, Maker-Checker dual approvals, and multi-disbursement routing.",
     endpoints: [
       { method: "POST", path: "/v1/batch/payroll", label: "Upload Batch", defaultPayload: { batchName: "July 2026 Payroll", count: 25 } },
@@ -44,7 +71,7 @@ const DOMAINS: DomainModule[] = [
   },
   {
     id: "domain-orchestration",
-    title: "3. Payment Orchestration",
+    title: "4. Payment Orchestration",
     description: "Smart routing, multi-rail gateway failover, and dynamic active-active clustering.",
     endpoints: [
       { method: "POST", path: "/v1/routing/evaluate", label: "Route Payment", defaultPayload: { amount: 250.0, currency: "USD", preferredRail: "INSTAPAY" } },
@@ -54,22 +81,12 @@ const DOMAINS: DomainModule[] = [
   },
   {
     id: "domain-treasury",
-    title: "4. Transfers & Treasury",
+    title: "5. Transfers & Treasury",
     description: "Internal, Scheduled, Wire, Cross-Border, and Virtual IBAN concentration.",
     endpoints: [
       { method: "POST", path: "/v1/transfers/internal", label: "Internal Transfer", defaultPayload: { sourceAccountNumber: "1001987654", recipientAccountNumber: "1002345678", amount: 50.0 } },
       { method: "POST", path: "/v1/transfers/scheduled", label: "Schedule", defaultPayload: { sourceAccountNumber: "1001987654", recipientAccountNumber: "1002345678", amount: 150.0, scheduledDate: "2026-08-01" } },
       { method: "GET", path: "/v1/treasury/liquidity", label: "Cash Position" },
-    ],
-  },
-  {
-    id: "domain-ledger",
-    title: "5. Accounting Ledger",
-    description: "Immutable double-entry ledger, event sourcing, and CQRS journal logs.",
-    endpoints: [
-      { method: "POST", path: "/v1/ledger/journal", label: "Write Entry", defaultPayload: { debitAccount: "1001987654", creditAccount: "1002345678", amount: 200.0 } },
-      { method: "GET", path: "/v1/ledger/entries", label: "Query Ledger" },
-      { method: "GET", path: "/v1/ledger/balances", label: "Trial Balance" },
     ],
   },
   {
@@ -97,11 +114,11 @@ const getMethodStyles = (method: HttpMethod) => {
 
 export const DomainLibrary: React.FC = () => {
   const [activeTestKey, setActiveTestKey] = useState<string | null>(null);
+  const [activeSdk, setActiveSdk] = useState<SdkLanguage>("cURL");
 
   // Security State
   const [providedApiKey, setProvidedApiKey] = useState<string>("");
   const [isKeyVisible, setIsKeyVisible] = useState<boolean>(false);
-
   const [requestBodyText, setRequestBodyText] = useState<string>("");
   const [isRunning, setIsRunning] = useState(false);
   const [testResponse, setTestResponse] = useState<ApiTestResponse | null>(null);
@@ -124,7 +141,6 @@ export const DomainLibrary: React.FC = () => {
       alert("Please paste your raw API key to execute this test.");
       return;
     }
-
     if (providedApiKey.includes("sk_live_")) {
       const confirmLive = confirm("WARNING: You are executing a LIVE Production transaction. Proceed?");
       if (!confirmLive) return;
@@ -164,25 +180,41 @@ export const DomainLibrary: React.FC = () => {
     }
   };
 
-  // What the user sees on screen (respects the visibility toggle)
-  const getDisplayCurlCommand = (ep: ApiEndpoint) => {
+  // Dynamic SDK Generation Engine
+  const getDisplaySdkCode = (ep: ApiEndpoint, isCopying: boolean) => {
     let keyStr = "<PASTE_YOUR_RAW_KEY_HERE>";
     if (providedApiKey.trim()) {
-      keyStr = isKeyVisible ? providedApiKey.trim() : "sk_...[HIDDEN]... ";
+      keyStr = isCopying || isKeyVisible ? providedApiKey.trim() : "sk_...[HIDDEN]... ";
     }
-    const bodyStr = requestBodyText ? ` \\\n  -d '${requestBodyText.replace(/\n/g, "")}'` : "";
-    return `curl -X ${ep.method} https://api.novabank.com${ep.path} \\\n  -H "X-API-Key: ${keyStr}" \\\n  -H "Content-Type: application/json" \\\n  -H "X-Request-Id: 550e8400-e29b-41d4-a716-446655440000"${bodyStr}`;
-  };
 
-  // What the user actually copies to their clipboard (always raw, never asterisks)
-  const getCopyableCurlCommand = (ep: ApiEndpoint) => {
-    const keyStr = providedApiKey.trim() ? providedApiKey.trim() : "<PASTE_YOUR_RAW_KEY_HERE>";
-    const bodyStr = requestBodyText ? ` \\\n  -d '${requestBodyText.replace(/\n/g, "")}'` : "";
-    return `curl -X ${ep.method} https://api.novabank.com${ep.path} \\\n  -H "X-API-Key: ${keyStr}" \\\n  -H "Content-Type: application/json" \\\n  -H "X-Request-Id: 550e8400-e29b-41d4-a716-446655440000"${bodyStr}`;
+    const baseUrl = `https://api.novabank.com${ep.path}`;
+    const safeBody = requestBodyText ? requestBodyText.replace(/\n/g, "") : "";
+
+    switch (activeSdk) {
+      case "Python":
+        return `import requests\nimport json\n\nurl = "${baseUrl}"\n\nheaders = {\n    "X-API-Key": "${keyStr}",\n    "Content-Type": "application/json",\n    "X-Request-Id": "550e8400-e29b-41d4-a716-446655440000"\n}\n${safeBody ? `\npayload = ${safeBody}\nresponse = requests.request("${ep.method}", url, json=payload, headers=headers)` : `\nresponse = requests.request("${ep.method}", url, headers=headers)`}\n\nprint(response.text)`;
+
+      case "TypeScript":
+      case "JavaScript":
+        return `const url = "${baseUrl}";\n\nconst headers = {\n  "X-API-Key": "${keyStr}",\n  "Content-Type": "application/json",\n  "X-Request-Id": "550e8400-e29b-41d4-a716-446655440000"\n};\n${safeBody ? `\nconst body = JSON.stringify(${safeBody});\n` : ""}\nconst response = await fetch(url, {\n  method: "${ep.method}",\n  headers: headers,${safeBody ? `\n  body: body` : ""}\n});\n\nconst data = await response.json();\nconsole.log(data);`;
+
+      case "Go":
+        const goBody = safeBody ? `payload := strings.NewReader(\`${safeBody}\`)` : `payload := strings.NewReader("")`;
+        return `package main\n\nimport (\n\t"fmt"\n\t"strings"\n\t"net/http"\n\t"io/ioutil"\n)\n\nfunc main() {\n\turl := "${baseUrl}"\n\tmethod := "${ep.method}"\n\n\t${goBody}\n\n\tclient := &http.Client {}\n\treq, err := http.NewRequest(method, url, payload)\n\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\treq.Header.Add("X-API-Key", "${keyStr}")\n\treq.Header.Add("Content-Type", "application/json")\n\treq.Header.Add("X-Request-Id", "550e8400-e29b-41d4-a716-446655440000")\n\n\tres, err := client.Do(req)\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tdefer res.Body.Close()\n\n\tbody, err := ioutil.ReadAll(res.Body)\n\tfmt.Println(string(body))\n}`;
+
+      case "C# .NET":
+        const csharpMethod = ep.method === 'POST' ? 'Post' : ep.method === 'PUT' ? 'Put' : ep.method === 'PATCH' ? 'Patch' : ep.method === 'DELETE' ? 'Delete' : 'Get';
+        return `using System;\nusing System.Net.Http;\nusing System.Threading.Tasks;\n\nclass Program\n{\n    static async Task Main()\n    {\n        var client = new HttpClient();\n        var request = new HttpRequestMessage(HttpMethod.${csharpMethod}, "${baseUrl}");\n\n        request.Headers.Add("X-API-Key", "${keyStr}");\n        request.Headers.Add("X-Request-Id", "550e8400-e29b-41d4-a716-446655440000");\n${safeBody ? `\n        var content = new StringContent("${safeBody.replace(/"/g, '\\"')}", null, "application/json");\n        request.Content = content;\n` : ""}\n        var response = await client.SendAsync(request);\n        response.EnsureSuccessStatusCode();\n        Console.WriteLine(await response.Content.ReadAsStringAsync());\n    }\n}`;
+
+      case "cURL":
+      default:
+        const curlBody = safeBody ? ` \\\n  -d '${safeBody}'` : "";
+        return `curl -X ${ep.method} ${baseUrl} \\\n  -H "X-API-Key: ${keyStr}" \\\n  -H "Content-Type: application/json" \\\n  -H "X-Request-Id: 550e8400-e29b-41d4-a716-446655440000"${curlBody}`;
+    }
   };
 
   const handleCopy = (ep: ApiEndpoint) => {
-    navigator.clipboard.writeText(getCopyableCurlCommand(ep));
+    navigator.clipboard.writeText(getDisplaySdkCode(ep, true));
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
   };
@@ -217,7 +249,6 @@ export const DomainLibrary: React.FC = () => {
               <span className="text-[10px] font-extrabold text-accent/40 uppercase tracking-widest mb-1">
                 Lifecycle Endpoints
               </span>
-
               <div className="flex flex-col gap-3">
                 {domain.endpoints.map((ep, i) => {
                   const epKey = `${domain.id}-${i}`;
@@ -249,7 +280,6 @@ export const DomainLibrary: React.FC = () => {
 
                       {isExpanded && (
                         <div className="mt-3 flex flex-col gap-4 pt-4 border-t border-secondary/30 animate-in fade-in slide-in-from-top-2 duration-300">
-
                           {/* Secure Minimalist API Key Input */}
                           <div className="flex flex-col gap-1.5">
                             <label className="text-[10px] font-bold text-accent uppercase tracking-wider">
@@ -268,7 +298,6 @@ export const DomainLibrary: React.FC = () => {
                                 onClick={() => setIsKeyVisible(!isKeyVisible)}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-accent/50 hover:text-sky-600 transition-colors"
                               >
-                                {/* Simple SVG Eye Icon */}
                                 {isKeyVisible ? (
                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
@@ -296,16 +325,32 @@ export const DomainLibrary: React.FC = () => {
                             </div>
                           )}
 
-                          {/* Action Buttons */}
-                          <div className="flex justify-between items-center mt-2">
-                            <span className="text-[10px] font-bold text-accent/50 uppercase">cURL Generator</span>
+                          {/* Action Buttons & Execution */}
+                          <div className="flex justify-between items-center mt-2 border-t border-secondary/30 pt-4">
+                            <span className="text-[10px] font-bold text-accent/50 uppercase">Integration SDKs</span>
                             <Button
                               onClick={() => handleRunTest(ep)}
                               isLoading={isRunning}
                               className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-4 shadow-md shadow-emerald-600/20"
                             >
-                              Execute Call
+                              Execute Live Call
                             </Button>
+                          </div>
+
+                          {/* SDK Language Tabs */}
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {SDK_LANGUAGES.map((lang) => (
+                              <button
+                                key={lang}
+                                onClick={() => setActiveSdk(lang)}
+                                className={`px-3 py-1 text-[10px] font-bold rounded transition-colors border ${activeSdk === lang
+                                    ? "bg-sky-100 text-sky-700 border-sky-300"
+                                    : "bg-dominant text-accent/60 border-secondary/30 hover:bg-surface"
+                                  }`}
+                              >
+                                {lang}
+                              </button>
+                            ))}
                           </div>
 
                           {/* Beautiful Code Block with Smart Copy Button */}
@@ -314,16 +359,16 @@ export const DomainLibrary: React.FC = () => {
                               onClick={() => handleCopy(ep)}
                               className="absolute top-2 right-2 px-3 py-1.5 bg-slate-800 hover:bg-sky-600 text-slate-100 rounded border border-slate-600 text-[10px] font-bold transition-all z-10"
                             >
-                              {copiedCode ? "Copied Raw!" : "Copy"}
+                              {copiedCode ? "Copied Code!" : "Copy"}
                             </button>
-                            <pre className="whitespace-pre-wrap pr-16 leading-relaxed">
-                              {getDisplayCurlCommand(ep)}
+                            <pre className="whitespace-pre-wrap pr-16 leading-relaxed overflow-x-auto custom-scrollbar">
+                              {getDisplaySdkCode(ep, false)}
                             </pre>
                           </div>
 
                           {/* API Response Display */}
                           {testResponse && (
-                            <div className="flex flex-col gap-2 mt-2 p-4 bg-surface rounded-xl border border-secondary/30">
+                            <div className="flex flex-col gap-2 mt-2 p-4 bg-surface rounded-xl border border-secondary/30 animate-in fade-in duration-300">
                               <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center gap-2">
                                   <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${testResponse.status >= 200 && testResponse.status < 300 ? "bg-emerald-600" : testResponse.status >= 400 && testResponse.status < 500 ? "bg-amber-600" : "bg-rose-600"}`}>

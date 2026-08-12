@@ -1,0 +1,19 @@
+CREATE TABLE fraud_cases (
+    id BIGSERIAL PRIMARY KEY,
+    fraud_reference VARCHAR(100) UNIQUE NOT NULL,
+    payment_intent_id BIGINT NOT NULL,
+    fraud_score INT NOT NULL,
+    decision VARCHAR(50) NOT NULL, -- ALLOW, CHALLENGE, BLOCK
+    reason_code VARCHAR(100) NOT NULL,
+    status VARCHAR(50) NOT NULL, -- OPEN, INVESTIGATING, CONFIRMED, FALSE_POSITIVE
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE device_risk (
+    id BIGSERIAL PRIMARY KEY,
+    device_fingerprint VARCHAR(255) UNIQUE NOT NULL,
+    risk_score INT NOT NULL,
+    is_blacklisted BOOLEAN NOT NULL DEFAULT FALSE,
+    last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

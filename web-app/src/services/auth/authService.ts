@@ -15,4 +15,18 @@ export const authService = {
       method: "POST",
     });
   },
+
+  forgotPassword: async (email: string): Promise<ApiResponse<void>> => {
+    return apiFetch<ApiResponse<void>>(endpoints.auth.forgotPassword, {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  resetPassword: async (token: string, newPassword: string): Promise<ApiResponse<void>> => {
+    return apiFetch<ApiResponse<void>>(endpoints.auth.resetPassword, {
+      method: "POST",
+      body: JSON.stringify({ token, newPassword }),
+    });
+  },
 };

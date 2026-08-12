@@ -50,6 +50,9 @@ public class Transaction {
 
     private String disputeReason;
 
+    @Column(name = "scheduled_vam_restriction")
+    private String scheduledVamRestriction;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

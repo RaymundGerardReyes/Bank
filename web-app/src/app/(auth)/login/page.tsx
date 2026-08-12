@@ -73,7 +73,7 @@ export default function LoginPage() {
             <div className="flex flex-col gap-1.5">
               <div className="flex justify-between items-center">
                 <label className="text-sm font-bold text-accent">Secure Password</label>
-                <Link href="#" className="text-xs font-bold text-sky-600 hover:text-sky-500 transition-colors">
+                <Link href="/forgot-password" className="text-xs font-bold text-sky-600 hover:text-sky-500 transition-colors">
                   Forgot password?
                 </Link>
               </div>

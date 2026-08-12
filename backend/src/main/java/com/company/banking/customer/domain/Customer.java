@@ -57,9 +57,12 @@ public class Customer implements UserDetails {
     @Column(name = "kyc_status")
     private String kycStatus;
 
-    // --- NEW: Push Notification Registration Token ---
-    @Column(name = "fcm_token")
-    private String fcmToken;
+    @Column(name = "risk_profile")
+    private String riskProfile;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean locked = false;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -89,7 +92,7 @@ public class Customer implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return !locked;
     }
 
     @Override

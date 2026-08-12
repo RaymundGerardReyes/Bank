@@ -1,0 +1,21 @@
+{
+  "name": "hardened-banking-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hardened Banking Platform Monorepo — Single centralized .env via dotenvx",
+  "scripts": {
+    "env:install": "npm install -g @dotenvx/dotenvx",
+    "env:check": "node scripts/check-env.mjs",
+
+    "dev:db":      "bash -c \"cd backend && docker-compose up -d postgres\"",
+    "dev:backend": "dotenvx run --env-file=.env -- bash -c \"cd backend && ./gradlew.bat bootRun\"",
+    "dev:web":     "dotenvx run --env-file=.env -- bash -c \"cd web-app && next dev -p 3000\"",
+    "dev:mobile":  "dotenvx run --env-file=.env -- bash -c \"cd ExpoBankingApp && npx expo start\"",
+
+    "dev": "npm run env:check && npm run dev:db && concurrently --names \"backend,web,mobile\" -c \"blue,green,yellow\" \"npm run dev:backend\" \"npm run dev:web\" \"npm run dev:mobile\""
+  },
+  "devDependencies": {
+    "@dotenvx/dotenvx": "^1.0.0",
+    "concurrently": "^9.1.0"
+  }
+}

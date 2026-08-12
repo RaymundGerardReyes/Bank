@@ -41,11 +41,13 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        // DEV NOTE: This is the primary seeded test account.
+        // To test forgot-password, register or use this exact email in the form.
         String sourceEmail = "user@example.com";
         String recipientEmail = "recipient@example.com";
 
         // 1. SEED SOURCE ACCOUNT
-        if (customerJpaRepository.findByEmail(sourceEmail).isEmpty()) {
+        if (customerJpaRepository.findByEmailIgnoreCase(sourceEmail).isEmpty()) {
             log.info("Seeding initial Source Customer: {}", sourceEmail);
             Customer sourceCustomer = Customer.builder()
                     .email(sourceEmail)
@@ -53,6 +55,9 @@ public class DataInitializer implements CommandLineRunner {
                     .firstName("Raymund")
                     .lastName("Reyes")
                     .role(RoleType.CUSTOMER)
+                    .kycStatus("ACTIVE")
+                    .riskProfile("LOW")
+                    .locked(false)
                     .build();
             Customer savedSource = customerJpaRepository.save(sourceCustomer);
 
@@ -128,7 +133,7 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         // 2. SEED RECIPIENT ACCOUNT
-        if (customerJpaRepository.findByEmail(recipientEmail).isEmpty()) {
+        if (customerJpaRepository.findByEmailIgnoreCase(recipientEmail).isEmpty()) {
             log.info("Seeding initial Recipient Customer: {}", recipientEmail);
             Customer recipientCustomer = Customer.builder()
                     .email(recipientEmail)
@@ -136,6 +141,9 @@ public class DataInitializer implements CommandLineRunner {
                     .firstName("John")
                     .lastName("Doe")
                     .role(RoleType.CUSTOMER)
+                    .kycStatus("ACTIVE")
+                    .riskProfile("LOW")
+                    .locked(false)
                     .build();
             Customer savedRecipient = customerJpaRepository.save(recipientCustomer);
 

@@ -50,6 +50,7 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
                 .environment(env)
                 .cidrWhitelist(cidr)
                 .scopes(request.getScopes())
+                .linkedAccountId(request.getLinkedAccountId()) // <-- BIND IT
                 .expiresAt(expiresAt)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -85,6 +86,7 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
                     .rawKey(null) // Never expose raw key on listing
                     .cidrWhitelist(key.getCidrWhitelist())
                     .scopes(key.getScopes())
+                    .linkedAccountId(key.getLinkedAccountId()) // <-- RETURN IT
                     .expiresAt(key.getExpiresAt())
                     .revokedAt(key.getRevokedAt())
                     .lastUsedAt(key.getLastUsedAt())

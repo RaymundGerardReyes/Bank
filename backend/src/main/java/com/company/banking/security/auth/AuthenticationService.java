@@ -19,20 +19,47 @@ public class AuthenticationService {
     private final CustomerPersistencePort customerPersistencePort;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final LoginAttemptService loginAttemptService;
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
-        Customer customer = customerPersistencePort.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + request.getEmail()));
+        // SANITIZE: Normalize to lowercase and trim so login always works regardless of typos/case
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            normalizedEmail,
+                            request.getPassword()
+                    )
+            );
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            // AFASA SECURITY: Track failed login attempts
+            loginAttemptService.loginFailed(normalizedEmail);
+            throw e;
+        }
+
+        // Clear previous failed attempts on success
+        loginAttemptService.loginSucceeded(normalizedEmail);
+
+        Customer customer = customerPersistencePort.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + normalizedEmail));
 
         String jwtToken = jwtTokenProvider.generateToken(customer);
         
         // Pass the mapped Customer details into the final response
+        return AuthenticationResponse.bearer(jwtToken, CustomerResponse.fromEntity(customer));
+    }
+
+    public AuthenticationResponse verifyFace(com.company.banking.security.auth.dto.FaceVerificationRequest request) {
+        if (request.getEmbedding() == null || request.getEmbedding().isEmpty()) {
+            throw new IllegalArgumentException("Invalid face embedding vector");
+        }
+        
+        // Mock: Find a default active customer for Face ID authentication
+        Customer customer = customerPersistencePort.findById(1L)
+                .orElseThrow(() -> new RuntimeException("No suitable user found for biometric login mock"));
+
+        String jwtToken = jwtTokenProvider.generateToken(customer);
         return AuthenticationResponse.bearer(jwtToken, CustomerResponse.fromEntity(customer));
     }
 }

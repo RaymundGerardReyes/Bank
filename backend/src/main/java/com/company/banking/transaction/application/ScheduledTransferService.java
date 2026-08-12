@@ -22,15 +22,22 @@ public class ScheduledTransferService {
 
     private final AccountPersistencePort accountPersistencePort;
     private final LedgerPersistencePort ledgerPersistencePort;
+    private final TransactionAccountResolver accountResolver;
 
     @Transactional
     public TransactionResponse scheduleTransfer(InternalTransferRequest request) {
         log.info("[SCHEDULED TRANSFER] Registering deferred transfer for date {}", request.getScheduledDate());
 
-        Account source = accountPersistencePort.findByAccountNumber(request.getSourceAccountNumber())
-                .orElseThrow(() -> new NotFoundException("Source account not found: " + request.getSourceAccountNumber()));
+        // VULN 1 FIX: Use centralized resolver
+        Account source = accountResolver.resolveAndAuthorizeSource(request.getSourceAccountNumber());
 
         String txRef = "SCH-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        // VULN 3: Capture context during scheduling
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String vamRestriction = (auth instanceof com.company.banking.apigateway.security.ApiKeyAuthenticationToken) 
+                ? ((com.company.banking.apigateway.security.ApiKeyAuthenticationToken) auth).getLinkedAccountId() 
+                : null;
 
         Transaction scheduledTx = Transaction.builder()
                 .transactionReference(txRef)
@@ -41,6 +48,7 @@ public class ScheduledTransferService {
                 .currency(source.getCurrency())
                 .status(TransactionStatus.SCHEDULED)
                 .description(request.getDescription())
+                .scheduledVamRestriction(vamRestriction) // Explicitly persist context!
                 .build();
 
         Transaction savedTx = ledgerPersistencePort.save(scheduledTx);

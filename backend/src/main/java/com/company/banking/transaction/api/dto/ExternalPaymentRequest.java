@@ -32,4 +32,6 @@ public class ExternalPaymentRequest {
     private String recipientName;
     
     private String description;
+    
+    private String railName; // "InstaPay", "PESONet", etc.
 }

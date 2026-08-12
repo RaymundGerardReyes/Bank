@@ -34,7 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
-        final String userEmail;
+        String userEmail = null;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -64,6 +64,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             log.warn("[JWT FILTER] Invalid or malformed token rejected gracefully: {}", e.getMessage());
             // We do not throw an exception here. We simply let the request proceed unauthenticated.
             // Spring Security will then safely block it and return a standard 401/403 response.
+        } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
+            log.warn("[JWT FILTER] Ghost session detected. Token valid but user '{}' no longer exists in DB.", userEmail);
+            // Let it proceed unauthenticated, resulting in 401
         }
 
         filterChain.doFilter(request, response);

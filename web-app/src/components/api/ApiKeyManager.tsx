@@ -3,6 +3,7 @@
 import { Button } from "@/components/common/Button";
 import { Card } from "@/components/common/Card";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { useAccounts } from "@/hooks/useAccounts";
 import React, { useEffect, useState } from "react";
 
 export interface ApiKey {
@@ -14,35 +15,56 @@ export interface ApiKey {
   rawKey?: string | null;
   cidrWhitelist: string;
   scopes: string[];
+  linkedAccountId?: string | null;
   expiresAt: string;
   revokedAt?: string | null;
   lastUsedAt?: string | null;
   createdAt: string;
 }
 
-const AVAILABLE_SCOPES = [
-  { id: "payments:write", label: "1. Payments Write" },
-  { id: "payroll:approve", label: "2. Payroll Approve" },
-  { id: "routing:evaluate", label: "3. Routing Evaluate" },
-  { id: "treasury:write", label: "4. Treasury Write" },
-  { id: "ledger:read", label: "5. Ledger Read" },
-  { id: "risk:evaluate", label: "6. Risk Evaluate" },
+// Grouped and perfectly aligned with the Backend Filter
+const SCOPE_GROUPS = [
+  {
+    domain: "VAM & Accounts",
+    scopes: [{ id: "accounts:read", label: "Read" }, { id: "accounts:write", label: "Write" }]
+  },
+  {
+    domain: "Treasury Transfers",
+    scopes: [{ id: "treasury:read", label: "Read" }, { id: "treasury:write", label: "Write" }]
+  },
+  {
+    domain: "Payroll Batch",
+    scopes: [{ id: "payroll:read", label: "Read" }, { id: "payroll:write", label: "Write" }]
+  },
+  {
+    domain: "Ledger Journal",
+    scopes: [{ id: "ledger:read", label: "Read" }, { id: "ledger:write", label: "Write" }]
+  },
+  {
+    domain: "Payment Intent",
+    scopes: [{ id: "payments:write", label: "Write Only" }]
+  },
+  {
+    domain: "Fraud Risk AI",
+    scopes: [{ id: "risk:read", label: "Read" }, { id: "risk:write", label: "Write" }]
+  }
 ];
 
 export const ApiKeyManager: React.FC = () => {
+  const { data: accounts, isLoading: accountsLoading } = useAccounts();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // Holds the raw key data immediately after creation or rotation
   const [newlyGeneratedKey, setNewlyGeneratedKey] = useState<{ name: string; rawKey: string } | null>(null);
   const [copiedState, setCopiedState] = useState(false);
 
+  // Form State
   const [newKeyName, setNewKeyName] = useState("");
   const [environment, setEnvironment] = useState<"LIVE" | "SANDBOX">("SANDBOX");
   const [ipWhitelist, setIpWhitelist] = useState("");
-  const [selectedScopes, setSelectedScopes] = useState<string[]>(["payments:write"]);
+  const [selectedScopes, setSelectedScopes] = useState<string[]>(["treasury:read", "accounts:read"]);
+  const [linkedAccountId, setLinkedAccountId] = useState("ALL");
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   const fetchKeys = async () => {
@@ -73,26 +95,27 @@ export const ApiKeyManager: React.FC = () => {
   const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-
     if (!newKeyName.trim()) return setErrorMsg("Key name is required.");
     if (ipWhitelist.trim() && !validateCidr(ipWhitelist)) {
       return setErrorMsg("Invalid CIDR format. Use standard notation like 192.168.1.0/24.");
     }
-
     setIsGenerating(true);
     try {
+      const payload = {
+        name: newKeyName,
+        environment,
+        cidrWhitelist: ipWhitelist.trim() || "0.0.0.0/0",
+        scopes: selectedScopes,
+        linkedAccountId: linkedAccountId === "ALL" ? null : linkedAccountId,
+      };
+
       const res = await fetch("/api/proxy/apikeys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newKeyName,
-          environment,
-          cidrWhitelist: ipWhitelist.trim() || "0.0.0.0/0",
-          scopes: selectedScopes,
-        }),
+        body: JSON.stringify(payload),
       });
-
       const json = await res.json();
+
       if (!res.ok) throw new Error(json.error?.message || json.message || "Failed to generate Key");
 
       const createdKey: ApiKey = json.data;
@@ -108,21 +131,18 @@ export const ApiKeyManager: React.FC = () => {
     }
   };
 
-  // Enterprise UX: Rotate Key instead of revealing old ones
   const handleRotateKey = async (id: number) => {
     const confirmRotate = window.confirm("Are you sure? This will instantly revoke the current key and generate a new one.");
     if (!confirmRotate) return;
-
     setIsGenerating(true);
     try {
       const res = await fetch(`/api/proxy/apikeys/${id}/rotate`, { method: "POST" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message);
-
       const rotatedKey: ApiKey = json.data;
       setNewlyGeneratedKey({ name: rotatedKey.name, rawKey: rotatedKey.rawKey || "" });
       setCopiedState(false);
-      await fetchKeys(); // Refresh the list to show the revoked status of the old key
+      await fetchKeys();
     } catch (err: any) {
       alert(err.message || "Failed to rotate key.");
     } finally {
@@ -161,8 +181,7 @@ export const ApiKeyManager: React.FC = () => {
           <div>
             <h3 className="text-xl font-extrabold text-accent">API Keys & Security Controls</h3>
             <p className="text-sm text-accent/70 font-medium mt-1">
-              Manage HMAC SHA256 keys for API access. For PCI DSS compliance, raw keys are only displayed once.
-              If you lose a key, you must <strong>Rotate</strong> it.
+              Manage HMAC SHA256 keys for API access. Bind keys to specific isolated VAM sub-accounts.
             </p>
           </div>
           {!showCreateForm && !newlyGeneratedKey && (
@@ -172,7 +191,6 @@ export const ApiKeyManager: React.FC = () => {
 
         {errorMsg && <ErrorBanner message={errorMsg} onClose={() => setErrorMsg(null)} />}
 
-        {/* Success Alert for New / Rotated Keys */}
         {newlyGeneratedKey && (
           <div className="mb-8 p-6 bg-emerald-50 border-2 border-emerald-500/40 rounded-xl shadow-lg shadow-emerald-500/10 animate-in zoom-in-95 duration-300">
             <h4 className="text-emerald-800 font-extrabold text-lg mb-2">Key Generated Successfully</h4>
@@ -197,9 +215,9 @@ export const ApiKeyManager: React.FC = () => {
           </div>
         )}
 
-        {/* Collapsible Creation Form */}
         {showCreateForm && !newlyGeneratedKey && (
           <form onSubmit={handleCreateKey} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 bg-surface p-6 rounded-xl border border-secondary/30 animate-in slide-in-from-top-4">
+            
             <div className="flex flex-col gap-1.5 md:col-span-2">
               <label className="text-xs font-bold text-accent uppercase tracking-wider">Key Name</label>
               <input
@@ -210,6 +228,7 @@ export const ApiKeyManager: React.FC = () => {
                 required
               />
             </div>
+
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-accent uppercase tracking-wider">Environment</label>
               <select
@@ -221,36 +240,69 @@ export const ApiKeyManager: React.FC = () => {
                 <option value="LIVE">Live Prod (90d)</option>
               </select>
             </div>
+
             <div className="flex items-end gap-2">
               <Button type="button" variant="ghost" onClick={() => setShowCreateForm(false)}>Cancel</Button>
               <Button type="submit" isLoading={isGenerating}>Generate</Button>
             </div>
-            <div className="flex flex-col gap-1.5 md:col-span-4 mt-2">
+
+            {/* VAM SUB-ACCOUNT BINDING - Highlighted for clarity */}
+            <div className="flex flex-col gap-1.5 md:col-span-2 mt-4">
+              <label className="text-xs font-bold text-emerald-600 uppercase tracking-wider">VAM Boundary (Required)</label>
+              <p className="text-[10px] text-accent/60 mb-1 leading-tight">Restrict this API key's operations entirely to a specific Virtual Account Sub-Ledger. Scopes will only apply to this boundary.</p>
+              <select
+                value={linkedAccountId}
+                onChange={(e) => setLinkedAccountId(e.target.value)}
+                className="px-3.5 py-2.5 bg-emerald-50 border border-emerald-300 rounded-lg text-emerald-900 font-bold focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="ALL">Unrestricted (Access All Master/Sub-Accounts)</option>
+                {accounts?.map((acc) => (
+                  <option key={acc.accountNumber} value={acc.accountNumber}>
+                    {acc.accountName || acc.accountType} (**** {acc.accountNumber.slice(-4)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5 md:col-span-2 mt-4">
               <label className="text-xs font-bold text-accent uppercase tracking-wider">IP Whitelist (CIDR notation)</label>
+              <p className="text-[10px] text-accent/60 mb-1 leading-tight">Limit API calls to originating from these specific IPv4 addresses.</p>
               <input
                 type="text"
-                placeholder="0.0.0.0/0 (Default: Allow All) or 192.168.1.0/24"
+                placeholder="0.0.0.0/0 (Default: Allow All)"
                 value={ipWhitelist}
                 onChange={(e) => setIpWhitelist(e.target.value)}
                 className="px-3.5 py-2.5 bg-dominant border border-secondary/40 rounded-lg font-mono text-sm"
               />
             </div>
-            <div className="flex flex-col gap-2 md:col-span-4 mt-2">
-              <label className="text-xs font-bold text-accent uppercase tracking-wider">Granted Scopes</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-dominant p-4 rounded-xl border border-secondary/30">
-                {AVAILABLE_SCOPES.map((scope) => (
-                  <label key={scope.id} className="flex items-center gap-2 text-xs font-bold text-accent cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedScopes.includes(scope.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) setSelectedScopes([...selectedScopes, scope.id]);
-                        else setSelectedScopes(selectedScopes.filter((s) => s !== scope.id));
-                      }}
-                      className="rounded border-secondary w-4 h-4 text-sky-600 focus:ring-sky-500"
-                    />
-                    {scope.label}
-                  </label>
+
+            {/* ENHANCED GRANULAR SCOPES */}
+            <div className="flex flex-col gap-3 md:col-span-4 mt-4">
+              <div className="flex items-center justify-between border-b border-secondary/30 pb-2">
+                 <label className="text-xs font-bold text-accent uppercase tracking-wider">Granted Scopes</label>
+                 <span className="text-[10px] text-accent/60 font-bold bg-secondary/10 px-2 py-0.5 rounded">Action Limits</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {SCOPE_GROUPS.map((group) => (
+                   <div key={group.domain} className="bg-surface p-3 rounded-lg border border-secondary/30 flex flex-col gap-2">
+                      <span className="text-[11px] font-extrabold text-sky-700 tracking-wide">{group.domain}</span>
+                      <div className="flex flex-col gap-2">
+                        {group.scopes.map(scope => (
+                           <label key={scope.id} className="flex items-center gap-2 text-xs font-bold text-accent cursor-pointer ml-1">
+                             <input
+                               type="checkbox"
+                               checked={selectedScopes.includes(scope.id)}
+                               onChange={(e) => {
+                                 if (e.target.checked) setSelectedScopes([...selectedScopes, scope.id]);
+                                 else setSelectedScopes(selectedScopes.filter((s) => s !== scope.id));
+                               }}
+                               className="rounded border-secondary w-4 h-4 text-sky-600 focus:ring-sky-500"
+                             />
+                             {scope.label} <span className="text-[9px] text-accent/40 font-mono">({scope.id})</span>
+                           </label>
+                        ))}
+                      </div>
+                   </div>
                 ))}
               </div>
             </div>
@@ -283,6 +335,12 @@ export const ApiKeyManager: React.FC = () => {
                       <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold border uppercase tracking-wider ${status.style}`}>
                         {status.label}
                       </span>
+                      {key.linkedAccountId && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase tracking-wider flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                          Locked to VAM: ****{key.linkedAccountId.slice(-4)}
+                        </span>
+                      )}
                     </div>
                     <div className="font-mono text-sm font-bold text-accent/80 bg-surface px-3 py-1.5 rounded-lg border border-secondary/30 inline-block mb-3">
                       {key.keyPrefix}{key.maskedHash}

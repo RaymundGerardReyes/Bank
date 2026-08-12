@@ -36,6 +36,9 @@ public class ApiKeyJpaEntity {
 
     private String scopes;
 
+    @Column(name = "linked_account_id")
+    private String linkedAccountId; // <-- NEW
+
     @Column(nullable = false)
     private LocalDateTime expiresAt;
 

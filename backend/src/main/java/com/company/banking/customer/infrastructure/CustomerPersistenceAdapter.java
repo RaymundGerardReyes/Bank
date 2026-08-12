@@ -25,11 +25,11 @@ public class CustomerPersistenceAdapter implements CustomerPersistencePort {
 
     @Override
     public Optional<Customer> findByEmail(String email) {
-        return customerJpaRepository.findByEmail(email);
+        return customerJpaRepository.findByEmailIgnoreCase(email);
     }
 
     @Override
     public boolean existsByEmail(String email) {
-        return customerJpaRepository.existsByEmail(email);
+        return customerJpaRepository.existsByEmailIgnoreCase(email);
     }
 }

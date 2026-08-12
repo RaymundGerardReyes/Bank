@@ -53,18 +53,25 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // 2. Validate Endpoint Scope
+            // 2. Validate Endpoint Scope (VULN 7 & 2: Method-aware validation with Fail-Closed)
             String requestPath = request.getRequestURI();
-            String requiredScope = resolveRequiredScope(requestPath);
+            String requestMethod = request.getMethod();
+            String requiredScope = resolveRequiredScope(requestPath, requestMethod);
+
+            if ("UNMAPPED_ENDPOINT".equals(requiredScope)) {
+                sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN, ErrorCode.ENDPOINT_NOT_SCOPED.getCode(), ErrorCode.ENDPOINT_NOT_SCOPED.getDefaultMessage());
+                return;
+            }
+
             if (requiredScope != null && (apiKey.getScopes() == null || !apiKey.getScopes().contains(requiredScope))) {
                 sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN, ErrorCode.INSUFFICIENT_API_SCOPE.getCode(), ErrorCode.INSUFFICIENT_API_SCOPE.getDefaultMessage());
                 return;
             }
 
-            // Authenticate API key caller
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+            // VULN 6: Use strongly-typed Authentication Token
+            ApiKeyAuthenticationToken auth = new ApiKeyAuthenticationToken(
                     apiKey.getName(),
-                    null,
+                    apiKey.getLinkedAccountId(),
                     Collections.singletonList(new SimpleGrantedAuthority("ROLE_MERCHANT_API"))
             );
             SecurityContextHolder.getContext().setAuthentication(auth);
@@ -81,13 +88,43 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         return request.getRemoteAddr();
     }
 
-    private String resolveRequiredScope(String path) {
-        if (path.startsWith("/api/v1/payments")) return "payments:write";
-        if (path.startsWith("/api/v1/batch")) return "payroll:approve";
-        if (path.startsWith("/api/v1/routing")) return "routing:evaluate";
-        if (path.startsWith("/api/v1/transfers")) return "treasury:write";
-        if (path.startsWith("/api/v1/ledger")) return "ledger:read";
-        if (path.startsWith("/api/v1/risk")) return "risk:evaluate";
+    private String resolveRequiredScope(String path, String method) {
+        // Explicit Allowlist for genuinely open routes
+        if (path.startsWith("/api/v1/health") || path.startsWith("/v3/api-docs")) {
+            return null; 
+        }
+
+        // 1. Virtual Account Management (VAM)
+        if (path.startsWith("/api/v1/accounts") && "POST".equalsIgnoreCase(method)) return "accounts:write";
+        if (path.startsWith("/api/v1/accounts") && "GET".equalsIgnoreCase(method)) return "accounts:read";
+
+        // 2. Payments
+        if (path.startsWith("/api/v1/payments") && "POST".equalsIgnoreCase(method)) return "payments:write";
+
+        // 3. Payroll & Batch Distribution
+        if (path.startsWith("/api/v1/batch") && "POST".equalsIgnoreCase(method)) return "payroll:write";
+        if (path.startsWith("/api/v1/batch") && "GET".equalsIgnoreCase(method)) return "payroll:read";
+
+        // 4. Smart Routing
+        if (path.startsWith("/api/v1/routing") && "POST".equalsIgnoreCase(method)) return "routing:write";
+        if (path.startsWith("/api/v1/routing") && "GET".equalsIgnoreCase(method)) return "routing:read";
+
+        // 5. Treasury & Transfers
+        if (path.startsWith("/api/v1/transfers") && "POST".equalsIgnoreCase(method)) return "treasury:write";
+        if (path.startsWith("/api/v1/treasury") && "GET".equalsIgnoreCase(method)) return "treasury:read";
+
+        // 6. Immutable Ledger
+        if (path.startsWith("/api/v1/ledger") && "POST".equalsIgnoreCase(method)) return "ledger:write";
+        if (path.startsWith("/api/v1/ledger") && "GET".equalsIgnoreCase(method)) return "ledger:read";
+
+        // 7. Fraud & Risk
+        if (path.startsWith("/api/v1/risk") && "POST".equalsIgnoreCase(method)) return "risk:write";
+        if (path.startsWith("/api/v1/risk") && "GET".equalsIgnoreCase(method)) return "risk:read";
+        
+        // FAIL-CLOSED: If it's an API route and didn't match the above map, completely block it.
+        if (path.startsWith("/api/v1/")) {
+            return "UNMAPPED_ENDPOINT";
+        }
         return null;
     }
 

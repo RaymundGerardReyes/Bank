@@ -16,6 +16,11 @@ public class CreateApiKeyRequest {
 
     private Set<String> scopes;
 
+    private String linkedAccountId; // <-- NEW
+    
+    public String getLinkedAccountId() { return linkedAccountId; }
+    public void setLinkedAccountId(String linkedAccountId) { this.linkedAccountId = linkedAccountId; }
+
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 

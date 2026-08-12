@@ -69,7 +69,15 @@ public class JwtTokenProvider {
     }
 
     private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        byte[] keyBytes;
+        try {
+            // Handle both standard Base64 and Base64URL by replacing URL-safe characters
+            String normalizedBase64 = secretKey.replace("-", "+").replace("_", "/");
+            keyBytes = Decoders.BASE64.decode(normalizedBase64);
+        } catch (Exception e) {
+            // Fallback for plain-text secrets (e.g. UUIDs or raw strings)
+            keyBytes = secretKey.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }

@@ -21,6 +21,7 @@ public class ApiKey {
     private String environment; // LIVE, SANDBOX
     private String cidrWhitelist;
     private Set<String> scopes;
+    private String linkedAccountId; // <-- NEW: Sub-Account Binding
     private LocalDateTime expiresAt;
     private LocalDateTime revokedAt;
     private LocalDateTime lastUsedAt;

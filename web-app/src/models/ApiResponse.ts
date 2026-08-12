@@ -12,7 +12,7 @@ export interface UserProfile {
   username: string;
   email: string;
   fullName: string;
-  role: "USER" | "ADMIN" | "TELLER";
+  role: "USER" | "ADMIN" | "TELLER" | "MERCHANT" | "OPS_OFFICER";
   mfaEnabled: boolean;
   passkeyRegistered: boolean;
   createdAt: string;

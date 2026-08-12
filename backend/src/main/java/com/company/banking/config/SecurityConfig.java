@@ -29,7 +29,20 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/**", "/api/v1/apikeys/**", "/v3/api-docs/**", "/swagger-ui/**", "/actuator/health").permitAll()
+                // --- ENTERPRISE SECURITY FIX ---
+                // 1. Only allow public access to authentication endpoints.
+                // 2. Only allow access to the strictly filtered developer-gateway spec.
+                // 3. REMOVED: /api/v1/apikeys/** (Now strictly requires JWT Auth!)
+                // 4. REMOVED: /v3/api-docs/** (Global dump is now blocked!)
+                .requestMatchers(
+                        "/api/v1/auth/**", 
+                        "/v3/api-docs/developer-gateway", 
+                        "/v3/api-docs/developer-gateway/**", 
+                        "/actuator/health",
+                        "/ws/**",
+                        "/status",
+                        "/error"
+                ).permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
