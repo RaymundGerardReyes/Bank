@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import com.company.banking.payment.domain.PaymentIntentStatus;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -36,7 +38,7 @@ public class PaymentIntentService {
                 .customerAccountNumber(customerAccountNumber)
                 .amount(amount)
                 .currency(currency)
-                .status("CREATED")
+                .status(PaymentIntentStatus.CREATED)
                 .description("Payment Intent for " + amount + " " + currency)
                 .build();
 
@@ -56,11 +58,11 @@ public class PaymentIntentService {
             throw new BusinessException(ErrorCode.FORBIDDEN, "Access Denied: PaymentIntent belongs to a different merchant.");
         }
 
-        if (!"CREATED".equals(intent.getStatus())) {
+        if (intent.getStatus() != PaymentIntentStatus.CREATED) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "PaymentIntent cannot be authorized from status: " + intent.getStatus());
         }
 
-        intent.setStatus("AUTHORIZED");
+        intent.setStatus(PaymentIntentStatus.AUTHORIZED);
         auditEventPublisher.publishEvent("PAYMENT_AUTHORIZED", intent.getMerchantId().toString(), 
                 "Funds reserved for intent " + intentId, intentId);
 
@@ -77,13 +79,13 @@ public class PaymentIntentService {
             throw new BusinessException(ErrorCode.FORBIDDEN, "Access Denied: PaymentIntent belongs to a different merchant.");
         }
 
-        if (!"AUTHORIZED".equals(intent.getStatus())) {
+        if (intent.getStatus() != PaymentIntentStatus.AUTHORIZED) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "PaymentIntent must be AUTHORIZED to capture. Current status: " + intent.getStatus());
         }
 
         merchantSettlementService.creditMerchantBalance(intent.getMerchantId(), intent.getAmount(), intent.getCurrency());
         
-        intent.setStatus("CAPTURED");
+        intent.setStatus(PaymentIntentStatus.CAPTURED);
         auditEventPublisher.publishEvent("PAYMENT_CAPTURED", intent.getMerchantId().toString(), 
                 "Payment successfully captured for intent " + intentId, intentId);
 
@@ -100,7 +102,7 @@ public class PaymentIntentService {
             throw new BusinessException(ErrorCode.FORBIDDEN, "Access Denied: PaymentIntent belongs to a different merchant.");
         }
 
-        if (!"CAPTURED".equals(intent.getStatus())) {
+        if (intent.getStatus() != PaymentIntentStatus.CAPTURED) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Only CAPTURED intents can be refunded.");
         }
 
@@ -120,7 +122,7 @@ public class PaymentIntentService {
         Refund savedRefund = refundJpaRepository.save(refund);
 
         if (amount.compareTo(intent.getAmount()) == 0) {
-            intent.setStatus("REFUNDED");
+            intent.setStatus(PaymentIntentStatus.REFUNDED);
             paymentIntentJpaRepository.save(intent);
         }
 

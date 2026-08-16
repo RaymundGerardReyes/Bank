@@ -71,7 +71,8 @@ public class TransferPolicy {
         if (todayTotal.add(amount).compareTo(dailyLimit) > 0) {
             throw new BusinessException(
                     ErrorCode.TRANSFER_VELOCITY_EXCEEDED,
-                    String.format("VAM Policy Enforced: Transfer exceeds the daily operational limit of $%.2f for this sub-account.", dailyLimit)
+                    // Updated to use the Philippine Peso (₱) symbol
+                    String.format("VAM Policy Enforced: Transfer exceeds the daily operational limit of ₱%.2f for this sub-account.", dailyLimit)
             );
         }
     }
@@ -84,7 +85,8 @@ public class TransferPolicy {
         if (config.getMaxAmountPerTx() != null && amount.compareTo(config.getMaxAmountPerTx()) > 0) {
             throw new BusinessException(
                     ErrorCode.INVALID_REQUEST,
-                    String.format("Transfer amount of $%.2f exceeds the maximum allowed limit ($%.2f) for rail: %s", 
+                    // Updated to use the Philippine Peso (₱) symbol
+                    String.format("Transfer amount of ₱%.2f exceeds the maximum allowed limit (₱%.2f) for rail: %s", 
                             amount, config.getMaxAmountPerTx(), config.getRailName())
             );
         }

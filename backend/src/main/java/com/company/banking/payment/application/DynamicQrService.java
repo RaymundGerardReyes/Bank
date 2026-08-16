@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.company.banking.payment.domain.PaymentIntentStatus;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -58,7 +60,7 @@ public class DynamicQrService {
         DynamicQrPayment saved = dynamicQrPaymentJpaRepository.save(qrPayment);
         
         // Update intent status to QR_GENERATED as per state machine
-        intent.setStatus("QR_GENERATED");
+        intent.setStatus(PaymentIntentStatus.QR_GENERATED);
         paymentIntentJpaRepository.save(intent);
 
         log.info("[DYNAMIC QR] Generated QR {} for Intent {}", qrRef, intentId);
@@ -82,7 +84,7 @@ public class DynamicQrService {
             
             // Also expire the parent intent
             PaymentIntent intent = paymentIntentJpaRepository.findById(qrPayment.getPaymentIntentId()).orElseThrow();
-            intent.setStatus("FAILED"); // Or EXPIRED
+            intent.setStatus(PaymentIntentStatus.FAILED); // Or EXPIRED
             paymentIntentJpaRepository.save(intent);
             
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "This QR code has expired.");
@@ -102,7 +104,7 @@ public class DynamicQrService {
         dynamicQrPaymentJpaRepository.save(qrPayment);
 
         // 3. Move Intent to PENDING (awaiting customer confirmation on their EMI/Bank app)
-        intent.setStatus("PENDING");
+        intent.setStatus(PaymentIntentStatus.PENDING);
         paymentIntentJpaRepository.save(intent);
 
         log.info("[DYNAMIC QR] QR {} scanned. Transitioned Intent {} to PENDING.", qrReference, intent.getIntentId());

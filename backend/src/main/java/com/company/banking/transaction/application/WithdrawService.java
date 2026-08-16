@@ -9,7 +9,6 @@ import com.company.banking.transaction.api.dto.TransactionResponse;
 import com.company.banking.transaction.api.dto.WithdrawRequest;
 import com.company.banking.transaction.application.port.in.WithdrawUseCase;
 import com.company.banking.transaction.application.port.out.LedgerPersistencePort;
-// --- ADD THIS IMPORT ---
 import com.company.banking.notification.application.port.out.PushNotificationPort;
 import com.company.banking.transaction.domain.SufficientFundsPolicy;
 import com.company.banking.transaction.domain.Transaction;
@@ -29,8 +28,6 @@ public class WithdrawService implements WithdrawUseCase {
     private final LedgerPersistencePort ledgerPersistencePort;
     private final SufficientFundsPolicy sufficientFundsPolicy;
     private final TransactionAccountResolver accountResolver;
-    
-    // --- INJECT PUSH PORT ---
     private final PushNotificationPort pushNotificationPort;
 
     @Override
@@ -68,7 +65,8 @@ public class WithdrawService implements WithdrawUseCase {
             pushNotificationPort.sendPush(
                     actor,
                     "Withdrawal Processed",
-                    String.format("Successfully withdrew $%.2f from your account.", request.getAmount())
+                    // Updated to use the Philippine Peso (₱) symbol
+                    String.format("Successfully withdrew ₱%.2f from your account.", request.getAmount())
             );
         }
 

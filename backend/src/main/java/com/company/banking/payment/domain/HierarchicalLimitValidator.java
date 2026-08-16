@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.util.Optional;
 
 @Component
 @Slf4j
@@ -22,11 +21,9 @@ public class HierarchicalLimitValidator {
         if (merchantLimit != null && merchantLimit.compareTo(effectiveLimit) < 0) {
             effectiveLimit = merchantLimit;
         }
-
         if (customerLimit != null && customerLimit.compareTo(effectiveLimit) < 0) {
             effectiveLimit = customerLimit;
         }
-
         if (railLimit != null && railLimit.compareTo(effectiveLimit) < 0) {
             effectiveLimit = railLimit;
         }
@@ -35,8 +32,9 @@ public class HierarchicalLimitValidator {
 
         if (amount.compareTo(effectiveLimit) > 0) {
             throw new BusinessException(
-                    ErrorCode.LIMIT_EXCEEDED, 
-                    String.format("Payment amount of $%.2f exceeds the effective hierarchical limit of $%.2f", amount, effectiveLimit)
+                    ErrorCode.LIMIT_EXCEEDED,
+                    // Updated to use the Philippine Peso (₱) symbol
+                    String.format("Payment amount of ₱%.2f exceeds the effective hierarchical limit of ₱%.2f", amount, effectiveLimit)
             );
         }
     }

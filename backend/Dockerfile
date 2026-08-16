@@ -1,23 +1,50 @@
-# Stage 1: Build the application using Maven and Java 21
-FROM maven:3.9-eclipse-temurin-21-alpine AS build
+# syntax=docker/dockerfile:1
+
+# ============================================================
+# 1. BUILD STAGE
+# ============================================================
+FROM eclipse-temurin:21-jdk-alpine AS build
+
+WORKDIR /src
+
+# Copy the Gradle wrapper and configuration files first to cache dependencies
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle .
+COPY settings.gradle .
+
+# Ensure wrapper is executable and pre-fetch dependencies (cache layer)
+RUN chmod +x ./gradlew && ./gradlew build -x test --no-daemon 2>/dev/null || true
+
+# Now copy the actual source code
+COPY src src
+
+# Build the final fat JAR
+RUN ./gradlew bootJar -x test --no-daemon
+
+# ============================================================
+# 2. RUNTIME STAGE
+# ============================================================
+FROM eclipse-temurin:21-jre-alpine AS runtime
 
 WORKDIR /app
 
-# Copy the pom.xml and source code
-COPY pom.xml .
-COPY src ./src
+# Create a non-root user (Spring Boot runs perfectly fine without root)
+RUN addgroup -S spring && adduser -S spring -G spring
 
-# Compile and package the application using the correct Java 21 environment
-RUN mvn clean package -DskipTests
+# Copy the built jar from the build stage
+COPY --from=build /src/build/libs/*.jar app.jar
 
-# Stage 2: Create the runtime image using the matching Java 21 JRE
-FROM eclipse-temurin:21-jre-alpine
+# Ensure the non-root user owns the app jar
+RUN chown spring:spring app.jar
 
-WORKDIR /app
-
-# Copy the successfully built jar from the target folder
-COPY --from=build /app/target/*.jar app.jar
+# Switch to the non-root user
+USER spring:spring
 
 EXPOSE 8080
+
+# The healthcheck is managed by docker-compose, but we add a generic one for standalone runs
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1:8080/actuator/health || exit 1
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

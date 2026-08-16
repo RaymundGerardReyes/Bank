@@ -44,4 +44,12 @@ public class ApiResponse<T> {
                 .timestamp(LocalDateTime.now())
                 .build();
     }
+
+    public static <T> ApiResponse<T> error(String message, String correlationId) {
+        return error(message, "ERROR", correlationId);
+    }
+
+    public static <T> ApiResponse<T> error(String message) {
+        return error(message, "ERROR", null);
+    }
 }

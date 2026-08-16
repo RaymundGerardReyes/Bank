@@ -18,6 +18,10 @@ public class SendTransactionAlertService {
         emailPort.sendEmail(userEmail, subject, body);
     }
 
+    public void sendTransactionAlert(String userEmail, String message) {
+        emailPort.sendEmail(userEmail, "Bank Payment Alert", message);
+    }
+
     // NEW: Enterprise Receipt Email Dispatcher
     public void sendTransferReceipt(String sourceEmail, String recipientEmail, String txRef, BigDecimal amount, String date) {
         String subject = "NovaBank: Official Transfer Receipt (" + txRef + ")";

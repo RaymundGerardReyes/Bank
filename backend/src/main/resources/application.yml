@@ -1,17 +1,21 @@
 spring:
+  # Tells Spring Boot to look one directory up (cd ..) for the .env file
+  import: optional:file:../.env[.properties]
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
+    username: ${MAIL_USERNAME:noreply@company.com}
     password: ${MAIL_PASSWORD:}
+    default-sender: ${MAIL_FROM:noreply@company.com}
     properties:
       mail:
         smtp:
-          auth: true
+          auth: ${MAIL_SMTP_AUTH:true}
           starttls:
             enable: true
-          starttls.required: true
-          ssl.trust: smtp.gmail.com
+            required: true
+          ssl:
+            trust: ${MAIL_HOST:smtp.gmail.com}
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   application:
@@ -23,7 +27,7 @@ spring:
     allow-bean-definition-overriding: false
 
 server:
-  port: ${PORT:8085}
+  port: ${PORT:8080}
   address: 0.0.0.0  # <-- ADD THIS EXACT LINE
   servlet:
     context-path: /
@@ -34,6 +38,9 @@ server:
     include-exception: false
 
 management:
+  health:
+    mail:
+      enabled: false
   endpoints:
     web:
       exposure:
@@ -41,3 +48,5 @@ management:
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true

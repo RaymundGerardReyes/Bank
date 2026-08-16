@@ -38,9 +38,10 @@ public class PaymentIntent {
     @Column(name = "fee_amount", nullable = false)
     private BigDecimal feeAmount;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status; // CREATED, AUTHORIZED, CAPTURED, FAILED, REFUNDED
-
+    private PaymentIntentStatus status;
+    
     @Column(columnDefinition = "TEXT")
     private String description;
 

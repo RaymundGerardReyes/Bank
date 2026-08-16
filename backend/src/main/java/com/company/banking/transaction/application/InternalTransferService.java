@@ -11,17 +11,16 @@ import com.company.banking.transaction.api.dto.InternalTransferRequest;
 import com.company.banking.transaction.api.dto.TransactionResponse;
 import com.company.banking.transaction.application.port.in.TransactionUseCase;
 import com.company.banking.transaction.application.port.out.LedgerPersistencePort;
-// --- ADD THIS IMPORT ---
 import com.company.banking.notification.application.port.out.PushNotificationPort;
 import com.company.banking.transaction.domain.EntryType;
 import com.company.banking.transaction.domain.LedgerEntry;
 import com.company.banking.transaction.domain.Transaction;
 import com.company.banking.transaction.domain.TransactionStatus;
 import com.company.banking.web.filter.CorrelationIdFilter;
-import com.company.banking.transaction.application.ZeroBalanceSweepService; 
+
 import lombok.RequiredArgsConstructor;
-import org.slf4j.MDC; 
-import org.springframework.security.core.context.SecurityContextHolder; 
+import org.slf4j.MDC;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,10 +36,8 @@ public class InternalTransferService implements TransactionUseCase {
     private final com.company.banking.transaction.domain.TransferPolicy transferPolicy;
     private final ScheduledTransferService scheduledTransferService;
     private final AuditEventPublisher auditEventPublisher;
-    private final ZeroBalanceSweepService zeroBalanceSweepService; 
+    private final ZeroBalanceSweepService zeroBalanceSweepService;
     private final TransactionAccountResolver accountResolver;
-    
-    // --- INJECT THE PUSH NOTIFICATION PORT ---
     private final PushNotificationPort pushNotificationPort;
 
     @Override
@@ -116,15 +113,16 @@ public class InternalTransferService implements TransactionUseCase {
         auditEventPublisher.publishEvent(
                 "Internal Transfer Completed",
                 actor,
-                String.format("Successfully transferred $%.2f from %s to %s.", request.getAmount(), source.getAccountNumber(), destination.getAccountNumber()),
+                // Updated to use the Philippine Peso (₱) symbol
+                String.format("Successfully transferred ₱%.2f from %s to %s.", request.getAmount(), source.getAccountNumber(), destination.getAccountNumber()),
                 correlationId
         );
 
-        // --- NEW: FIRE THE WEBSOCKET PAYLOAD DIRECTLY TO THE MOBILE APP ---
         pushNotificationPort.sendPush(
-                actor, 
-                "Transfer Successful", 
-                String.format("Your transfer of $%.2f was completed successfully.", request.getAmount())
+                actor,
+                "Transfer Successful",
+                // Updated to use the Philippine Peso (₱) symbol
+                String.format("Your transfer of ₱%.2f was completed successfully.", request.getAmount())
         );
 
         return TransactionResponse.fromEntity(savedTx);

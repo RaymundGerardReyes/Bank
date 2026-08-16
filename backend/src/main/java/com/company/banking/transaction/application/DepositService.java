@@ -7,7 +7,6 @@ import com.company.banking.transaction.api.dto.DepositRequest;
 import com.company.banking.transaction.api.dto.TransactionResponse;
 import com.company.banking.transaction.application.port.in.DepositUseCase;
 import com.company.banking.transaction.application.port.out.LedgerPersistencePort;
-// --- ADD THIS IMPORT ---
 import com.company.banking.notification.application.port.out.PushNotificationPort;
 import com.company.banking.transaction.domain.Transaction;
 import com.company.banking.transaction.domain.TransactionStatus;
@@ -25,8 +24,6 @@ public class DepositService implements DepositUseCase {
     private final AccountPersistencePort accountPersistencePort;
     private final LedgerPersistencePort ledgerPersistencePort;
     private final TransactionAccountResolver accountResolver;
-    
-    // --- INJECT PUSH PORT ---
     private final PushNotificationPort pushNotificationPort;
 
     @Override
@@ -60,7 +57,8 @@ public class DepositService implements DepositUseCase {
             pushNotificationPort.sendPush(
                     actor,
                     "Deposit Processed",
-                    String.format("Successfully deposited $%.2f into your account.", request.getAmount())
+                    // Updated to use the Philippine Peso (₱) symbol
+                    String.format("Successfully deposited ₱%.2f into your account.", request.getAmount())
             );
         }
 

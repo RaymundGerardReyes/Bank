@@ -19,7 +19,6 @@ import java.util.UUID;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
@@ -39,11 +38,12 @@ public class TransferFlowIT {
     @Test
     @WithMockUser(username = "test@example.com")
     public void testInternalTransferFlow() throws Exception {
+
         Account source = accountPersistencePort.save(Account.builder()
                 .accountNumber("SRC-1001")
                 .customerId(1L)
                 .balance(new BigDecimal("1000.00"))
-                .currency("USD")
+                .currency("PHP") // Changed to PHP
                 .status(AccountStatus.ACTIVE)
                 .allowIncoming(true)
                 .allowOutgoing(true)
@@ -53,7 +53,7 @@ public class TransferFlowIT {
                 .accountNumber("DST-1002")
                 .customerId(2L)
                 .balance(new BigDecimal("500.00"))
-                .currency("USD")
+                .currency("PHP") // Changed to PHP
                 .status(AccountStatus.ACTIVE)
                 .allowIncoming(true)
                 .allowOutgoing(true)

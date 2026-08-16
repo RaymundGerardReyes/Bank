@@ -16,27 +16,30 @@ public class EmailProviderAdapter implements EmailPort {
 
     private final JavaMailSender mailSender;
 
-    // BUG FIX: The 'From' address MUST match the authenticated SMTP account (MAIL_USERNAME).
-    // Gmail rejects any 'From' that differs from the authenticated account.
-    @Value("${MAIL_USERNAME:}")
-    private String mailFrom;
+    @Value("${spring.mail.default-sender:${spring.mail.username:noreply@company.com}}")
+    private String fromEmail;
 
     @Async
     @Override
-    public void sendEmail(String recipient, String subject, String body) {
-        log.info("[NOTIFICATION ADAPTER] Sending Google SMTP email to: {}", recipient);
-        
+    public void sendEmail(String to, String subject, String body) {
         try {
+            log.info("[NOTIFICATION ADAPTER] Sending email to: {}", to);
+            
+            // Resolve safe from-address to avoid empty jakarta AddressException
+            String resolvedFrom = (fromEmail != null && !fromEmail.isBlank()) 
+                    ? fromEmail 
+                    : "noreply@company.com";
+
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(mailFrom);
-            message.setTo(recipient);
+            message.setFrom(resolvedFrom);
+            message.setTo(to);
             message.setSubject(subject);
             message.setText(body);
-            
+
             mailSender.send(message);
-            log.info("[NOTIFICATION ADAPTER] Email dispatched successfully to {}", recipient);
+            log.info("[NOTIFICATION ADAPTER] Email dispatched successfully to {}", to);
         } catch (Exception e) {
-            log.error("[NOTIFICATION ADAPTER] Failed to send email via Google SMTP to {}. Error: {}", recipient, e.getMessage(), e);
+            log.error("[NOTIFICATION ADAPTER] Failed to send email via SMTP to {}. Error: {}", to, e.getMessage(), e);
         }
     }
 }
