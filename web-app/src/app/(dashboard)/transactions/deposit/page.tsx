@@ -24,7 +24,7 @@ export default function DepositPage() {
     const cleanAccount = accountNo.replace(/\s/g, '');
 
     if (!cleanAccount || isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError("Please enter a valid account number and an amount greater than $0.");
+      setError("Please enter a valid account number and an amount greater than ₱0.");
       return;
     }
 
@@ -39,7 +39,7 @@ export default function DepositPage() {
         idempotencyKey,
       });
 
-      setSuccessMsg(`Successfully deposited $${parsedAmount.toFixed(2)} into account ${accountNo}.`);
+      setSuccessMsg(`Successfully deposited ₱${parsedAmount.toFixed(2)} into account ${accountNo}.`);
       setAmount("");
     } catch (err: unknown) {
       setError((err as Error).message || "Failed to process deposit. Please try again.");
@@ -83,7 +83,7 @@ export default function DepositPage() {
           )}
 
           <div className="p-3 bg-secondary/10 border border-secondary/20 rounded-lg text-xs font-medium text-accent/70">
-            🔒 Session Guard: Balance display is {showBalance ? "$24,850.00 USD" : "•••••••• USD"}. Screenshot protection policy active.
+            🔒 Session Guard: Balance display is {showBalance ? "₱24,850.00 PHP" : "•••••••• PHP"}. Screenshot protection policy active.
           </div>
 
           <Input
@@ -95,7 +95,7 @@ export default function DepositPage() {
           />
 
           <Input
-            label="Deposit Amount ($)"
+            label="Deposit Amount (₱)"
             type="number"
             step="0.01"
             placeholder="0.00"

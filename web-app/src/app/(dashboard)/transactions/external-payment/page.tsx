@@ -1,143 +1,92 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { Button } from "@/components/common/Button";
-import { Input } from "@/components/common/Input";
-import { Card } from "@/components/common/Card";
-import { transactionService } from "@/services/transaction/transactionService";
-import { idempotencyKeyService } from "@/services/transaction/idempotencyKeyService";
+import { Button } from '@/components/common/Button';
+import { Card } from '@/components/common/Card';
+import { Input } from '@/components/common/Input';
+import { useAccounts } from '@/hooks/useAccounts';
+import { formatCurrency } from '@/utils/formatters';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
-export default function ExternalPaymentPage() {
-  const [sourceAcc, setSourceAcc] = useState("1001987654");
-  const [routingNo, setRoutingNo] = useState("");
-  const [recipientAcc, setRecipientAcc] = useState("");
-  const [recipientName, setRecipientName] = useState("");
-  const [amount, setAmount] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
-  const [error, setError] = useState("");
+export default function ExternalPaymentInitiationPage() {
+  const router = useRouter();
+  const { data: accounts, isLoading } = useAccounts();
+  const [formData, setFormData] = useState({
+    sourceAccountId: '',
+    merchantReference: '',
+    amount: '',
+    description: ''
+  });
 
-  const handlePayment = async (e: React.FormEvent) => {
+  const activeAccounts = accounts?.filter((a: any) => a.status === 'ACTIVE') || [];
+
+  const handleContinue = (e: React.FormEvent) => {
     e.preventDefault();
-    setSuccessMsg("");
-    setError("");
-
-    const parsedAmount = parseFloat(amount);
-    const cleanSource = sourceAcc.replace(/\s/g, '');
-    const cleanRouting = routingNo.replace(/\s/g, '');
-    const cleanDest = recipientAcc.replace(/\s/g, '');
-
-    if (
-      !cleanSource ||
-      !cleanRouting ||
-      !cleanDest ||
-      !recipientName.trim() ||
-      isNaN(parsedAmount) ||
-      parsedAmount <= 0
-    ) {
-      setError("Please complete all fields and ensure the amount is greater than $0.");
-      return;
-    }
-
-    if (cleanRouting.length !== 9 || !/^\d+$/.test(cleanRouting)) {
-      setError("Routing number must be exactly 9 numeric digits.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const idempotencyKey = idempotencyKeyService.generateKey();
-
-      await transactionService.externalPayment({
-        sourceAccountNumber: cleanSource,
-        routingNumber: cleanRouting,
-        recipientAccountNumber: cleanDest,
-        recipientName,
-        amount: parsedAmount,
-        idempotencyKey,
-      });
-
-      setSuccessMsg(`External wire of $${parsedAmount.toFixed(2)} to ${recipientName} initiated.`);
-      setRoutingNo("");
-      setRecipientAcc("");
-      setRecipientName("");
-      setAmount("");
-    } catch (err: any) {
-      const errorMsg = err?.response?.data?.message || err?.message || "Failed to process external payment.";
-      setError(errorMsg);
-    } finally {
-      setLoading(false);
-    }
+    // Save draft state to session storage to pass to Review page
+    sessionStorage.setItem('draft_external_payment', JSON.stringify({
+      ...formData,
+      amount: parseFloat(formData.amount)
+    }));
+    router.push('/transactions/external-payment/review');
   };
 
+  if (isLoading) return <div className="p-8 text-center">Loading accounts...</div>;
+
   return (
-    <div className="max-w-2xl mx-auto flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold text-accent">External Bank Wire Transfer</h1>
-        <p className="text-sm text-accent/60 font-medium">
-          Send money externally to any financial institution via ACH or Wire.
-        </p>
-      </div>
+    <div className="max-w-2xl mx-auto p-4">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">External Gateway Payment</h1>
 
-      <Card title="Wire Transfer Details">
-        <form onSubmit={handlePayment} className="flex flex-col gap-4">
-          {successMsg && (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-600 text-sm font-semibold">
-              {successMsg}
-            </div>
-          )}
-
-          {error && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-600 text-sm font-semibold">
-              {error}
-            </div>
-          )}
+      <Card className="p-6">
+        <form onSubmit={handleContinue} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Pay From Account</label>
+            <select
+              required
+              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-3 border"
+              value={formData.sourceAccountId}
+              onChange={(e) => setFormData({ ...formData, sourceAccountId: e.target.value })}
+            >
+              <option value="">Select an account...</option>
+              {activeAccounts.map((acc: any) => (
+                <option key={acc.id} value={acc.accountNumber}>
+                  {acc.accountName} - {acc.accountNumber} ({formatCurrency(acc.balance, acc.currency)})
+                </option>
+              ))}
+            </select>
+          </div>
 
           <Input
-            label="Source Account"
-            value={sourceAcc}
-            onChange={(e) => setSourceAcc(e.target.value)}
+            label="Merchant / Payee Reference"
             required
+            placeholder="e.g., INV-2026-001"
+            value={formData.merchantReference}
+            onChange={(e) => setFormData({ ...formData, merchantReference: e.target.value })}
           />
 
           <Input
-            label="Routing Number (9-Digits)"
-            placeholder="e.g. 021000021"
-            value={routingNo}
-            onChange={(e) => setRoutingNo(e.target.value)}
-            maxLength={9}
-            required
-          />
-
-          <Input
-            label="Recipient Account Number"
-            placeholder="e.g. 9876543210"
-            value={recipientAcc}
-            onChange={(e) => setRecipientAcc(e.target.value)}
-            required
-          />
-
-          <Input
-            label="Recipient Full Name / Business"
-            placeholder="e.g. Raymund Reyes"
-            value={recipientName}
-            onChange={(e) => setRecipientName(e.target.value)}
-            required
-          />
-
-          <Input
-            label="Transfer Amount ($)"
+            label="Amount (PHP)"
             type="number"
+            min="1"
             step="0.01"
-            placeholder="0.00"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
             required
+            placeholder="0.00"
+            value={formData.amount}
+            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
           />
 
-          <Button type="submit" isLoading={loading} className="mt-2">
-            Send External Wire Transfer
-          </Button>
+          <Input
+            label="Payment Purpose"
+            required
+            placeholder="e.g., Monthly Subscription"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          />
+
+          <div className="flex justify-end pt-4 border-t border-gray-100">
+            <Button type="submit" className="px-8">
+              Continue to Review →
+            </Button>
+          </div>
         </form>
       </Card>
     </div>

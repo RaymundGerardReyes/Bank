@@ -2,6 +2,7 @@ import { ApiResponse, Transaction } from "@/models/ApiResponse";
 import { endpoints } from "@/services/api/endpoints";
 import { apiFetch } from "@/services/api/httpClient";
 import { idempotencyKeyService } from "./idempotencyKeyService";
+import { TransactionResult } from "@/models/TransactionTypes";
 
 export interface InternalTransferPayload {
   sourceAccountNumber: string;
@@ -10,6 +11,7 @@ export interface InternalTransferPayload {
   description?: string;
   scheduledDate?: string;
   idempotencyKey?: string;
+  assertion?: any; // WebAuthn AuthenticationResponseJSON
 }
 
 export interface DepositPayload {
@@ -32,9 +34,64 @@ export interface ExternalPaymentPayload {
   recipientName: string;
   amount: number;
   idempotencyKey?: string;
+  assertion?: any;
+}
+
+export interface QrPhPaymentPayload {
+  sourceAccountNumber: string;
+  qrPayload: string;
+  amount: number;
+  idempotencyKey?: string;
+  assertion?: any;
+}
+
+export function normalizeTransactionResult(response: any): TransactionResult {
+  // Safe default for network/unhandled errors
+  if (!response || !response.success) {
+    const errorCode = response?.error || "SERVICE_UNAVAILABLE";
+    
+    // Phase C: If it's a network timeout or completely unhandled service crash, transition to UNKNOWN instead of FAILED
+    const isNetworkUncertainty = 
+      errorCode === "SERVICE_UNAVAILABLE" || 
+      errorCode === "NETWORK_TIMEOUT" ||
+      errorCode === "UNKNOWN_ERROR";
+
+    return {
+      status: isNetworkUncertainty ? "UNKNOWN" : "FAILED",
+      failureCode: errorCode,
+      failureMessage: response?.message || "Transaction failed or service unavailable.",
+    };
+  }
+
+  // Map valid responses
+  const data = response.data || {};
+  const status = (data.status === "COMPLETED" ? "SUCCESS" : data.status) || "SUCCESS";
+  
+  return {
+    status: status as "SUCCESS" | "PENDING" | "FAILED",
+    transactionReference: data.transactionReference,
+    processedAt: data.processedAt || new Date().toISOString(),
+  };
 }
 
 export const transactionService = {
+  // Phase D: Request WebAuthn challenge for transaction intent
+  createTransactionChallenge: async (intentPayload: any): Promise<any> => {
+    // In production, this calls the backend (e.g., POST /auth/webauthn/transaction-challenge)
+    // For now, we return a mocked PublicKeyCredentialRequestOptionsJSON
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          challenge: "mock-cryptographic-challenge-string",
+          timeout: 60000,
+          rpId: window.location.hostname,
+          allowCredentials: [],
+          userVerification: "required",
+        });
+      }, 500);
+    });
+  },
+
   transferInternal: async (payload: InternalTransferPayload): Promise<ApiResponse<Transaction>> => {
     const key = payload.idempotencyKey || idempotencyKeyService.generateKey();
 
@@ -46,6 +103,7 @@ export const transactionService = {
       description: payload.description,
       scheduledDate: payload.scheduledDate,
       idempotencyKey: key,
+      assertion: payload.assertion, // Phase D: Send signed assertion
     };
 
     return apiFetch<ApiResponse<Transaction>>(endpoints.transfers.internal, {
@@ -93,6 +151,7 @@ export const transactionService = {
       description: `Wire to ${payload.recipientName}`, // Merged field for backend logging
       amount: payload.amount,
       idempotencyKey: key,
+      assertion: payload.assertion, // Phase D
     };
 
     return apiFetch<ApiResponse<Transaction>>(endpoints.transactions.externalPayment, {
@@ -100,6 +159,15 @@ export const transactionService = {
       body: JSON.stringify(backendPayload),
       idempotencyKey: key,
     });
+  },
+
+  qrPhPayment: async (payload: QrPhPaymentPayload): Promise<ApiResponse<Transaction>> => {
+    // Generate idempotency key if not provided
+    const key = payload.idempotencyKey || idempotencyKeyService.generateKey();
+    
+    // As per the plan, if the endpoint doesn't exist yet, we fail cleanly
+    // rather than falling back to externalPayment.
+    return Promise.reject(new Error("QR Ph integration unavailable"));
   },
 
   getHistory: async (accountNumber: string, page = 0, size = 10): Promise<ApiResponse<{ content: Transaction[] }>> => {

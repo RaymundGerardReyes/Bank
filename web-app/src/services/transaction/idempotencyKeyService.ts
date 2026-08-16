@@ -19,4 +19,7 @@ export const idempotencyKeyService = {
       sessionStorage.removeItem("current_transfer_idempotency_key");
     }
   },
+  clearKey: (): void => {
+    idempotencyKeyService.resetKey();
+  },
 };

@@ -56,7 +56,7 @@ export default function AccountsPage() {
             Total Net Liquidity
           </span>
           <h2 className="text-4xl md:text-6xl font-black text-dominant tracking-tight">
-            <MaskedValue value={formatCurrency(totalLiquidity, "USD")} />
+            <MaskedValue value={formatCurrency(totalLiquidity, "PHP")} />
           </h2>
           <div className="mt-4 flex items-center gap-2">
             <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-md text-[10px] font-extrabold uppercase tracking-wider">

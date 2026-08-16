@@ -22,7 +22,7 @@ export default function WithdrawPage() {
     const parsedAmount = parseFloat(amount);
     const cleanAccount = sourceAccount.replace(/\s/g, '');
     if (!cleanAccount || isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError("Please enter a valid account number and an amount greater than $0.");
+      setError("Please enter a valid account number and an amount greater than ₱0.");
       return;
     }
 
@@ -36,7 +36,7 @@ export default function WithdrawPage() {
         idempotencyKey,
       });
 
-      setSuccessMsg(`Withdrawal of $${parsedAmount.toFixed(2)} from account ${sourceAccount} completed.`);
+      setSuccessMsg(`Withdrawal of ₱${parsedAmount.toFixed(2)} from account ${sourceAccount} completed.`);
       setAmount("");
     } catch (err: unknown) {
       setError((err as Error).message || "Failed to process withdrawal. Please check account balance.");
@@ -77,7 +77,7 @@ export default function WithdrawPage() {
           />
 
           <Input
-            label="Withdrawal Amount ($)"
+            label="Withdrawal Amount (₱)"
             type="number"
             step="0.01"
             placeholder="0.00"

@@ -77,7 +77,7 @@ export default function NovaBankLandingPage() {
                 <div className="w-2/3 flex flex-col gap-6">
                   <div className="h-32 bg-secondary/10 rounded-xl border border-secondary/20 flex flex-col justify-center px-8">
                     <span className="text-accent/70 font-semibold text-sm uppercase tracking-wider mb-1">Total Net Liquidity</span>
-                    <span className="text-accent font-extrabold text-4xl">$14,850.75</span>
+                    <span className="text-accent font-extrabold text-4xl">₱14,850.75</span>
                   </div>
                   <div className="flex-1 bg-secondary/10 rounded-xl border border-secondary/20"></div>
                 </div>

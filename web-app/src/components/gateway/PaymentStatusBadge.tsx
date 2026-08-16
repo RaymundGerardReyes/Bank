@@ -1,11 +1,11 @@
 import React from "react";
 import { PaymentIntentStatus } from "@/models/GatewayModels";
 
-export const PaymentStatusBadge: React.FC<{ status: PaymentIntentStatus; className?: string }> = ({
+export const PaymentStatusBadge: React.FC<{ status: PaymentIntentStatus | string; className?: string }> = ({
   status,
   className = "",
 }) => {
-  const getStyles = (s: PaymentIntentStatus) => {
+  const getStyles = (s: PaymentIntentStatus | string) => {
     switch (s) {
       case "CAPTURED":
       case "SETTLED":
@@ -27,7 +27,7 @@ export const PaymentStatusBadge: React.FC<{ status: PaymentIntentStatus; classNa
     }
   };
 
-  const getLabel = (s: PaymentIntentStatus) => {
+  const getLabel = (s: PaymentIntentStatus | string) => {
     switch (s) {
       case "QR_GENERATED":
         return "QR READY";

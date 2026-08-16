@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import React, { useEffect, useState } from "react";
 import { MoneyDisplay } from "@/components/gateway/MoneyDisplay";
 import { PaymentStatusBadge } from "@/components/gateway/PaymentStatusBadge";

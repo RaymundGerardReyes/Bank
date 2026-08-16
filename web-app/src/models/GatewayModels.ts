@@ -23,11 +23,14 @@ export interface PaymentIntent {
   id: number;
   intentId: string;
   merchantId: number;
+  customerAccountNumber: string;
   amount: number;
   currency: string;
-  status: PaymentIntentStatus;
+  feeAmount: number;
+  status: string;
+  description: string;
   createdAt: string;
-  updatedAt?: string;
+  updatedAt: string;
 }
 
 // ─── Dynamic QR Ph P2M ───────────────────────────────────────
@@ -201,3 +204,23 @@ export interface ComplianceEvidenceRecord {
   verifiedAt?: string;
   createdAt: string;
 }
+
+
+
+export interface PaymentSessionResponse {
+  paymentIntentId: string;
+  provider: string;
+  checkoutType: 'HOSTED' | 'API';
+  checkoutUrl: string;
+  expiresAt: string;
+  transactionReference: string;
+}
+
+export interface CreatePaymentIntentRequest {
+  sourceAccountId: string;
+  amount: number;
+  description: string;
+  merchantReference: string;
+}
+
+// Preserve existing models below...

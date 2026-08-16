@@ -1,152 +1,76 @@
 "use client";
 
-import { Button } from "@/components/common/Button";
-import { Card } from "@/components/common/Card";
-import { Input } from "@/components/common/Input";
-import { useAccounts } from "@/hooks/useAccounts";
-import { idempotencyKeyService } from "@/services/transaction/idempotencyKeyService";
-import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+export const dynamic = 'force-dynamic';
 
-export default function TransfersPage() {
-  const router = useRouter();
+import React from "react";
+import Link from "next/link";
+import { ArrowRightIcon, Building2Icon, QrCodeIcon, ArrowLeftRightIcon } from "lucide-react";
 
-  // 1. Dynamically fetch the authenticated user's accounts
-  const { data: accounts, isLoading: accountsLoading } = useAccounts();
-
-  const [sourceAccount, setSourceAccount] = useState("");
-  const [recipientAccount, setRecipientAccount] = useState("");
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [error, setError] = useState("");
-
-  // 2. Automatically select the primary account when data loads
-  useEffect(() => {
-    if (accounts && accounts.length > 0 && !sourceAccount) {
-      // Find the first active account to use as the default source
-      const activeAccount = accounts.find(acc => acc.status === "ACTIVE") || accounts[0];
-      setSourceAccount(activeAccount.accountNumber);
-    }
-  }, [accounts, sourceAccount]);
-
-  useEffect(() => {
-    idempotencyKeyService.getOrCreateKey();
-  }, []);
-
-  const handleProceed = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    const parsedAmount = parseFloat(amount);
-    const cleanSource = sourceAccount.replace(/\s/g, '');
-    const cleanRecipient = recipientAccount.replace(/\s/g, '');
-
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError("Please enter a valid positive transfer amount.");
-      return;
-    }
-    if (!cleanSource) {
-      setError("A valid source account is required.");
-      return;
-    }
-    if (!cleanRecipient) {
-      setError("Please enter a recipient account number.");
-      return;
-    }
-
-    const idempotencyKey = idempotencyKeyService.getOrCreateKey();
-    const transferSession = {
-      sourceAccountNumber: cleanSource,
-      recipientAccountNumber: cleanRecipient,
-      amount: parsedAmount,
-      description,
-      scheduledDate: scheduledDate || undefined,
-      idempotencyKey,
-    };
-
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("pending_transfer_session", JSON.stringify(transferSession));
-    }
-    router.push("/transfers/review");
-  };
-
+export default function MoveMoneyHub() {
   return (
-    <div className="max-w-xl mx-auto flex flex-col gap-6 animate-in fade-in duration-500">
-
-      {/* Minimalist Header */}
+    <div className="max-w-3xl mx-auto flex flex-col gap-8 animate-in fade-in duration-500">
+      
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-extrabold text-accent tracking-tight">Move Money</h1>
-        <p className="text-sm text-accent/60 font-medium mt-1">
-          Instantly transfer funds between internal accounts.
+        <h1 className="text-4xl font-black text-accent tracking-tight">Move Money</h1>
+        <p className="text-lg text-accent/70 font-medium mt-2">
+          How would you like to move money today?
         </p>
       </div>
 
-      <Card className="border-none shadow-2xl shadow-secondary/10">
-        <form onSubmit={handleProceed} className="flex flex-col gap-5">
-          {error && (
-            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 text-sm font-bold animate-in slide-in-from-top-2">
-              {error}
+      {/* Options Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        
+        {/* Option 1: Internal */}
+        <Link href="/transfers/internal" className="group">
+          <div className="flex flex-col h-full bg-surface border border-secondary/20 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 rounded-2xl p-6 transition-all duration-300">
+            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <ArrowLeftRightIcon className="w-6 h-6 text-primary" />
             </div>
-          )}
-
-          {/* Dynamic Source Account Dropdown */}
-          <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm font-bold text-accent">From Account</label>
-            {accountsLoading ? (
-              <div className="px-3.5 py-3 bg-surface border border-secondary/20 rounded-lg text-accent/50 font-medium animate-pulse">
-                Loading secure accounts...
-              </div>
-            ) : (
-              <select
-                value={sourceAccount}
-                onChange={(e) => setSourceAccount(e.target.value)}
-                className="px-3.5 py-3 bg-surface border border-secondary/40 rounded-lg text-accent font-bold focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all cursor-pointer appearance-none"
-                required
-              >
-                {accounts?.map((acc) => (
-                  <option key={acc.accountNumber} value={acc.accountNumber} disabled={acc.status !== "ACTIVE"}>
-                    {acc.accountType} •••• {acc.accountNumber.slice(-4)} {acc.status !== "ACTIVE" ? `(${acc.status})` : `($${acc.balance.toFixed(2)})`}
-                  </option>
-                ))}
-              </select>
-            )}
+            <h3 className="text-lg font-black text-accent mb-2">Between My Accounts</h3>
+            <p className="text-sm text-accent/70 font-medium mb-6 flex-grow">
+              Transfer funds instantly between your own NovaBank checking and savings accounts.
+            </p>
+            <div className="flex items-center text-primary font-bold text-sm">
+              Start Transfer <ArrowRightIcon className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+            </div>
           </div>
+        </Link>
 
-          <div className="w-full h-px bg-secondary/20 my-2"></div>
+        {/* Option 2: Bank Transfer */}
+        <Link href="/transfers/bank" className="group">
+          <div className="flex flex-col h-full bg-surface border border-secondary/20 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 rounded-2xl p-6 transition-all duration-300">
+            <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <Building2Icon className="w-6 h-6 text-emerald-600" />
+            </div>
+            <h3 className="text-lg font-black text-accent mb-2">Bank Transfer</h3>
+            <p className="text-sm text-accent/70 font-medium mb-6 flex-grow">
+              Send money to any participating bank or e-wallet via InstaPay or PESONet.
+            </p>
+            <div className="flex items-center text-emerald-600 font-bold text-sm">
+              Send Funds <ArrowRightIcon className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+        </Link>
 
-          <Input
-            label="To Recipient Account"
-            placeholder="Enter account number"
-            value={recipientAccount}
-            onChange={(e) => setRecipientAccount(e.target.value)}
-            required
-            className="font-mono"
-          />
+        {/* Option 3: QR Ph */}
+        <Link href="/transfers/qr" className="group">
+          <div className="flex flex-col h-full bg-surface border border-secondary/20 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 rounded-2xl p-6 transition-all duration-300">
+            <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <QrCodeIcon className="w-6 h-6 text-indigo-600" />
+            </div>
+            <h3 className="text-lg font-black text-accent mb-2">QR Ph</h3>
+            <p className="text-sm text-accent/70 font-medium mb-6 flex-grow">
+              Scan or upload a national QR Ph code for fast, interoperable retail payments.
+            </p>
+            <div className="flex items-center text-indigo-600 font-bold text-sm">
+              Scan to Pay <ArrowRightIcon className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+        </Link>
 
-          <Input
-            label="Amount (USD)"
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            required
-            className="text-2xl font-black text-accent h-14"
-          />
+      </div>
 
-          <Input
-            label="Memo (Optional)"
-            placeholder="What is this for?"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-
-          <Button type="submit" className="w-full mt-4 py-3.5 text-lg shadow-xl shadow-accent/10">
-            Review Details
-          </Button>
-        </form>
-      </Card>
     </div>
   );
 }

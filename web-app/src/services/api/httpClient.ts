@@ -40,3 +40,28 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
 
   return response.json() as Promise<T>;
 }
+
+export const httpClient = {
+  get: async <T>(url: string, options?: RequestOptions): Promise<T> => {
+    return apiFetch<T>(url, { ...options, method: "GET" });
+  },
+  post: async <T>(url: string, body?: any, options?: RequestOptions): Promise<T> => {
+    return apiFetch<T>(url, {
+      ...options,
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  },
+  put: async <T>(url: string, body?: any, options?: RequestOptions): Promise<T> => {
+    return apiFetch<T>(url, {
+      ...options,
+      method: "PUT",
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  },
+  delete: async <T>(url: string, options?: RequestOptions): Promise<T> => {
+    return apiFetch<T>(url, { ...options, method: "DELETE" });
+  },
+};
+
+export default httpClient;

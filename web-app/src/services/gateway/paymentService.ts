@@ -1,49 +1,73 @@
-// Pattern: mirrors authService.ts — named object export, calls apiFetch, typed with ApiResponse<T>
-import { apiFetch } from "@/services/api/httpClient";
-import { ApiResponse } from "@/models/ApiResponse";
-import { DynamicQrPayment, PaymentIntent, Refund } from "@/models/GatewayModels";
-import { endpoints } from "@/services/api/endpoints";
+import { CreatePaymentIntentRequest, PaymentIntent, DynamicQrPayment } from '../../models/GatewayModels';
+import { ApiResponse } from '../../models/ApiResponse';
+import { httpClient } from '../api/httpClient';
+
+export interface CheckoutSessionRequest {
+  paymentIntentId: string;
+  amount: number;
+  currency: string;
+  description: string;
+  customerReference: string;
+  successUrl: string;
+  failUrl: string;
+  cancelUrl: string;
+  merchantOrderId: string;
+}
+
+export interface PaymentSessionResponse {
+  paymentIntentId: string;
+  provider: string;
+  checkoutType: 'HOSTED' | 'API';
+  checkoutUrl: string;
+  expiresAt: string;
+  transactionReference: string;
+}
 
 export const paymentService = {
-  listPayments: async (): Promise<ApiResponse<PaymentIntent[]>> => {
-    return apiFetch<ApiResponse<PaymentIntent[]>>(endpoints.gateway.payments.list);
+  // Triggers the ExternalPaymentGateway logic on the backend
+  createCheckoutSession: async (
+    intentId: string,
+    payload: CheckoutSessionRequest
+  ): Promise<ApiResponse<PaymentSessionResponse>> => {
+    return httpClient.post<ApiResponse<PaymentSessionResponse>>(
+      `/gateway/payments/${intentId}/checkout`,
+      payload
+    );
+  },
+
+  getPaymentIntent: async (intentId: string): Promise<ApiResponse<PaymentIntent>> => {
+    return httpClient.get<ApiResponse<PaymentIntent>>(`/gateway/payments/${intentId}`);
   },
 
   getPayment: async (intentId: string): Promise<ApiResponse<PaymentIntent>> => {
-    return apiFetch<ApiResponse<PaymentIntent>>(endpoints.gateway.payments.byId(intentId));
+    return httpClient.get<ApiResponse<PaymentIntent>>(`/gateway/payments/${intentId}`);
   },
 
-  authorizeIntent: async (intentId: string): Promise<ApiResponse<PaymentIntent>> => {
-    return apiFetch<ApiResponse<PaymentIntent>>(endpoints.gateway.payments.authorize(intentId), {
-      method: "POST",
+  createPaymentIntent: async (req: CreatePaymentIntentRequest): Promise<ApiResponse<PaymentSessionResponse>> => {
+    const response = await fetch('/api/proxy/payment-intents', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(req),
     });
+
+    if (!response.ok) {
+      throw new Error('Failed to create payment intent');
+    }
+
+    return response.json();
   },
 
-  captureIntent: async (intentId: string): Promise<ApiResponse<PaymentIntent>> => {
-    return apiFetch<ApiResponse<PaymentIntent>>(endpoints.gateway.payments.capture(intentId), {
-      method: "POST",
-    });
-  },
-
-  refundIntent: async (
-    intentId: string,
-    amount: number,
-    reason: string
-  ): Promise<ApiResponse<Refund>> => {
-    return apiFetch<ApiResponse<Refund>>(endpoints.gateway.payments.refund(intentId), {
-      method: "POST",
-      body: JSON.stringify({ amount, reason }),
-      idempotencyKey: crypto.randomUUID(),
-    });
+  listPayments: async (): Promise<ApiResponse<PaymentIntent[]>> => {
+    return httpClient.get<ApiResponse<PaymentIntent[]>>('/gateway/payments');
   },
 
   generateQr: async (intentId: string): Promise<ApiResponse<DynamicQrPayment>> => {
-    return apiFetch<ApiResponse<DynamicQrPayment>>(endpoints.gateway.qr.generate(intentId), {
-      method: "POST",
-    });
+    return httpClient.post<ApiResponse<DynamicQrPayment>>(`/gateway/qr-payments/generate`, { intentId });
   },
 
-  getQrStatus: async (qrReference: string): Promise<ApiResponse<DynamicQrPayment>> => {
-    return apiFetch<ApiResponse<DynamicQrPayment>>(endpoints.gateway.qr.status(qrReference));
-  },
+  getQrStatus: async (qrRef: string): Promise<ApiResponse<DynamicQrPayment>> => {
+    return httpClient.get<ApiResponse<DynamicQrPayment>>(`/gateway/qr-payments/${qrRef}`);
+  }
 };

@@ -1,5 +1,3 @@
-"use client";
-
 import { ApiKeyManager } from "@/components/api/ApiKeyManager";
 import { ApiReferenceViewer } from "@/components/docs/ApiReferenceViewer";
 import { env } from "@/config/env";
@@ -37,7 +35,7 @@ export default function ApiGatewayPage() {
         </p>
 
         {/* This single component replaces the entire DomainLibrary! */}
-        <ApiReferenceViewer specUrl={env.openApiSpecUrl} />
+        <ApiReferenceViewer specUrl={env.openApiSpecUrl || ""} />
       </div>
 
     </div>
