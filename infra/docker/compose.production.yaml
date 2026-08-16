@@ -1,0 +1,21 @@
+services:
+  # In production, we ONLY expose the Nginx gateway ports.
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"
+
+  backend:
+    environment:
+      APP_ENV: production
+    # No exposed ports; accessed purely via Nginx
+    # No source bind mounts; the container runs the compiled bytecode
+
+  web-app:
+    environment:
+      NODE_ENV: production
+    # No exposed ports; accessed purely via Nginx
+
+  database:
+    # No exposed ports; the database is completely isolated on the internal app-net
+    ports: []
