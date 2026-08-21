@@ -3,6 +3,7 @@
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { PasskeyAuthorization } from '@/components/payments/PasskeyAuthorization';
+import ExternalPaymentRedirect from '@/components/payments/ExternalPaymentRedirect';
 import { CreatePaymentIntentRequest } from '@/models/GatewayModels';
 import { paymentService } from '@/services/gateway/paymentService';
 import { formatCurrency } from '@/utils/formatters';
@@ -25,17 +26,20 @@ export default function ExternalPaymentReviewPage() {
         }
     }, [router]);
 
+    const [redirectUrl, setRedirectUrl] = useState('');
+    const [txRef, setTxRef] = useState('');
+
     const handlePasskeySuccess = async () => {
         if (!draft) return;
         try {
             const response = await paymentService.createPaymentIntent(draft);
             if (response.success && response.data) {
-                // Clear draft and move to redirect stage
+                // Clear draft and handle redirect securely without exposing it in URL params
                 sessionStorage.removeItem('draft_external_payment');
                 const { transactionReference, checkoutUrl } = response.data;
-                router.push(
-                    `/transactions/external-payment/redirect?ref=${transactionReference}&url=${encodeURIComponent(checkoutUrl)}`
-                );
+                
+                setTxRef(transactionReference);
+                setRedirectUrl(checkoutUrl);
             } else {
                 setError(response.message || 'Failed to initialize payment gateway.');
                 setIsAuthorizing(false);
@@ -47,6 +51,17 @@ export default function ExternalPaymentReviewPage() {
     };
 
     if (!draft) return null;
+
+    if (redirectUrl) {
+        return (
+            <div className="max-w-2xl mx-auto p-4">
+                <ExternalPaymentRedirect
+                    transactionReference={txRef}
+                    checkoutUrl={redirectUrl}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-2xl mx-auto p-4">

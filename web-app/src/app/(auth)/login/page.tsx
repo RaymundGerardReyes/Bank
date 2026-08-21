@@ -60,8 +60,9 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 fill-mode-both">
+          <form suppressHydrationWarning onSubmit={handleSubmit} className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 fill-mode-both">
             <Input
+              suppressHydrationWarning
               label="Work Email Address"
               type="email"
               value={email}
@@ -78,6 +79,7 @@ export default function LoginPage() {
                 </Link>
               </div>
               <input
+                suppressHydrationWarning
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -87,7 +89,7 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button type="submit" isLoading={loading} className="w-full mt-2 py-3.5 text-lg shadow-xl shadow-accent/10">
+            <Button suppressHydrationWarning type="submit" isLoading={loading} className="w-full mt-2 py-3.5 text-lg shadow-xl shadow-accent/10">
               Sign In to Dashboard
             </Button>
           </form>

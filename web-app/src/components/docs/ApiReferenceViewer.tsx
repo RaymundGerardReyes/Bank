@@ -50,7 +50,7 @@ export const ApiReferenceViewer: React.FC<ApiReferenceViewerProps> = ({ specUrl 
       <body>
         <script
           id="api-reference"
-          data-url="${specUrl}">
+          data-url="${specUrl.startsWith("http") ? new URL(specUrl).pathname : specUrl}">
         </script>
         <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
       </body>

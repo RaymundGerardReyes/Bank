@@ -5,6 +5,7 @@ import { Button } from "../common/Button";
 import { FingerprintIcon } from "lucide-react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { transactionService } from "@/services/transaction/transactionService";
+import { env } from "@/config/env";
 
 interface PasskeyAuthorizationProps {
   amount?: number;
@@ -62,10 +63,13 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
     setError(null);
 
     try {
+      const rpIdToUse = env.rpId || (typeof window !== "undefined" ? window.location.hostname : "");
+
       // 1. Request cryptographic challenge
       const challengeOptions = await transactionService.createTransactionChallenge({
         amount,
-        recipient
+        recipient,
+        ...(rpIdToUse ? { rpId: rpIdToUse } : {})
       });
 
       // 2. Invoke platform authenticator

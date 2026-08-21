@@ -1,4 +1,5 @@
 import { ApiKeyManager } from "@/components/api/ApiKeyManager";
+import { WebhookManager } from "@/components/api/WebhookManager";
 import { ApiReferenceViewer } from "@/components/docs/ApiReferenceViewer";
 import { env } from "@/config/env";
 
@@ -24,6 +25,9 @@ export default function ApiGatewayPage() {
 
       {/* API Key Management */}
       <ApiKeyManager />
+      
+      {/* Webhook Management */}
+      <WebhookManager />
 
       <div className="w-full h-px bg-secondary/30 my-2"></div>
 

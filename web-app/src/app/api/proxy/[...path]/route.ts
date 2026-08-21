@@ -25,6 +25,7 @@ async function proxyRequest(request: Request, pathArray: string[]) {
 
   const headers: Record<string, string> = {
     "X-Request-Id": requestId,
+    "X-Internal-BFF-Key": env.internalBffApiKey,
     ...(token ? { "Authorization": `Bearer ${token}` } : {})
   };
   

@@ -26,7 +26,8 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
     ? `/api${cleanEndpoint}` 
     : `/api/proxy${cleanEndpoint}`;
 
-  const url = endpoint.startsWith("http") ? endpoint : `${env.appUrl}${apiPath}`;
+  const baseUrl = typeof window !== "undefined" ? "" : env.appUrl;
+  const url = endpoint.startsWith("http") ? endpoint : `${baseUrl}${apiPath}`;
 
   const response = await fetch(url, {
     ...restOptions,

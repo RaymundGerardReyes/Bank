@@ -15,6 +15,7 @@ export async function POST(request: Request) {
       headers: {
         "Content-Type": "application/json",
         "X-Request-Id": requestId,
+        "X-Internal-BFF-Key": env.internalBffApiKey,
       },
       body: JSON.stringify(payload),
     });

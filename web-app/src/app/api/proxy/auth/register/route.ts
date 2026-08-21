@@ -7,7 +7,11 @@ export async function POST(request: Request) {
         const requestId = crypto.randomUUID();
         const response = await fetch(`${env.backendApiBaseUrl}/auth/register`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "X-Request-Id": requestId },
+            headers: { 
+                "Content-Type": "application/json", 
+                "X-Request-Id": requestId,
+                "X-Internal-BFF-Key": env.internalBffApiKey
+            },
             body: JSON.stringify(body),
         });
         const data = await response.json();
