@@ -151,7 +151,7 @@ public class PaymentStateMachineService {
         auditEventPublisher.publishEvent("PAYMENT_FAILED_REVERTED", "SYSTEM", "Payment failed, hold released for intent " + intent.getIntentId(), intent.getIntentId());
     }
     @Transactional
-    public void processAttemptOutcome(String providerReference, String newStatus, String gatewayResponse) {
+    public void processAttemptOutcome(String providerReference, String newStatus, java.math.BigDecimal webhookAmount, String webhookCurrency, String gatewayResponse) {
         log.info("[STATE MACHINE] Processing outcome for providerRef: {} -> {}", providerReference, newStatus);
 
         PaymentAttempt attempt = attemptRepository.findByProviderReference(providerReference)
@@ -169,11 +169,11 @@ public class PaymentStateMachineService {
 
         // 2. Safely propagate to the 2D Institution Session state
         if (attempt.getPaymentSessionId() != null && !attempt.getPaymentSessionId().isBlank()) {
-            propagateAttemptResultToSession(attempt);
+            propagateAttemptResultToSession(attempt, webhookAmount, webhookCurrency);
         }
     }
 
-    private void propagateAttemptResultToSession(PaymentAttempt attempt) {
+    private void propagateAttemptResultToSession(PaymentAttempt attempt, java.math.BigDecimal webhookAmount, String webhookCurrency) {
         log.info("[STATE MACHINE] Propagating attempt {} result ({}) to session {}", 
                 attempt.getAttemptId(), attempt.getStatus(), attempt.getPaymentSessionId());
 
@@ -189,6 +189,21 @@ public class PaymentStateMachineService {
         }
 
         if ("SUCCESS".equalsIgnoreCase(attempt.getStatus())) {
+            // Amount Reconciliation Guard
+            if (webhookAmount != null && webhookCurrency != null) {
+                if (session.getAmount().compareTo(webhookAmount) != 0 || !session.getCurrency().equalsIgnoreCase(webhookCurrency)) {
+                    log.error("[STATE MACHINE] Amount/Currency mismatch for session {}. Expected: {} {}, Received: {} {}. Suspending payment.",
+                            session.getSessionId(), session.getAmount(), session.getCurrency(), webhookAmount, webhookCurrency);
+                    
+                    // Do not mark as SUCCESS if amounts don't match. Require manual review.
+                    // Depending on policy, this might transition to a REVIEW state or just remain ACTIVE/FAILED.
+                    // For now, we revert attempt to a safe state to prevent ledger updates.
+                    attempt.setStatus("PROCESSING");
+                    attemptRepository.save(attempt);
+                    throw new BusinessException(ErrorCode.INVALID_REQUEST, "Webhook amount does not match expected session amount. Payment suspended.");
+                }
+            }
+
             session.setStatus(PaymentSessionStatus.SUCCESS);
             session.setCompletedAt(LocalDateTime.now());
             sessionRepository.save(session);

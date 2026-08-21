@@ -17,9 +17,13 @@ import com.company.banking.transaction.application.TransactionAuthorizationServi
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
 import java.util.UUID;
 
 import com.company.banking.payment.domain.PaymentIntentStatus;
@@ -29,11 +33,20 @@ import com.company.banking.payment.domain.PaymentIntentStatus;
 @Slf4j
 public class PaymentIntentOrchestrationService {
 
+    private static final List<String> ALLOWED_PROVIDERS = List.of(
+        "paymongo.com", 
+        "paynamics.net", 
+        "maya.ph"
+    );
+
     private final PaymentIntentJpaRepository paymentIntentRepository;
     private final PaymentAttemptJpaRepository paymentAttemptRepository;
     private final ExternalPaymentGateway externalPaymentGateway;
     private final AccountPersistencePort accountPersistencePort;
     private final TransactionAuthorizationService transactionAuthorizationService; 
+
+    @Value("${payment.frontend.base-url:http://localhost:3000}")
+    private String frontendBaseUrl;
 
     @Transactional
     public PaymentSessionResponse createAndInitiatePayment(Long merchantId, CreatePaymentIntentRequest request) {
@@ -72,12 +85,17 @@ public class PaymentIntentOrchestrationService {
                 .currency(intent.getCurrency())
                 .description(intent.getDescription())
                 .merchantOrderId(request.getMerchantReference())
-                .successUrl("http://localhost:3000/payments/" + intent.getIntentId() + "/result") 
-                .failUrl("http://localhost:3000/payments/" + intent.getIntentId() + "/error")
-                .cancelUrl("http://localhost:3000/payments/" + intent.getIntentId())
+                .successUrl(frontendBaseUrl + "/transactions/external-payment/status?intentId=" + intent.getIntentId()) 
+                .failUrl(frontendBaseUrl + "/transactions/external-payment/status?intentId=" + intent.getIntentId())
+                .cancelUrl(frontendBaseUrl + "/transactions/external-payment/status?intentId=" + intent.getIntentId())
                 .build();
 
         PaymentSession session = externalPaymentGateway.createCheckout(checkoutReq);
+
+        if (!isSafeCheckoutUrl(session.getCheckoutUrl())) {
+            log.error("SECURITY VIOLATION: Provider returned an untrusted checkout URL: {}", session.getCheckoutUrl());
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "Invalid or untrusted payment gateway checkout URL");
+        }
 
         PaymentAttempt attempt = PaymentAttempt.builder()
                 .attemptId(UUID.randomUUID().toString())
@@ -105,9 +123,38 @@ public class PaymentIntentOrchestrationService {
                 .build();
     }
 
+    private boolean isSafeCheckoutUrl(String urlString) {
+        if (urlString == null || !urlString.startsWith("https://")) {
+            log.warn("URL rejected: Not HTTPS or is null.");
+            return false;
+        }
+
+        try {
+            URI uri = new URI(urlString);
+            String host = uri.getHost();
+
+            if (host == null) {
+                return false;
+            }
+
+            return ALLOWED_PROVIDERS.stream().anyMatch(domain -> 
+                host.equals(domain) || host.endsWith("." + domain)
+            );
+
+        } catch (URISyntaxException e) {
+            log.warn("URL rejected: Malformed syntax.");
+            return false;
+        }
+    }
+
     @Transactional(readOnly = true)
-    public PaymentIntent getPaymentIntent(String intentId) {
-        return getIntent(intentId);
+    public PaymentIntent getPaymentIntent(String intentId, Long merchantId) {
+        PaymentIntent intent = getIntent(intentId);
+        if (!intent.getMerchantId().equals(merchantId)) {
+            log.warn("Unauthorized access attempt to Payment Intent {} by merchantId {}", intentId, merchantId);
+            throw new BusinessException(ErrorCode.FORBIDDEN, "Not authorized to access this payment intent");
+        }
+        return intent;
     }
 
     @Transactional(readOnly = true)

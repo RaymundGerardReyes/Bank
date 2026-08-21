@@ -29,3 +29,44 @@ logging:
     com.company.banking: DEBUG
     org.springframework.security: DEBUG
     org.hibernate.SQL: DEBUG
+
+# ============================================================
+# Payment Gateway Configuration (Phase G)
+# ============================================================
+# Active provider is resolved at runtime by payment.provider.
+# The PaymentRouter selects the correct ExternalPaymentGateway bean.
+# Use PAYMONGO for PayMongo Hosted Checkout.
+# Use PAYNAMICS for the existing Paynamics integration.
+# ============================================================
+
+payment:
+  provider: ${PAYMENT_PROVIDER:paymongo}
+
+  reconciliation:
+    cron: ${PAYMENT_RECONCILIATION_CRON:0 0/15 * * * ?}
+    session-cron: ${PAYMENT_SESSION_RECONCILIATION_CRON:0 0/30 * * * ?}
+
+  # ----------------------------------------------------------
+  # PayMongo Hosted Checkout
+  # ----------------------------------------------------------
+  # PAYMENT_GATEWAY_SECRET_KEY    → your sk_test_... or sk_live_... key
+  #                                 Used when YOUR SERVER calls the PayMongo API.
+  # PAYMENT_GATEWAY_WEBHOOK_SECRET → the signing secret for THIS webhook endpoint.
+  #                                 NOT the same as the secret key above.
+  #                                 Generated per-endpoint in the PayMongo dashboard.
+  # ----------------------------------------------------------
+  paymongo:
+    secret-key:      ${PAYMENT_GATEWAY_SECRET_KEY:}
+    webhook-secret:  ${PAYMENT_GATEWAY_WEBHOOK_SECRET:}
+    base-url:        ${PAYMONGO_BASE_URL:https://api.paymongo.com}
+    sandbox:         ${PAYMONGO_SANDBOX:true}
+
+  # ----------------------------------------------------------
+  # Paynamics (existing)
+  # ----------------------------------------------------------
+  paynamics:
+    merchant-id:       ${PAYNAMICS_MERCHANT_ID:}
+    secret-key:        ${PAYNAMICS_SECRET_KEY:}
+    checkout-base-url: ${PAYNAMICS_CHECKOUT_URL:https://sandbox.paynamics.com/checkout}
+    webhook-secret:    ${PAYNAMICS_WEBHOOK_SECRET:}
+    sandbox:           ${PAYNAMICS_SANDBOX:true}

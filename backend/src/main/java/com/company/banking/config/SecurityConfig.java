@@ -2,6 +2,7 @@ package com.company.banking.config;
 
 import com.company.banking.apigateway.security.ApiKeyAuthenticationFilter;
 import com.company.banking.security.jwt.JwtAuthenticationFilter;
+import com.company.banking.web.filter.BffIdentityFilter;
 import com.company.banking.web.filter.CorrelationIdFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -22,6 +23,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final ApiKeyAuthenticationFilter apiKeyAuthFilter;
     private final CorrelationIdFilter correlationIdFilter;
+    private final BffIdentityFilter bffIdentityFilter;
     private final AuthenticationProvider authenticationProvider;
 
     @Bean
@@ -36,6 +38,7 @@ public class SecurityConfig {
                 // 4. REMOVED: /v3/api-docs/** (Global dump is now blocked!)
                 .requestMatchers(
                         "/api/v1/auth/**", 
+                        "/api/v1/webhooks/**",
                         "/v3/api-docs/developer-gateway", 
                         "/v3/api-docs/developer-gateway/**", 
                         "/actuator/health",
@@ -50,6 +53,7 @@ public class SecurityConfig {
             )
             .authenticationProvider(authenticationProvider)
             .addFilterBefore(correlationIdFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(bffIdentityFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

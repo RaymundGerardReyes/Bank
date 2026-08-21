@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(name = "payment.provider", havingValue = "maya")
 @Slf4j
-public class MayaGateway implements ExternalPaymentGateway {
+public class MayaGateway implements ExternalPaymentGateway, PaymentWebhookVerifier {
 
     @Override
     public PaymentSession createCheckout(ExternalCheckoutRequest request) {

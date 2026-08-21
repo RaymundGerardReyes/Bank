@@ -21,6 +21,11 @@ public class PaymentSession {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
     @Column(name = "session_id", unique = true, nullable = false)
     private String sessionId;
 

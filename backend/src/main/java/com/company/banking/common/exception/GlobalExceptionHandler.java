@@ -37,6 +37,23 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
+            org.springframework.dao.DataIntegrityViolationException ex, 
+            jakarta.servlet.http.HttpServletRequest request) {
+        
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        String path = request.getRequestURI();
+        
+        if (path.contains("/webhooks/")) {
+            ApiResponse<Void> response = ApiResponse.success(null, "Duplicate webhook acknowledged.");
+            return ResponseEntity.ok(response);
+        }
+
+        ApiResponse<Void> response = ApiResponse.error("A transaction with this Idempotency Key is already processing.", "CONFLICT", correlationId);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);

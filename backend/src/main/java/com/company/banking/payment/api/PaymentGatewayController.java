@@ -61,8 +61,13 @@ public class PaymentGatewayController {
 
     // NEW ENDPOINT: Phase 4
     @GetMapping("/intents/{intentId}")
-    public ResponseEntity<ApiResponse<PaymentIntent>> getPaymentIntent(@PathVariable String intentId) {
-        PaymentIntent intent = orchestrationService.getPaymentIntent(intentId);
+    public ResponseEntity<ApiResponse<PaymentIntent>> getPaymentIntent(
+            @PathVariable String intentId,
+            @RequestHeader("X-Client-Id") String clientId) {
+        
+        Long merchantId = extractMerchantId(clientId);
+        PaymentIntent intent = orchestrationService.getPaymentIntent(intentId, merchantId);
+        
         return ResponseEntity.ok(ApiResponse.success(intent, "Payment Intent retrieved", MDC.get(CorrelationIdFilter.MDC_KEY)));
     }
 

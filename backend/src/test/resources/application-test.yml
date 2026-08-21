@@ -12,6 +12,13 @@ spring:
   flyway:
     enabled: false
 
+payment:
+  provider: paymongo
+  paymongo:
+    secret-key: sk_test_mock_123456789
+    webhook-secret: whsec_test_secret_123456789
+    sandbox: true
+
 logging:
   level:
     root: INFO

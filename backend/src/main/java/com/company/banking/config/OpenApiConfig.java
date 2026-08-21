@@ -5,12 +5,23 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
 import org.springdoc.core.models.GroupedOpenApi;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Configuration
 public class OpenApiConfig {
+
+    @Value("${platform.domain:${PLATFORM_DOMAIN:}}")
+    private String platformDomain;
+
+    @Value("${server.port:8080}")
+    private String serverPort;
 
     // --- ENTERPRISE FIX: Whitelist ONLY External Banking Domains ---
     @Bean
@@ -36,7 +47,16 @@ public class OpenApiConfig {
     @Bean
     public OpenAPI customOpenAPI() {
         final String securitySchemeName = "bearerAuth";
-        return new OpenAPI()
+
+        List<Server> servers = new ArrayList<>();
+        if (platformDomain != null && !platformDomain.isBlank()) {
+            servers.add(new Server().url("https://" + platformDomain).description("Live Secure Gateway"));
+            servers.add(new Server().url("http://" + platformDomain).description("Local Dev Gateway"));
+        } else {
+            servers.add(new Server().url("http://localhost:" + serverPort).description("Local Host Gateway"));
+        }
+
+        OpenAPI openAPI = new OpenAPI()
                 .info(new Info()
                         .title("NovaBank Enterprise Developer Gateway")
                         .version("1.0.0")
@@ -49,5 +69,11 @@ public class OpenApiConfig {
                                         .type(SecurityScheme.Type.HTTP)
                                         .scheme("bearer")
                                         .bearerFormat("JWT")));
+
+        if (!servers.isEmpty()) {
+            openAPI.servers(servers);
+        }
+
+        return openAPI;
     }
 }

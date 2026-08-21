@@ -136,7 +136,7 @@ public class PaymentReconciliationService {
 
                 if ("SUCCESS".equals(statusName) || "FAILED".equals(statusName) || "CANCELLED".equals(statusName)) {
                     log.info("[RECONCILIATION] Session {} attempt resolved to {}", session.getSessionId(), statusName);
-                    stateMachineService.processAttemptOutcome(attempt.getProviderReference(), statusName, "SYSTEM_RECONCILIATION");
+                    stateMachineService.processAttemptOutcome(attempt.getProviderReference(), statusName, null, null, "SYSTEM_RECONCILIATION");
                 }
             } catch (Exception e) {
                 log.error("[RECONCILIATION] Failed to reconcile session {}", session.getSessionId(), e);
