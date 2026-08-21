@@ -7,17 +7,42 @@ services:
     image: nginx:alpine
     container_name: banking_gateway
     restart: unless-stopped
+    environment:
+      - PLATFORM_DOMAIN=${PLATFORM_DOMAIN:?PLATFORM_DOMAIN must be defined}
+      - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
     volumes:
-      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/nginx.conf:/etc/nginx/templates/nginx.conf.template:ro
     ports:
-      - "8080:80"
+      - "${NGINX_HTTP_PORT:?NGINX_HTTP_PORT must be defined}:80"
     depends_on:
       backend:
         condition: service_healthy
       web-app:
         condition: service_started
     networks:
+      app-net:
+        aliases:
+          - soc-nginx-proxy
+
+  # ==========================================================
+  # CLOUDFLARE ZERO TRUST TUNNEL
+  # ==========================================================
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: banking_cloudflared_edge
+    restart: unless-stopped
+    networks:
       - app-net
+    user: "65532:65532"
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+      - TUNNEL_EDGE_BIND_ADDRESS=0.0.0.0
+      - TUNNEL_TRANSPORT_PROTOCOL=http2
+      - TUNNEL_ORIGIN_SERVER_NAME=banking_gateway
+    depends_on:
+      nginx:
+        condition: service_started
+    command: tunnel --no-autoupdate --retries 5 --grace-period 15s run
 
   # ==========================================================
   # BACKEND (Java Spring Boot)
@@ -30,8 +55,6 @@ services:
     restart: unless-stopped
     expose:
       - "8080"
-    ports:
-      - "8082:8080"
     environment:
       APP_ENV: ${APP_ENV:-production}
       DB_HOST: database
