@@ -62,5 +62,25 @@ export const checkoutService = {
             `/payment-sessions/${sessionId}/status`
         );
         return res.data;
+    },
+
+    // Retrieves the safe, sanitized public session data
+    async getSessionDetails(sessionId: string) {
+        return httpClient.get<ApiResponse<any>>(`/v1/checkout/sessions/${sessionId}`);
+    },
+
+    // Advances state from ACTIVE -> PAYMENT_PENDING
+    async selectPaymentMethod(sessionId: string, payload: { paymentMethod: string }) {
+        return httpClient.post<ApiResponse<any>>(`/v1/checkout/sessions/${sessionId}/payment-method`, payload);
+    },
+
+    // Advances state from PAYMENT_PENDING -> AUTHORIZED
+    async authorizeAccount(sessionId: string, payload: { customerAccountNumber: string }) {
+        return httpClient.post<ApiResponse<any>>(`/v1/checkout/sessions/${sessionId}/authorize`, payload);
+    },
+
+    // Advances state from AUTHORIZED -> PAID (Triggers the actual financial capture)
+    async confirmPayment(sessionId: string) {
+        return httpClient.post<ApiResponse<any>>(`/v1/checkout/sessions/${sessionId}/confirm`);
     }
 };

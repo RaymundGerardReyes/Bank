@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Card } from "@/components/common/Card";
+import { Card } from "@/components/ui/Card";
 
 export default function NotFoundPage() {
   return (
