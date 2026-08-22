@@ -1,70 +1,102 @@
+import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/config/env";
-import { NextResponse } from "next/server";
 
-async function proxyRequest(request: Request, pathArray: string[]) {
-  const cookieHeader = request.headers.get("cookie") || "";
-  const tokenMatch = cookieHeader.match(/bank_session=([^;]+)/);
-  const token = tokenMatch ? tokenMatch[1] : null;
+/**
+ * Unified Internal Forwarding Function
+ * Serves as the strict boundary between the Next.js edge and the internal Spring Boot API.
+ */
+async function forwardRequest(
+  request: NextRequest, 
+  { params }: { params: Promise<{ path: string[] }> }
+) {
+  // 1. Resolve route params dynamically
+  const resolvedParams = await params;
+  const pathString = resolvedParams.path.join("/");
   
-  const requestId = request.headers.get("X-Request-Id") || crypto.randomUUID();
-  const idempotencyKey = request.headers.get("Idempotency-Key");
+  // 2. Construct the internal URL, preserving the query string
+  const searchParams = request.nextUrl.search;
+  const targetUrl = `${env.backendInternalUrl}/api/v1/${pathString}${searchParams}`;
 
-  const method = request.method;
-  let body;
-  if (method !== "GET" && method !== "HEAD") {
-    body = await request.text().catch(() => null);
-  }
+  // 3. Allowlist safe headers (Strict Header Policy)
+  const headers = new Headers();
 
-  const backendPath = pathArray.join("/");
-  
-  // Extract query string
-  const url = new URL(request.url);
-  const searchParams = url.search;
-  
-  const targetUrl = `${env.backendApiBaseUrl}/${backendPath}${searchParams}`;
+  // A. Safe Standard Headers
+  const contentType = request.headers.get("content-type");
+  if (contentType) headers.set("content-type", contentType);
 
-  const headers: Record<string, string> = {
-    "X-Request-Id": requestId,
-    "X-Internal-BFF-Key": env.internalBffApiKey,
-    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-  };
-  
-  if (idempotencyKey) {
-    headers["Idempotency-Key"] = idempotencyKey;
-  }
-  if (body) {
-    headers["Content-Type"] = "application/json";
-  }
+  const accept = request.headers.get("accept");
+  if (accept) headers.set("accept", accept);
 
+  // B. Authentication State
+  const cookie = request.headers.get("cookie");
+  if (cookie) headers.set("cookie", cookie);
+
+  // C. BFF Identity Verification
+  // This satisfies Spring Boot's BffIdentityFilter requirements
+  headers.set("X-Internal-BFF-Key", env.internalBffApiKey);
+
+  // D. Tracing and Infrastructure Forwarding (From Nginx)
+  const requestId = request.headers.get("x-request-id") || crypto.randomUUID();
+  headers.set("x-request-id", requestId);
+
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) headers.set("x-forwarded-for", forwardedFor);
+
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  if (forwardedProto) headers.set("x-forwarded-proto", forwardedProto);
+
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) headers.set("x-real-ip", realIp);
+
+  // 4. Preserve request body where applicable
+  const hasBody = ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
+  const body = hasBody ? await request.text() : undefined;
+
+  // 5. Call the backend over the internal Docker network
   try {
-    const res = await fetch(targetUrl, {
-      method,
+    const backendResponse = await fetch(targetUrl, {
+      method: request.method,
       headers,
-      body: body ? body : undefined,
+      body,
+      cache: "no-store", // Ensure proxy requests are never heavily cached
     });
-    const data = await res.json().catch(() => ({}));
-    return NextResponse.json(data, { status: res.status });
-  } catch (err) {
-    return NextResponse.json({ success: false, message: "Backend proxy error" }, { status: 502 });
+
+    // 6. Return an intentionally controlled response
+    const responseData = await backendResponse.text();
+    
+    const responseHeaders = new Headers();
+    const backendContentType = backendResponse.headers.get("content-type");
+    if (backendContentType) {
+      responseHeaders.set("content-type", backendContentType);
+    }
+
+    return new NextResponse(responseData, {
+      status: backendResponse.status,
+      headers: responseHeaders,
+    });
+    
+  } catch (error) {
+    console.error(`[BFF Proxy Error] Failed to reach internal backend at ${targetUrl}:`, error);
+    return NextResponse.json(
+      { success: false, message: "Internal Gateway Error" },
+      { status: 502 }
+    );
   }
 }
 
-export async function GET(request: Request, props: { params: Promise<{ path: string[] }> }) {
-  const params = await props.params;
-  return proxyRequest(request, params.path);
+// 7. Only expose the methods your backend actually needs
+export async function GET(req: NextRequest, props: { params: Promise<{ path: string[] }> }) { 
+  return forwardRequest(req, props); 
 }
-
-export async function POST(request: Request, props: { params: Promise<{ path: string[] }> }) {
-  const params = await props.params;
-  return proxyRequest(request, params.path);
+export async function POST(req: NextRequest, props: { params: Promise<{ path: string[] }> }) { 
+  return forwardRequest(req, props); 
 }
-
-export async function PUT(request: Request, props: { params: Promise<{ path: string[] }> }) {
-  const params = await props.params;
-  return proxyRequest(request, params.path);
+export async function PUT(req: NextRequest, props: { params: Promise<{ path: string[] }> }) { 
+  return forwardRequest(req, props); 
 }
-
-export async function DELETE(request: Request, props: { params: Promise<{ path: string[] }> }) {
-  const params = await props.params;
-  return proxyRequest(request, params.path);
+export async function PATCH(req: NextRequest, props: { params: Promise<{ path: string[] }> }) { 
+  return forwardRequest(req, props); 
+}
+export async function DELETE(req: NextRequest, props: { params: Promise<{ path: string[] }> }) { 
+  return forwardRequest(req, props); 
 }
