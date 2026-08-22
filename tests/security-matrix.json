@@ -1,0 +1,227 @@
+{
+  "info": {
+    "name": "Banking Security Hardening Matrix",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. URL Allowlisting Gates",
+      "item": [
+        {
+          "name": "Block Untrusted Domain",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status is 400 or 500 on untrusted host', function () {",
+                "    pm.expect(pm.response.code).to.be.oneOf([400, 500]);",
+                "});",
+                "pm.test('Untrusted URL is omitted from response', function () {",
+                "    pm.expect(pm.response.json().checkoutUrl).to.be.undefined;",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" },
+              { "key": "Idempotency-Key", "value": "url-test-{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 500.00,\n    \"currency\": \"PHP\",\n    \"simulatedProviderUrl\": \"https://evil-paymongo.com/checkout\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/gateway/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "gateway", "payments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Idempotency & Replay Gates",
+      "item": [
+        {
+          "name": "Initial Transfer Execution",
+          "event": [{
+            "listen": "prerequest",
+            "script": {
+              "exec": ["pm.environment.set('sharedIdemKey', 'idem-' + Date.now());"],
+              "type": "text/javascript"
+            }
+          }, {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('First execution succeeds (200 OK)', function () {",
+                "    pm.response.to.have.status(200);",
+                "    pm.environment.set('savedTxRef', pm.response.json().data.transactionReference);",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" },
+              { "key": "Idempotency-Key", "value": "{{sharedIdemKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"sourceAccountNumber\": \"SRC-1001\",\n    \"destinationAccountNumber\": \"DST-1002\",\n    \"amount\": 100.00,\n    \"description\": \"Idempotency Verification\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transfers/internal",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transfers", "internal"]
+            }
+          }
+        },
+        {
+          "name": "Replay Transfer with Same Key (Cached 200 OK)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Duplicate returns 200 OK and matches original reference', function () {",
+                "    pm.response.to.have.status(200);",
+                "    pm.expect(pm.response.json().data.transactionReference).to.eql(pm.environment.get('savedTxRef'));",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" },
+              { "key": "Idempotency-Key", "value": "{{sharedIdemKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"sourceAccountNumber\": \"SRC-1001\",\n    \"destinationAccountNumber\": \"DST-1002\",\n    \"amount\": 100.00,\n    \"description\": \"Idempotency Verification\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transfers/internal",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transfers", "internal"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Webhook Pipeline Gates",
+      "item": [
+        {
+          "name": "Reject Forged Webhook Signature",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Invalid signature returns 401 Unauthorized', function () {",
+                "    pm.response.to.have.status(401);",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Paymongo-Signature", "value": "t=1700000000,te=invalid_signature_hash" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id\": \"evt_tampered_123\",\n    \"type\": \"payment.paid\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/webhooks/payment/paymongo",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "webhooks", "payment", "paymongo"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. BFF Boundary Gates",
+      "item": [
+        {
+          "name": "Block Direct API Access Missing BFF Secret",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Direct access rejected with 401 Unauthorized', function () {",
+                "    pm.response.to.have.status(401);",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "accounts"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Race Condition Simulation",
+      "item": [
+        {
+          "name": "Simultaneous Transfer Attack",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Concurrent request handled safely (200 OK)', function () {",
+                "    pm.response.to.have.status(200);",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" },
+              { "key": "Idempotency-Key", "value": "{{raceIdempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"sourceAccountNumber\": \"SRC-1001\",\n    \"destinationAccountNumber\": \"DST-1002\",\n    \"amount\": 50.00,\n    \"description\": \"Simultaneous Race Attack\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transfers/internal",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transfers", "internal"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
