@@ -6,16 +6,24 @@
   "scripts": {
     "env:install": "npm install -g @dotenvx/dotenvx",
     "env:check": "node scripts/check-env.mjs",
-
-    "dev:db":      "bash -c \"cd backend && docker-compose up -d postgres\"",
+    "dev:db": "bash -c \"cd infra/docker && docker compose -f compose.yaml -f compose.dev.yaml up -d database\"",
     "dev:backend": "dotenvx run --env-file=.env -- bash -c \"cd backend && ./gradlew.bat bootRun\"",
-    "dev:web":     "dotenvx run --env-file=.env -- bash -c \"cd web-app && next dev -p 3000\"",
-    "dev:mobile":  "dotenvx run --env-file=.env -- bash -c \"cd ExpoBankingApp && npx expo start\"",
-
-    "dev": "npm run env:check && npm run dev:db && concurrently --names \"backend,web,mobile\" -c \"blue,green,yellow\" \"npm run dev:backend\" \"npm run dev:web\" \"npm run dev:mobile\""
+    "dev:web": "npm run dev --prefix web-app",
+    "dev:mobile": "npm run start --prefix ExpoBankingApp",
+    "dev": "npm run env:check && npm run dev:db && concurrently --names \"backend,web,mobile\" -c \"blue,green,yellow\" \"npm run dev:backend\" \"npm run dev:web\" \"npm run dev:mobile\"",
+    "docker:build": "dotenvx run --env-file=.env -- bash -c \"cd infra/docker && docker compose -f compose.yaml -f compose.dev.yaml build\"",
+    "docker:up": "dotenvx run --env-file=.env -- bash -c \"cd infra/docker && docker compose -f compose.yaml -f compose.dev.yaml up -d --build\"",
+    "docker:down": "dotenvx run --env-file=.env -- bash -c \"cd infra/docker && docker compose -f compose.yaml -f compose.dev.yaml down\"",
+    "docker:logs": "dotenvx run --env-file=.env -- bash -c \"cd infra/docker && docker compose -f compose.yaml -f compose.dev.yaml logs -f\"",
+    "docker:config": "dotenvx run --env-file=.env -- bash -c \"cd infra/docker && docker compose -f compose.yaml -f compose.dev.yaml config\"",
+    "docker:restart": "dotenvx run --env-file=.env -- bash -c \"cd infra/docker && docker compose -f compose.yaml -f compose.dev.yaml restart\"",
+    "docker:prod:up": "dotenvx run --env-file=.env -- bash -c \"cd infra/docker && docker compose -f compose.yaml -f compose.production.yaml up -d --build\"",
+    "docker:prod:down": "bash -c \"cd infra/docker && docker compose -f compose.yaml -f compose.production.yaml down\"",
+    "docker:prod:restart": "dotenvx run --env-file=.env -- bash -c \"cd infra/docker && docker compose -f compose.yaml -f compose.production.yaml restart\""
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.0.0",
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.0",
+    "newman-reporter-htmlextra": "^1.23.1"
   }
 }
