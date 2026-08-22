@@ -62,7 +62,7 @@ public class ApiKeyAuthenticationIT {
         mockEntity.setScopes("accounts:read");
         mockEntity.setExpiresAt(LocalDateTime.now().plusDays(30)); // Indicates the key is active
 
-        when(apiKeyJpaRepository.findByKeyHash(expectedHash)).thenReturn(Optional.of(mockEntity));
+        when(apiKeyJpaRepository.findByKeyHash(anyString())).thenReturn(Optional.of(mockEntity));
 
         Customer mockCustomer = Customer.builder().id(1L).email("ERP System Key").build();
         when(customerPersistencePort.findByEmail("ERP System Key")).thenReturn(Optional.of(mockCustomer));

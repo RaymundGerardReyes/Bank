@@ -205,7 +205,7 @@ public class PaymentWebhookService {
      * Paynamics:  id | transaction_id | reference
      */
     private String extractEventId(JsonNode root, String provider) {
-        if ("PAYMONGO".equals(provider)) {
+        if ("INTERNAL".equals(provider)) {
             JsonNode dataId = root.path("data").path("id");
             if (!dataId.isMissingNode()) return dataId.asText();
         }
@@ -227,7 +227,7 @@ public class PaymentWebhookService {
      * Paynamics:  event_type | type | status
      */
     private String extractEventType(JsonNode root, String provider) {
-        if ("PAYMONGO".equals(provider)) {
+        if ("INTERNAL".equals(provider)) {
             JsonNode type = root.path("data").path("attributes").path("type");
             if (!type.isMissingNode()) return type.asText();
         }
@@ -245,8 +245,11 @@ public class PaymentWebhookService {
      * Paynamics:                  reference | transaction_id | id
      */
     private String extractProviderReference(JsonNode root, String provider) {
-        if ("PAYMONGO".equals(provider)) {
-            // For checkout_session.payment.paid events, the checkout session ID is top-level data.id
+        if ("INTERNAL".equals(provider)) {
+            JsonNode innerDataId = root.path("data").path("attributes").path("data").path("id");
+            if (!innerDataId.isMissingNode() && innerDataId.isTextual()) {
+                return innerDataId.asText();
+            }
             JsonNode dataId = root.path("data").path("id");
             if (!dataId.isMissingNode() && dataId.isTextual()) return dataId.asText();
         }

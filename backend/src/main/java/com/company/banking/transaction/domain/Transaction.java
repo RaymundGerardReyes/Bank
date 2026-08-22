@@ -21,6 +21,9 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    private Long version;
+
     @Column(unique = true, nullable = false)
     private String transactionReference;
 
@@ -52,6 +55,10 @@ public class Transaction {
 
     @Column(name = "scheduled_vam_restriction")
     private String scheduledVamRestriction;
+
+    // --- PHASE 5: Settlement Batch Membership ---
+    @Column(name = "settlement_batch_id")
+    private Long settlementBatchId;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

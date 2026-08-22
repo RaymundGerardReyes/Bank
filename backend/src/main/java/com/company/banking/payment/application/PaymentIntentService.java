@@ -8,6 +8,11 @@ import com.company.banking.payment.domain.PaymentIntent;
 import com.company.banking.payment.domain.Refund;
 import com.company.banking.payment.infrastructure.PaymentIntentJpaRepository;
 import com.company.banking.payment.infrastructure.RefundJpaRepository;
+import com.company.banking.transaction.domain.EntryType;
+import com.company.banking.transaction.domain.LedgerEntry;
+import com.company.banking.transaction.infrastructure.LedgerEntryJpaRepository;
+import com.company.banking.account.domain.Account;
+import com.company.banking.account.infrastructure.AccountJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +32,8 @@ public class PaymentIntentService {
     private final RefundJpaRepository refundJpaRepository;
     private final com.company.banking.settlement.application.MerchantSettlementService merchantSettlementService;
     private final AuditEventPublisher auditEventPublisher;
+    private final LedgerEntryJpaRepository ledgerEntryJpaRepository;
+    private final AccountJpaRepository accountJpaRepository;
 
     @Transactional
     public PaymentIntent createIntent(Long merchantId, String customerAccountNumber, BigDecimal amount, String currency) {
@@ -83,6 +90,36 @@ public class PaymentIntentService {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "PaymentIntent must be AUTHORIZED to capture. Current status: " + intent.getStatus());
         }
 
+        // --- ENFORCE DOUBLE-ENTRY INVARIANT ---
+        Account customerAccount = accountJpaRepository.findByAccountNumber(intent.getCustomerAccountNumber())
+                .orElseThrow(() -> new NotFoundException("Customer account not found"));
+
+        if (customerAccount.getBalance().compareTo(intent.getAmount()) < 0) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Insufficient funds in customer account.");
+        }
+
+        // Debit Customer
+        customerAccount.setBalance(customerAccount.getBalance().subtract(intent.getAmount()));
+        accountJpaRepository.save(customerAccount);
+
+        ledgerEntryJpaRepository.save(LedgerEntry.builder()
+                .transactionReference("CAP-" + intentId)
+                .accountNumber(intent.getCustomerAccountNumber())
+                .entryType(EntryType.DEBIT)
+                .amount(intent.getAmount())
+                .currency(intent.getCurrency())
+                .build());
+
+        // Credit Merchant (Ledger)
+        ledgerEntryJpaRepository.save(LedgerEntry.builder()
+                .transactionReference("CAP-" + intentId)
+                .accountNumber("MERCH-" + merchantId)
+                .entryType(EntryType.CREDIT)
+                .amount(intent.getAmount())
+                .currency(intent.getCurrency())
+                .build());
+        // ----------------------------------------
+
         merchantSettlementService.creditMerchantBalance(intent.getMerchantId(), intent.getAmount(), intent.getCurrency());
         
         intent.setStatus(PaymentIntentStatus.CAPTURED);
@@ -120,6 +157,35 @@ public class PaymentIntentService {
                 .build();
 
         Refund savedRefund = refundJpaRepository.save(refund);
+
+        // --- ENFORCE DOUBLE-ENTRY INVARIANT (REFUND) ---
+        Account customerAccount = accountJpaRepository.findByAccountNumber(intent.getCustomerAccountNumber())
+                .orElseThrow(() -> new NotFoundException("Customer account not found"));
+
+        // Credit Customer
+        customerAccount.setBalance(customerAccount.getBalance().add(amount));
+        accountJpaRepository.save(customerAccount);
+
+        ledgerEntryJpaRepository.save(LedgerEntry.builder()
+                .transactionReference("REF-" + refundId)
+                .accountNumber(intent.getCustomerAccountNumber())
+                .entryType(EntryType.CREDIT)
+                .amount(amount)
+                .currency(intent.getCurrency())
+                .build());
+
+        // Debit Merchant (Ledger)
+        ledgerEntryJpaRepository.save(LedgerEntry.builder()
+                .transactionReference("REF-" + refundId)
+                .accountNumber("MERCH-" + merchantId)
+                .entryType(EntryType.DEBIT)
+                .amount(amount)
+                .currency(intent.getCurrency())
+                .build());
+        
+        // Also deduct from Merchant available balance
+        merchantSettlementService.creditMerchantBalance(intent.getMerchantId(), amount.negate(), intent.getCurrency());
+        // ----------------------------------------
 
         if (amount.compareTo(intent.getAmount()) == 0) {
             intent.setStatus(PaymentIntentStatus.REFUNDED);

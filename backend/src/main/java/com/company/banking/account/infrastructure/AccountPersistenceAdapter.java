@@ -25,7 +25,17 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
     }
 
     @Override
+    public Optional<Account> findByAccountNumberForUpdate(String accountNumber) {
+        return accountJpaRepository.findByAccountNumberForUpdate(accountNumber);
+    }
+
+    @Override
     public List<Account> findByCustomerId(Long customerId) {
         return accountJpaRepository.findByCustomerId(customerId);
+    }
+
+    @Override
+    public List<Account> findAll() {
+        return accountJpaRepository.findAll();
     }
 }

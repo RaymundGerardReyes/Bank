@@ -65,4 +65,8 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
     jvmArgs('-XX:+EnableDynamicAgentLoading')
+    
+    // FIX: Prevent Gradle from eating all your RAM and crashing the JVM
+    maxParallelForks = 1
+    maxHeapSize = "1G"
 }

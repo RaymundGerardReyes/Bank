@@ -12,6 +12,7 @@ public enum PaymentIntentStatus {
     EXPIRED,
     CAPTURED,
     REFUNDED,
+    PARTIALLY_REFUNDED,
     QR_GENERATED,
     PENDING
 }

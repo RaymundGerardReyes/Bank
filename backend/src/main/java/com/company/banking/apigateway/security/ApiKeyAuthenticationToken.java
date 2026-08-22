@@ -5,21 +5,43 @@ import org.springframework.security.core.GrantedAuthority;
 import java.util.Collection;
 
 public class ApiKeyAuthenticationToken extends AbstractAuthenticationToken {
-    private final String apiKeyName;
-    private final String linkedAccountId;
 
-    public ApiKeyAuthenticationToken(String apiKeyName, String linkedAccountId, Collection<? extends GrantedAuthority> authorities) {
+    private final String apiKey;
+    private final Long merchantId;
+    private final String environment; // "LIVE" or "TEST"
+
+    public ApiKeyAuthenticationToken(String apiKey, Long merchantId, String environment, Collection<? extends GrantedAuthority> authorities) {
         super(authorities);
-        this.apiKeyName = apiKeyName;
-        this.linkedAccountId = linkedAccountId;
+        this.apiKey = apiKey;
+        this.merchantId = merchantId;
+        this.environment = environment;
         setAuthenticated(true);
     }
 
-    @Override
-    public Object getCredentials() { return null; }
+    // Unauthenticated constructor
+    public ApiKeyAuthenticationToken(String apiKey) {
+        super(null);
+        this.apiKey = apiKey;
+        this.merchantId = null;
+        this.environment = null;
+        setAuthenticated(false);
+    }
 
     @Override
-    public Object getPrincipal() { return this.apiKeyName; }
+    public Object getCredentials() {
+        return this.apiKey;
+    }
 
-    public String getLinkedAccountId() { return this.linkedAccountId; }
+    @Override
+    public Object getPrincipal() {
+        return this.merchantId; // The principal is strictly the Merchant ID
+    }
+
+    public String getEnvironment() {
+        return this.environment;
+    }
+
+    public String getLinkedAccountId() {
+        return this.merchantId != null ? "MERCHANT-SETTLEMENT-" + this.merchantId : null;
+    }
 }

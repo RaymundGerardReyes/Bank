@@ -46,7 +46,7 @@ public class GlobalExceptionHandler {
         String path = request.getRequestURI();
         
         if (path.contains("/webhooks/")) {
-            ApiResponse<Void> response = ApiResponse.success(null, "Duplicate webhook acknowledged.");
+            ApiResponse<Void> response = ApiResponse.<Void>success(null, "Duplicate webhook acknowledged.");
             return ResponseEntity.ok(response);
         }
 

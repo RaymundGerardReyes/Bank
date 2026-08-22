@@ -70,8 +70,8 @@ public class JwtTokenProvider {
 
     private Key getSignInKey() {
         try {
-            String normalizedBase64 = secretKey.replace("-", "+").replace("_", "/");
-            byte[] keyBytes = Decoders.BASE64.decode(normalizedBase64);
+            // FIX: Use BASE64URL decoder instead of BASE64 to safely handle hyphens and underscores
+            byte[] keyBytes = Decoders.BASE64URL.decode(secretKey);
             return Keys.hmacShaKeyFor(keyBytes);
         } catch (io.jsonwebtoken.io.DecodingException e) {
             throw new IllegalStateException("FATAL: JWT_SECRET is not a valid Base64 string. " +

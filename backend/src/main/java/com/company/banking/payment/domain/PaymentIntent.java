@@ -20,6 +20,9 @@ public class PaymentIntent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    private Long version;
+
     @Column(name = "intent_id", nullable = false, unique = true)
     private String intentId;
 

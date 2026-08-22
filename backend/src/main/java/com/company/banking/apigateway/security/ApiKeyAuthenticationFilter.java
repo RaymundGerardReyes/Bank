@@ -80,8 +80,9 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
             // VULN 6: Use strongly-typed Authentication Token
             ApiKeyAuthenticationToken auth = new ApiKeyAuthenticationToken(
-                    apiKey.getName(),
-                    apiKey.getLinkedAccountId(),
+                    apiKeyHeader,
+                    apiKey.getMerchantId(),
+                    apiKey.getEnvironment(),
                     Collections.singletonList(new SimpleGrantedAuthority("ROLE_MERCHANT_API"))
             );
             SecurityContextHolder.getContext().setAuthentication(auth);
@@ -99,8 +100,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private String resolveRequiredScope(String path, String method) {
-        // Explicit Allowlist for genuinely open routes
-        if (path.startsWith("/api/v1/health") || path.startsWith("/v3/api-docs")) {
+        // Explicit Allowlist for genuinely open routes or gateway routes verified by API key
+        if (path.startsWith("/api/v1/health") || path.startsWith("/v3/api-docs") || path.startsWith("/api/v1/gateway/")) {
             return null; 
         }
 

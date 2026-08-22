@@ -8,5 +8,7 @@ import java.util.Optional;
 public interface AccountPersistencePort {
     Account save(Account account);
     Optional<Account> findByAccountNumber(String accountNumber);
+    Optional<Account> findByAccountNumberForUpdate(String accountNumber);
     List<Account> findByCustomerId(Long customerId);
+    List<Account> findAll();
 }
