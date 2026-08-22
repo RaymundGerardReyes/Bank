@@ -17,9 +17,6 @@ import java.util.List;
 @Configuration
 public class OpenApiConfig {
 
-    @Value("${platform.domain:${PLATFORM_DOMAIN:}}")
-    private String platformDomain;
-
     @Value("${server.port:8080}")
     private String serverPort;
 
@@ -48,14 +45,6 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         final String securitySchemeName = "bearerAuth";
 
-        List<Server> servers = new ArrayList<>();
-        if (platformDomain != null && !platformDomain.isBlank()) {
-            servers.add(new Server().url("https://" + platformDomain).description("Live Secure Gateway"));
-            servers.add(new Server().url("http://" + platformDomain).description("Local Dev Gateway"));
-        } else {
-            servers.add(new Server().url("http://localhost:" + serverPort).description("Local Host Gateway"));
-        }
-
         OpenAPI openAPI = new OpenAPI()
                 .info(new Info()
                         .title("NovaBank Enterprise Developer Gateway")
@@ -69,10 +58,6 @@ public class OpenApiConfig {
                                         .type(SecurityScheme.Type.HTTP)
                                         .scheme("bearer")
                                         .bearerFormat("JWT")));
-
-        if (!servers.isEmpty()) {
-            openAPI.servers(servers);
-        }
 
         return openAPI;
     }

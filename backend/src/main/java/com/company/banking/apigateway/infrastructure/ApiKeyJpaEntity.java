@@ -23,6 +23,9 @@ public class ApiKeyJpaEntity {
     @Column(nullable = false)
     private String keyPrefix;
 
+    @Column(name = "merchant_id", nullable = false)
+    private Long merchantId;
+
     @Column(nullable = false, unique = true)
     private String keyHash;
 

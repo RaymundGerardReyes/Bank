@@ -26,7 +26,7 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
 
     @Override
     @Transactional
-    public ApiKeyResponse createApiKey(CreateApiKeyRequest request) {
+    public ApiKeyResponse createApiKey(Long merchantId, CreateApiKeyRequest request) {
         String env = request.getEnvironment() != null && request.getEnvironment().equalsIgnoreCase("LIVE") ? "LIVE" : "SANDBOX";
         String prefix = env.equals("LIVE") ? "sk_live_" : "sk_test_";
 
@@ -45,6 +45,7 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
 
         ApiKey domain = ApiKey.builder()
                 .keyPrefix(prefix)
+                .merchantId(merchantId)
                 .keyHash(keyHash)
                 .name(request.getName())
                 .environment(env)
@@ -75,8 +76,8 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ApiKeyResponse> listApiKeys() {
-        return persistencePort.findAll().stream().map(key ->
+    public List<ApiKeyResponse> listApiKeys(Long merchantId) {
+        return persistencePort.findByMerchantId(merchantId).stream().map(key ->
             ApiKeyResponse.builder()
                     .id(key.getId())
                     .name(key.getName())
@@ -97,8 +98,11 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
 
     @Override
     @Transactional
-    public void revokeApiKey(Long id) {
+    public void revokeApiKey(Long merchantId, Long id) {
         persistencePort.findById(id).ifPresent(key -> {
+            if (!key.getMerchantId().equals(merchantId)) {
+                throw new com.company.banking.common.exception.NotFoundException("API Key not found");
+            }
             key.setRevokedAt(LocalDateTime.now());
             persistencePort.save(key);
         });
@@ -106,9 +110,13 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
 
     @Override
     @Transactional
-    public ApiKeyResponse rotateApiKey(Long id) {
+    public ApiKeyResponse rotateApiKey(Long merchantId, Long id) {
         ApiKey oldKey = persistencePort.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("API Key not found with ID: " + id));
+                .orElseThrow(() -> new com.company.banking.common.exception.NotFoundException("API Key not found"));
+
+        if (!oldKey.getMerchantId().equals(merchantId)) {
+            throw new com.company.banking.common.exception.NotFoundException("API Key not found");
+        }
 
         // Revoke old key gracefully
         oldKey.setRevokedAt(LocalDateTime.now());
@@ -121,7 +129,7 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
         req.setCidrWhitelist(oldKey.getCidrWhitelist());
         req.setScopes(oldKey.getScopes());
 
-        return createApiKey(req);
+        return createApiKey(merchantId, req);
     }
 
     public static String hashKey(String rawKey) {

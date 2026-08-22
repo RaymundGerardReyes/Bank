@@ -9,4 +9,5 @@ public class CreatePaymentIntentRequest {
     private BigDecimal amount;
     private String description;
     private String merchantReference;
+    private String idempotencyKey;
 }

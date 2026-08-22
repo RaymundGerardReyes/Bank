@@ -65,7 +65,7 @@ public class WebhookManagementService {
                 .orElseThrow(() -> new NotFoundException("Webhook endpoint not found"));
                 
         if (!endpoint.getMerchantId().equals(merchantId)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "Not authorized to delete this endpoint");
+            throw new NotFoundException("Webhook endpoint not found");
         }
         
         endpointRepository.delete(endpoint);

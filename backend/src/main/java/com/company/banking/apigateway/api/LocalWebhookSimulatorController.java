@@ -3,7 +3,6 @@ package com.company.banking.apigateway.api;
 import com.company.banking.common.response.ApiResponse;
 import com.company.banking.payment.application.PaymentWebhookService;
 import com.company.banking.payment.domain.InboundWebhookEvent;
-import com.company.banking.payment.gateway.PayMongoProperties;
 import com.company.banking.payment.infrastructure.InboundWebhookEventJpaRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +26,9 @@ public class LocalWebhookSimulatorController {
 
     private final PaymentWebhookService webhookService;
     private final InboundWebhookEventJpaRepository webhookRepository;
-    private final PayMongoProperties payMongoProperties;
+
+    @org.springframework.beans.factory.annotation.Value("${payment.paymongo.webhook-secret:whsec_test_secret_123456789}")
+    private String webhookSecret;
 
     @PostMapping
     public ResponseEntity<ApiResponse<SimulationResult>> simulateWebhook(
@@ -76,13 +77,11 @@ public class LocalWebhookSimulatorController {
         }
 
         // 2. Generate signature
-        String webhookSecret = payMongoProperties.getWebhookSecret();
-        if (webhookSecret == null || webhookSecret.isBlank()) {
-            webhookSecret = "test_secret_for_simulation_only";
-        }
+        String activeSecret = (this.webhookSecret != null && !this.webhookSecret.isBlank()) 
+                ? this.webhookSecret : "test_secret_for_simulation_only";
 
         String signedPayload = timestamp + "." + rawBody;
-        String hmac = computeHmacSha256(signedPayload, webhookSecret);
+        String hmac = computeHmacSha256(signedPayload, activeSecret);
 
         if ("INVALID_SIGNATURE".equals(request.getScenario())) {
             hmac = "invalid_hmac_hash_12345";

@@ -8,4 +8,5 @@ import java.util.Optional;
 @Repository
 public interface ApiKeyJpaRepository extends JpaRepository<ApiKeyJpaEntity, Long> {
     Optional<ApiKeyJpaEntity> findByKeyHash(String keyHash);
+    java.util.List<ApiKeyJpaEntity> findByMerchantId(Long merchantId);
 }

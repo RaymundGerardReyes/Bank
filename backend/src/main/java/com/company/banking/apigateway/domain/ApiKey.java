@@ -16,6 +16,7 @@ public class ApiKey {
 
     private Long id;
     private String keyPrefix;
+    private Long merchantId;
     private String keyHash;
     private String name;
     private String environment; // LIVE, SANDBOX

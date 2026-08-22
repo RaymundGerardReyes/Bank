@@ -61,4 +61,9 @@ public class LedgerJpaAdapter implements LedgerPersistencePort {
     public Optional<Transaction> findById(Long id) {
         return transactionJpaRepository.findById(id);
     }
+
+    @Override
+    public java.util.List<LedgerEntry> findAllByTransactionReference(String transactionReference) {
+        return ledgerEntryJpaRepository.findByTransactionReference(transactionReference);
+    }
 }

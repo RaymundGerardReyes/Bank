@@ -45,6 +45,9 @@ public class PaymentIntent {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "idempotency_key", unique = true)
+    private String idempotencyKey;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.company.banking.customer.domain.Customer;
+
 @RestController
 @RequestMapping("/api/v1/apikeys")
 @RequiredArgsConstructor
@@ -21,31 +24,39 @@ public class ApiKeyController {
 
     private final CreateApiKeyUseCase apiKeyUseCase;
 
+    private Long extractMerchantIdFromContext() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof Customer customer) {
+            return customer.getId();
+        }
+        return 1L; // Fallback
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<ApiKeyResponse>> createApiKey(@Valid @RequestBody CreateApiKeyRequest request) {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        ApiKeyResponse response = apiKeyUseCase.createApiKey(request);
+        ApiKeyResponse response = apiKeyUseCase.createApiKey(extractMerchantIdFromContext(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "API key created successfully", correlationId));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<ApiKeyResponse>>> listApiKeys() {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        List<ApiKeyResponse> list = apiKeyUseCase.listApiKeys();
+        List<ApiKeyResponse> list = apiKeyUseCase.listApiKeys(extractMerchantIdFromContext());
         return ResponseEntity.ok(ApiResponse.success(list, "API keys retrieved successfully", correlationId));
     }
 
     @PostMapping("/{id}/revoke")
     public ResponseEntity<ApiResponse<Void>> revokeApiKey(@PathVariable Long id) {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        apiKeyUseCase.revokeApiKey(id);
+        apiKeyUseCase.revokeApiKey(extractMerchantIdFromContext(), id);
         return ResponseEntity.ok(ApiResponse.success(null, "API key revoked successfully", correlationId));
     }
 
     @PostMapping("/{id}/rotate")
     public ResponseEntity<ApiResponse<ApiKeyResponse>> rotateApiKey(@PathVariable Long id) {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        ApiKeyResponse rotated = apiKeyUseCase.rotateApiKey(id);
+        ApiKeyResponse rotated = apiKeyUseCase.rotateApiKey(extractMerchantIdFromContext(), id);
         return ResponseEntity.ok(ApiResponse.success(rotated, "API key rotated successfully", correlationId));
     }
 }

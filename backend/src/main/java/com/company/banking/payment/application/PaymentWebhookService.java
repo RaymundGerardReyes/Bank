@@ -55,6 +55,7 @@ public class PaymentWebhookService {
 
     private final List<ExternalPaymentGateway>        gateways;
     private final InboundWebhookEventJpaRepository    webhookEventRepository;
+    private final WebhookIdempotencyService           idempotencyService;
     private final PaymentStateMachineService          stateMachineService;
     private final ObjectMapper                        objectMapper;
 
@@ -151,14 +152,13 @@ public class PaymentWebhookService {
                 .processingStatus("VERIFIED")
                 .build();
 
-        try {
-            record = webhookEventRepository.saveAndFlush(record);
-            log.info("[WEBHOOK-SVC] Persisted InboundWebhookEvent for {}/{} as VERIFIED.", providerUpper, externalEventId);
-        } catch (DataIntegrityViolationException e) {
+        record = idempotencyService.tryRegisterEvent(record);
+        if (record == null) {
             log.warn("[WEBHOOK-SVC] Race condition mitigated: Webhook event {}/{} was inserted by a concurrent thread.",
                     providerUpper, externalEventId);
             return;
         }
+        log.info("[WEBHOOK-SVC] Persisted InboundWebhookEvent for {}/{} as VERIFIED.", providerUpper, externalEventId);
 
         // ----------------------------------------------------------------
         // Step 8 — Delegate to existing state machine
@@ -295,7 +295,7 @@ public class PaymentWebhookService {
 
     private java.math.BigDecimal extractAmount(JsonNode root, String provider) {
         try {
-            if ("PAYMONGO".equals(provider)) {
+            if ("INTERNAL".equals(provider)) {
                 JsonNode amountNode = root.path("data").path("attributes").path("data").path("attributes").path("amount");
                 if (amountNode.isMissingNode()) {
                     amountNode = root.path("data").path("attributes").path("amount");
@@ -315,7 +315,7 @@ public class PaymentWebhookService {
 
     private String extractCurrency(JsonNode root, String provider) {
         try {
-            if ("PAYMONGO".equals(provider)) {
+            if ("INTERNAL".equals(provider)) {
                 JsonNode currNode = root.path("data").path("attributes").path("data").path("attributes").path("currency");
                 if (currNode.isMissingNode()) {
                     currNode = root.path("data").path("attributes").path("currency");

@@ -9,5 +9,5 @@ public interface ApiKeyPersistencePort {
     ApiKey save(ApiKey apiKey);
     Optional<ApiKey> findById(Long id);
     Optional<ApiKey> findByKeyHash(String keyHash);
-    List<ApiKey> findAll();
+    List<ApiKey> findByMerchantId(Long merchantId);
 }

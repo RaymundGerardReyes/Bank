@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface PaymentIntentJpaRepository extends JpaRepository<PaymentIntent, Long> {
     Optional<PaymentIntent> findByIntentId(String intentId);
+    Optional<PaymentIntent> findByIdempotencyKey(String idempotencyKey);
 }

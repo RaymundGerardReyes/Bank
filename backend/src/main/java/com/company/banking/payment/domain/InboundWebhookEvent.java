@@ -16,10 +16,12 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
     name = "inbound_webhook_events",
-    uniqueConstraints = @UniqueConstraint(
-        name = "uq_inbound_webhook_provider_event",
-        columnNames = {"provider", "external_event_id"}
-    )
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uq_inbound_webhook_provider_event",
+            columnNames = {"provider", "external_event_id"}
+        )
+    }
 )
 @Data
 @Builder
@@ -32,11 +34,11 @@ public class InboundWebhookEvent {
     private Long id;
 
     /** The upstream provider name, e.g. "PAYMONGO", "PAYNAMICS", "MAYA". */
-    @Column(nullable = false, length = 50)
+    @Column(name = "provider", nullable = false, length = 50)
     private String provider;
 
     /** The stable, unique event ID assigned by the provider. Used for deduplication. */
-    @Column(name = "external_event_id", nullable = false, length = 255)
+    @Column(name = "external_event_id", nullable = false, unique = true, length = 255)
     private String externalEventId;
 
     /** The provider-specific event type, e.g. "checkout_session.payment.paid". */

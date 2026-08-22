@@ -33,11 +33,8 @@ import com.company.banking.payment.domain.PaymentIntentStatus;
 @Slf4j
 public class PaymentIntentOrchestrationService {
 
-    private static final List<String> ALLOWED_PROVIDERS = List.of(
-        "paymongo.com", 
-        "paynamics.net", 
-        "maya.ph"
-    );
+    @Value("${PAYMENT_WEBHOOK_HOST:pay.developerph.dev}")
+    private String allowedInternalHost;
 
     private final PaymentIntentJpaRepository paymentIntentRepository;
     private final PaymentAttemptJpaRepository paymentAttemptRepository;
@@ -57,6 +54,25 @@ public class PaymentIntentOrchestrationService {
     public PaymentSessionResponse createIntent(CreatePaymentIntentRequest request) {
         log.info("Orchestrating new Payment Intent for account: {}", request.getSourceAccountId());
 
+        if (request.getIdempotencyKey() != null) {
+            java.util.Optional<PaymentIntent> existingIntent = paymentIntentRepository.findByIdempotencyKey(request.getIdempotencyKey());
+            if (existingIntent.isPresent()) {
+                PaymentIntent intent = existingIntent.get();
+                log.info("Idempotency hit for key: {}, returning existing intent {}", request.getIdempotencyKey(), intent.getIntentId());
+                List<PaymentAttempt> attempts = paymentAttemptRepository.findByPaymentIntentId(intent.getId());
+                PaymentAttempt attempt = attempts.isEmpty() ? null : attempts.get(0);
+                
+                return PaymentSessionResponse.builder()
+                        .paymentIntentId(intent.getIntentId())
+                        .provider(attempt != null ? attempt.getProvider() : "INTERNAL")
+                        .checkoutType("HOSTED_CHECKOUT")
+                        .checkoutUrl(attempt != null ? attempt.getCheckoutUrl() : "")
+                        .expiresAt(attempt != null ? attempt.getExpiresAt() : java.time.LocalDateTime.now().plusHours(1))
+                        .transactionReference(intent.getIntentId())
+                        .build();
+            }
+        }
+
         Account sourceAccount = accountPersistencePort.findByAccountNumber(request.getSourceAccountId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Source account not found"));
 
@@ -75,6 +91,7 @@ public class PaymentIntentOrchestrationService {
                 .currency(sourceAccount.getCurrency())
                 .status(PaymentIntentStatus.AUTHORIZED) 
                 .description(request.getDescription())
+                .idempotencyKey(request.getIdempotencyKey())
                 .build();
         
         intent = paymentIntentRepository.save(intent);
@@ -124,8 +141,8 @@ public class PaymentIntentOrchestrationService {
     }
 
     private boolean isSafeCheckoutUrl(String urlString) {
-        if (urlString == null || !urlString.startsWith("https://")) {
-            log.warn("URL rejected: Not HTTPS or is null.");
+        if (urlString == null || (!urlString.startsWith("https://") && !urlString.startsWith("http://"))) {
+            log.warn("URL rejected: Not HTTP/HTTPS or is null.");
             return false;
         }
 
@@ -137,9 +154,7 @@ public class PaymentIntentOrchestrationService {
                 return false;
             }
 
-            return ALLOWED_PROVIDERS.stream().anyMatch(domain -> 
-                host.equals(domain) || host.endsWith("." + domain)
-            );
+            return host.equals(allowedInternalHost) || host.endsWith("." + allowedInternalHost) || host.equals("localhost") || host.equals("backend");
 
         } catch (URISyntaxException e) {
             log.warn("URL rejected: Malformed syntax.");

@@ -35,6 +35,16 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         String apiKeyHeader = request.getHeader("X-API-Key");
 
+        if (apiKeyHeader == null || apiKeyHeader.trim().isEmpty()) {
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7).trim();
+                if (token.startsWith("sk_")) {
+                    apiKeyHeader = token;
+                }
+            }
+        }
+
         if (apiKeyHeader != null && !apiKeyHeader.trim().isEmpty()) {
             String keyHash = CreateApiKeyService.hashKey(apiKeyHeader.trim());
             Optional<ApiKey> apiKeyOpt = apiKeyPersistencePort.findByKeyHash(keyHash);

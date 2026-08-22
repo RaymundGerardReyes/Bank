@@ -70,6 +70,8 @@ public class DataInitializer implements CommandLineRunner {
                     .swiftCode("NOVBUS33XXX")
                     .cardExpiry("12/29")
                     .cardCvv("482")
+                    .allowIncoming(true)
+                    .allowOutgoing(true)
                     .build();
             accountJpaRepository.save(sourceAccount);
 
@@ -156,6 +158,8 @@ public class DataInitializer implements CommandLineRunner {
                     .swiftCode("NOVBUS33XXX")
                     .cardExpiry("12/29")
                     .cardCvv("891")
+                    .allowIncoming(true)
+                    .allowOutgoing(true)
                     .build();
             accountJpaRepository.save(recipientAccount);
             log.info("Seeded Recipient Account: [{}] with $0.00", MOCK_RECIPIENT_PAN);

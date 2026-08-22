@@ -33,8 +33,8 @@ public class ApiKeyJpaAdapter implements ApiKeyPersistencePort {
     }
 
     @Override
-    public List<ApiKey> findAll() {
-        return repository.findAll().stream().map(this::mapToDomain).toList();
+    public List<ApiKey> findByMerchantId(Long merchantId) {
+        return repository.findByMerchantId(merchantId).stream().map(this::mapToDomain).toList();
     }
 
     private ApiKeyJpaEntity mapToEntity(ApiKey domain) {
@@ -42,6 +42,7 @@ public class ApiKeyJpaAdapter implements ApiKeyPersistencePort {
         return ApiKeyJpaEntity.builder()
                 .id(domain.getId())
                 .keyPrefix(domain.getKeyPrefix())
+                .merchantId(domain.getMerchantId())
                 .keyHash(domain.getKeyHash())
                 .name(domain.getName())
                 .environment(domain.getEnvironment())
@@ -63,6 +64,7 @@ public class ApiKeyJpaAdapter implements ApiKeyPersistencePort {
         return ApiKey.builder()
                 .id(entity.getId())
                 .keyPrefix(entity.getKeyPrefix())
+                .merchantId(entity.getMerchantId())
                 .keyHash(entity.getKeyHash())
                 .name(entity.getName())
                 .environment(entity.getEnvironment())

@@ -108,7 +108,8 @@ public class InternalTransferService implements TransactionUseCase {
         Transaction savedTx = ledgerPersistencePort.save(transaction);
 
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        String actor = SecurityContextHolder.getContext().getAuthentication().getName();
+        org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String actor = (auth != null && auth.getName() != null) ? auth.getName() : "SYSTEM";
         
         auditEventPublisher.publishEvent(
                 "Internal Transfer Completed",

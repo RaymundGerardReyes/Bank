@@ -38,7 +38,7 @@ public class SecurityConfig {
                 // 4. REMOVED: /v3/api-docs/** (Global dump is now blocked!)
                 .requestMatchers(
                         "/api/v1/auth/**", 
-                        "/api/v1/webhooks/**",
+                        "/api/v1/webhooks/payment/**",
                         "/v3/api-docs/developer-gateway", 
                         "/v3/api-docs/developer-gateway/**", 
                         "/actuator/health",
