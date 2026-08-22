@@ -1,113 +1,655 @@
-# Engineering Prompt: API Gateway Hub Hardening (Real Backend Enforcement + Curl Testing)
-
-## Purpose of This Document
-
-This is a **prompt engineering artifact** for the Payment Orchestration Gateway page (`web-app/src/app/(dashboard)/api/page.tsx`, `ApiKeyManager.tsx`, `DomainLibrary.tsx`). The current implementation is UI-complete but functionally simulated: key generation uses a fake 800ms delay with no real HSM/backend call, the CIDR IP whitelist field accepts input but is never enforced anywhere in the request path, and there is no way for a developer to actually execute a documented endpoint. This document instructs an AI coding assistant to **correct and extend the existing files only** — no architectural rewrite, no new design system, no discarding of the current 60-30-10 theme or component structure.
-
----
-
-## Context to Paste Before Every Prompt Section
-
-```text
-You are working inside an existing production banking monorepo with three components:
-backend/ (Spring Boot, hexagonal architecture, ports/adapters, Flyway migrations V1-V7)
-web-app/ (Next.js 16 App Router, TypeScript, Tailwind CSS, 60-30-10 design tokens)
-mobile-app/ (React Native/Expo, TypeScript)
-
-The API Gateway Hub currently renders ApiKeyManager.tsx and DomainLibrary.tsx with
-simulated/dummy data: key generation is a client-side setTimeout with no backend call,
-IP whitelisting (CIDR) is captured in a form field but never persisted or enforced,
-and there is no way to execute a real request against any listed endpoint.
-
-Do NOT invent a new architecture, new page layout, or new design system.
-Only modify the specific files and layers named below. Preserve existing component
-names, prop shapes, Tailwind classes, and the existing V5__api_gateway_and_security.sql
-schema unless a field is explicitly missing and needed for a stated requirement.
-Every change must be additive or corrective. Explain changes as targeted diffs,
-not full-file rewrites, unless the file is short enough to justify showing in full.
-```
-
----
-
-## Section 1 — Replace Simulated Key Generation With Real Backend-Issued Keys
-
-**Target files:** `web-app/.../ApiKeyManager.tsx`, new `backend/.../apigateway/api/ApiKeyController.java`, new `application/CreateApiKeyService.java`, `domain/ApiKey.java`, `infrastructure/ApiKeyJpaRepository.java`, `V5__api_gateway_and_security.sql`
-
-**Prompt:**
-
-> `ApiKeyManager.tsx` currently generates a key entirely client-side (`await new Promise(resolve => setTimeout(resolve, 800))`) with no server round-trip, meaning no key is ever actually persisted, hashed, or usable for real authentication. Correct this end-to-end without changing the component's visual states (processing spinner, one-time-reveal card, masked table row):
-> 1. Confirm the current shape of `V5__api_gateway_and_security.sql` before altering it. If it lacks columns for `key_hash`, `key_prefix`, `environment`, `cidr_whitelist`, `scopes`, `revoked_at`, and `last_used_at`, add them as a new `V8__api_key_enforcement.sql` migration rather than editing the historical V5 file — migrations already shipped must never be rewritten.
-> 2. Implement `ApiKey.java` as a new domain object following the existing pattern used by `Account.java`/`Customer.java` (plain domain object, no JPA annotations, immutable where possible).
-> 3. Implement `CreateApiKeyService.java` implementing a new `CreateApiKeyUseCase.java` port, following the exact port/adapter convention already used in `account/` and `transaction/` modules. Generate the raw 256-bit key server-side using `SecureRandom`, hash it with SHA-256 for storage (per current industry guidance: raw key never stored, only its hash, with the human-visible prefix like `sk_live_` or `sk_test_` stored separately for table display)[web:97][web:104].
-> 4. Expose `POST /api/v1/apikeys` via a new `ApiKeyController.java` in a new `apigateway/` module, following the same folder convention (`api/dto/application/port/domain/infrastructure`) as every other module in `backend-app-structure.md`. Return the raw key exactly once in the response body — never log it, never return it again on subsequent GETs (`ResponseSanitizerAdvice.java` must mask it on any future fetch).
-> 5. Update `ApiKeyManager.tsx` to call this new endpoint instead of the local `setTimeout`, keeping the existing 800ms-style processing UX by showing the spinner until the real response resolves, not an artificial delay.
-
----
-
-## Section 2 — Make the CIDR IP Whitelist Actually Enforced (Currently Cosmetic)
-
-**Target files:** new `backend/.../apigateway/security/ApiKeyAuthenticationFilter.java`, new `CidrWhitelistValidator.java`, `SecurityConfig.java`, `ApiKeyManager.tsx`
-
-**Prompt:**
-
-> The "IP Whitelist (CIDR optional)" field in `ApiKeyManager.tsx` currently only stores a string in local component state — it is never validated for correct CIDR notation on input, never persisted with the key record, and never checked against the caller's actual IP on any subsequent API call. This is a security control that currently does nothing. Fix this completely:
-> 1. On the frontend, validate the CIDR input format (e.g. `192.168.1.0/24` or a bare IP defaulting to `/32`) before allowing key generation to proceed, rejecting malformed entries with the existing `ErrorBanner` component pattern — do not allow an invalid CIDR string to reach the backend at all.
-> 2. On the backend, persist the CIDR list (comma-separated or a join table — decide based on the existing schema convention already used for similar one-to-many relationships in this codebase) against the `ApiKey` record from Section 1.
-> 3. Implement `CidrWhitelistValidator.java` using Apache Commons `SubnetUtils` for IPv4 CIDR matching, since Java has no first-party CIDR helper — this is the standard, tested approach for this exact problem[web:95][web:99]. Support the default `0.0.0.0/0` (unrestricted) value already shown as a placeholder in the UI.
-> 4. Implement `ApiKeyAuthenticationFilter.java` as a new `OncePerRequestFilter`, registered in the existing `SecurityConfig.java` filter chain immediately after `JwtAuthenticationFilter`, following the same registration pattern already used for `RateLimitFilter.java` and `CorrelationIdFilter.java`. This filter must: extract `X-API-Key` header, look up the key hash, verify it is not revoked, then reject with `403 Forbidden` and a new `ErrorCode.IP_NOT_WHITELISTED` entry (added to the existing `ErrorCode.java` enum, following its current naming pattern) if the caller's resolved IP (respecting `X-Forwarded-For` from the Nginx edge, per the existing `CorrelationIdFilter` header-handling convention) does not match any whitelisted CIDR block.
-> 5. Add an integration test under `test/.../security/` (following the existing `AccountApiIT.java`/`TransferFlowIT.java` naming convention) that proves a request from a non-whitelisted IP is rejected and one from a whitelisted CIDR range succeeds — this control must be provably enforced, not just visually present in the UI.
-
----
-
-## Section 3 — Add Real Curl-Based API Testing to the Domain Library (Currently Missing Entirely)
-
-**Target files:** `DomainLibrary.tsx`, new `services/docs/apiTestRunner.ts`, new `web-app/src/app/api/proxy/gateway-test/route.ts`
-
-**Prompt:**
-
-> `DomainLibrary.tsx` currently only *displays* the 6 domain modules and their endpoints as static read-only cards with method badges — there is no way for a developer to actually try a request. Add an interactive "Test this endpoint" capability without altering the existing card grid layout or 60-30-10 styling:
-> 1. Add a "Try it" action to each endpoint row in the existing card component. On click, expand an inline panel (reuse the existing card's `hover:-translate-y-1` elevation style for the expanded state) containing: an editable JSON request body textarea (pre-filled with a realistic example per endpoint, e.g. for `POST /v1/payments` show a sample amount/currency/sourceAccount payload matching the real backend DTO field names), a dropdown to select which of the developer's own API keys to use (pulled from the real `ApiKeyManager` list added in Section 1, masked appropriately), and a "Run" button.
-> 2. On "Run," construct the exact `curl` command being executed and display it verbatim above the response panel — for example:
->    ```bash
->    curl -X POST https://api.bankingapp.com/api/v1/payments \
->      -H "X-API-Key: sk_live_************************a8f2" \
->      -H "Content-Type: application/json" \
->      -H "X-Request-Id: <generated-uuid>" \
->      -d '{"amount": 100.00, "currency": "USD", "sourceAccount": "1001987654"}'
->    ```
->    This gives developers a copy-pasteable command for their own terminal/Postman/CI usage, matching the standard way API consumers actually validate integrations[web:106][web:96].
-> 3. Implement `services/docs/apiTestRunner.ts` to actually execute this request — but route it through a new Next.js Route Handler (`app/api/proxy/gateway-test/route.ts`) rather than calling the backend directly from the browser, consistent with the BFF pattern already used for all other backend calls in this web app. This route handler forwards the developer's real API key and body to the real backend endpoint and returns the real response (status code, headers, body) — no mocked or simulated response data.
-> 4. Display the real HTTP status code, response time, and response body in a result panel using the existing method-color convention (emerald for 2xx, amber for 4xx, rose for 5xx) already established for the GET/POST/PUT/DELETE badges.
-> 5. Gate this "Try it" feature so it only targets `sk_test_...` sandbox-environment keys by default in production deployments of the web app, with an explicit confirmation step required before allowing a `sk_live_...` key to be used for a real test call — this prevents a developer from accidentally executing a live payment through a documentation page.
-
----
-
-## Section 4 — New Feature: API Key Scopes & Least-Privilege Enforcement
-
-**Target files:** `ApiKeyManager.tsx`, `ApiKey.java`, `ApiKeyAuthenticationFilter.java`, `ErrorCode.java`
-
-**Prompt:**
-
-> Currently a generated key has no concept of scope — any key can theoretically call any endpoint once whitelisting/validation from Sections 1-2 is in place. Add scoped permissions as an additive feature on top of the key model just built:
-> 1. Add a `scopes: Set<String>` field to `ApiKey.java` (e.g. `payments:write`, `ledger:read`, `payroll:approve`), populated from a new multi-select checkbox group added to the existing key-generation form in `ApiKeyManager.tsx`, using the same 6 domain modules from `DomainLibrary.tsx` as the scope categories so the two components stay conceptually aligned.
-> 2. Extend `ApiKeyAuthenticationFilter.java` to check the requested endpoint's required scope (a simple path-prefix-to-scope map is sufficient — do not build a full policy engine) against the authenticated key's granted scopes, rejecting with a new `ErrorCode.INSUFFICIENT_API_SCOPE` on mismatch, following the same enum convention used for `IP_NOT_WHITELISTED`.
-> 3. Reflect granted scopes as small pill badges next to each key in the `ApiKeyManager.tsx` table, reusing the same badge styling already used for HTTP method tags in `DomainLibrary.tsx` so the visual language stays consistent across both components.
-
----
-
-## Section 5 — New Feature: Key Rotation & Expiry (Currently Keys Never Expire)
-
-**Target files:** `ApiKey.java`, new `ApiKeyRotationService.java`, `ApiKeyManager.tsx`, `V8__api_key_enforcement.sql` (from Section 1)
-
-**Prompt:**
-
-> Generated keys currently have no expiry and no rotation mechanism — once created, a key is valid forever until manually revoked. Add mandatory rotation hygiene as an additive feature:
-> 1. Add `expiresAt` and `rotatedFromKeyId` (nullable, for audit lineage) fields to `ApiKey.java` and the `V8` migration from Section 1. Default new keys to a 90-day expiry, configurable per-environment (`LIVE` keys default 90 days, `SANDBOX` keys default 365 days) via `application.yml`, following the existing externalized-config pattern already used for other tunables in this codebase.
-> 2. Implement `ApiKeyRotationService.java` exposing a `POST /api/v1/apikeys/{id}/rotate` endpoint that issues a new key inheriting the same scopes and CIDR whitelist as the old one, marks the old key `revoked_at` with a short grace period (e.g. 24 hours) rather than immediate hard revocation, to avoid breaking in-flight integrations — this mirrors the graceful-deprecation philosophy already documented in `legacy/README.md`.
-> 3. In `ApiKeyManager.tsx`, surface a countdown/expiry badge on each key row (amber when within 14 days of expiry, rose when expired) and a "Rotate" button next to "Revoke," reusing the existing action-button row layout already present in the table.
-
----
-
-## How to Use This Document
-
-Feed one section at a time to your AI coding assistant, always preceded by the context block above. Section 1 and 2 are prerequisites for everything else — the curl testing feature in Section 3 depends on real, enforced keys existing first, and scopes/rotation in Sections 4-5 depend on the schema Section 1 introduces. Reject any response that mocks a backend call instead of wiring the real one; the entire point of this hardening pass is to remove every remaining piece of simulated behavior from a production banking gateway surface.
+2026-08-22 03:44:15.486 |   _   _               _                     _   ____              _    _             
+2026-08-22 03:44:15.486 |  | | | | __ _ _ __ __| | ___ _ __   ___  __| | | __ )  __ _ _ __ | | _(_)_ __   __ _ 
+2026-08-22 03:44:15.486 |  | |_| |/ _` | '__/ _` |/ _ \ '_ \ / _ \/ _` | |  _ \ / _` | '_ \| |/ / | '_ \ / _` |
+2026-08-22 03:44:15.486 |  |  _  | (_| | | | (_| |  __/ | | |  __/ (_| | | |_) | (_| | | | |   <| | | | | (_| |
+2026-08-22 03:44:15.486 |  |_| |_|\__,_|_|  \__,_|\___|_| |_|\___|\__,_| |____/ \__,_|_| |_|_|\_\_|_| |_|\__, |
+2026-08-22 03:44:15.486 |                                                                                |___/ 
+2026-08-22 03:44:15.486 |  :: Hardened Modular Monolith Backend ::
+2026-08-22 03:44:15.486 | 
+2026-08-22 03:44:15.503 | 2026-08-21 19:44:15 [background-preinit] INFO  o.h.validator.internal.util.Version [X-Request-Id: ] - HV000001: Hibernate Validator 8.0.1.Final
+2026-08-22 03:44:15.613 | 2026-08-21 19:44:15 [main] INFO  c.company.banking.BankingApplication [X-Request-Id: ] - Starting BankingApplication v0.1.0 using Java 21.0.11 with PID 1 (/app/app.jar started by spring in /app)
+2026-08-22 03:44:15.613 | 2026-08-21 19:44:15 [main] DEBUG c.company.banking.BankingApplication [X-Request-Id: ] - Running with Spring Boot v3.4.0, Spring v6.2.0
+2026-08-22 03:44:15.614 | 2026-08-21 19:44:15 [main] INFO  c.company.banking.BankingApplication [X-Request-Id: ] - The following 1 profile is active: "dev"
+2026-08-22 03:44:18.055 | 2026-08-21 19:44:18 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [X-Request-Id: ] - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-08-22 03:44:18.329 | 2026-08-21 19:44:18 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [X-Request-Id: ] - Finished Spring Data repository scanning in 255 ms. Found 44 JPA repository interfaces.
+2026-08-22 03:44:20.305 | 2026-08-21 19:44:20 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer [X-Request-Id: ] - Tomcat initialized with port 8080 (http)
+2026-08-22 03:44:20.347 | 2026-08-21 19:44:20 [main] INFO  o.a.coyote.http11.Http11NioProtocol [X-Request-Id: ] - Initializing ProtocolHandler ["http-nio-0.0.0.0-8080"]
+2026-08-22 03:44:20.362 | 2026-08-21 19:44:20 [main] INFO  o.a.catalina.core.StandardService [X-Request-Id: ] - Starting service [Tomcat]
+2026-08-22 03:44:20.362 | 2026-08-21 19:44:20 [main] INFO  o.a.catalina.core.StandardEngine [X-Request-Id: ] - Starting Servlet engine: [Apache Tomcat/10.1.33]
+2026-08-22 03:44:20.459 | 2026-08-21 19:44:20 [main] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] [X-Request-Id: ] - Initializing Spring embedded WebApplicationContext
+2026-08-22 03:44:20.462 | 2026-08-21 19:44:20 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext [X-Request-Id: ] - Root WebApplicationContext: initialization completed in 4769 ms
+2026-08-22 03:44:21.458 | 2026-08-21 19:44:21 [main] INFO  com.zaxxer.hikari.HikariDataSource [X-Request-Id: ] - HikariPool-1 - Starting...
+2026-08-22 03:44:21.792 | 2026-08-21 19:44:21 [main] INFO  com.zaxxer.hikari.pool.HikariPool [X-Request-Id: ] - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@f9cd1e6
+2026-08-22 03:44:21.794 | 2026-08-21 19:44:21 [main] INFO  com.zaxxer.hikari.HikariDataSource [X-Request-Id: ] - HikariPool-1 - Start completed.
+2026-08-22 03:44:21.865 | 2026-08-21 19:44:21 [main] INFO  org.flywaydb.core.FlywayExecutor [X-Request-Id: ] - Database: jdbc:postgresql://database:5432/banking (PostgreSQL 17.10)
+2026-08-22 03:44:22.061 | 2026-08-21 19:44:22 [main] INFO  o.f.core.internal.command.DbValidate [X-Request-Id: ] - Successfully validated 38 migrations (execution time 00:00.086s)
+2026-08-22 03:44:22.063 | 2026-08-21 19:44:22 [main] WARN  org.flywaydb.core.Flyway [X-Request-Id: ] - cleanOnValidationError is deprecated and will be removed in a later release
+2026-08-22 03:44:22.087 | 2026-08-21 19:44:22 [main] INFO  o.f.core.internal.command.DbMigrate [X-Request-Id: ] - Current version of schema "public": 39
+2026-08-22 03:44:22.093 | 2026-08-21 19:44:22 [main] INFO  o.f.core.internal.command.DbMigrate [X-Request-Id: ] - Schema "public" is up to date. No migration necessary.
+2026-08-22 03:44:22.298 | 2026-08-21 19:44:22 [main] INFO  o.h.jpa.internal.util.LogHelper [X-Request-Id: ] - HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-08-22 03:44:22.371 | 2026-08-21 19:44:22 [main] INFO  org.hibernate.Version [X-Request-Id: ] - HHH000412: Hibernate ORM core version 6.6.2.Final
+2026-08-22 03:44:22.419 | 2026-08-21 19:44:22 [main] INFO  o.h.c.i.RegionFactoryInitiator [X-Request-Id: ] - HHH000026: Second-level cache disabled
+2026-08-22 03:44:22.824 | 2026-08-21 19:44:22 [main] INFO  o.s.o.j.p.SpringPersistenceUnitInfo [X-Request-Id: ] - No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-08-22 03:44:22.899 | 2026-08-21 19:44:22 [main] WARN  org.hibernate.orm.deprecation [X-Request-Id: ] - HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-08-22 03:44:22.920 | 2026-08-21 19:44:22 [main] INFO  o.hibernate.orm.connections.pooling [X-Request-Id: ] - HHH10001005: Database info:
+2026-08-22 03:44:22.920 | 	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+2026-08-22 03:44:22.920 | 	Database driver: undefined/unknown
+2026-08-22 03:44:22.920 | 	Database version: 17.10
+2026-08-22 03:44:22.920 | 	Autocommit mode: undefined/unknown
+2026-08-22 03:44:22.920 | 	Isolation level: undefined/unknown
+2026-08-22 03:44:22.920 | 	Minimum pool size: undefined/unknown
+2026-08-22 03:44:22.920 | 	Maximum pool size: undefined/unknown
+2026-08-22 03:44:25.404 | 2026-08-21 19:44:25 [main] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator [X-Request-Id: ] - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-08-22 03:44:25.529 | 2026-08-21 19:44:25 [main] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean [X-Request-Id: ] - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-08-22 03:44:26.361 | 2026-08-21 19:44:26 [main] DEBUG c.c.b.s.jwt.JwtAuthenticationFilter [X-Request-Id: ] - Filter 'jwtAuthenticationFilter' configured for use
+2026-08-22 03:44:26.361 | 2026-08-21 19:44:26 [main] DEBUG c.c.b.web.filter.BffIdentityFilter [X-Request-Id: ] - Filter 'bffIdentityFilter' configured for use
+2026-08-22 03:44:26.361 | 2026-08-21 19:44:26 [main] DEBUG c.c.b.web.filter.RateLimitFilter [X-Request-Id: ] - Filter 'rateLimitFilter' configured for use
+2026-08-22 03:44:26.361 | 2026-08-21 19:44:26 [main] DEBUG c.c.b.a.security.ApiSignatureFilter [X-Request-Id: ] - Filter 'apiSignatureFilter' configured for use
+2026-08-22 03:44:26.362 | 2026-08-21 19:44:26 [main] DEBUG c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: ] - Filter 'requestLoggingFilter' configured for use
+2026-08-22 03:44:26.362 | 2026-08-21 19:44:26 [main] DEBUG c.c.b.a.s.ApiGatewayIdempotencyInterceptor [X-Request-Id: ] - Filter 'apiGatewayIdempotencyInterceptor' configured for use
+2026-08-22 03:44:26.362 | 2026-08-21 19:44:26 [main] DEBUG c.c.b.web.filter.CorrelationIdFilter [X-Request-Id: ] - Filter 'correlationIdFilter' configured for use
+2026-08-22 03:44:26.365 | 2026-08-21 19:44:26 [main] DEBUG c.c.b.a.s.GatewayRateLimitFilter [X-Request-Id: ] - Filter 'gatewayRateLimitFilter' configured for use
+2026-08-22 03:44:26.366 | 2026-08-21 19:44:26 [main] DEBUG c.c.b.a.s.ApiKeyAuthenticationFilter [X-Request-Id: ] - Filter 'apiKeyAuthenticationFilter' configured for use
+2026-08-22 03:44:26.366 | 2026-08-21 19:44:26 [main] DEBUG c.c.b.w.filter.SecurityHeadersFilter [X-Request-Id: ] - Filter 'securityHeadersFilter' configured for use
+2026-08-22 03:44:26.366 | 2026-08-21 19:44:26 [main] DEBUG c.c.b.a.s.ApiAuditLoggingFilter [X-Request-Id: ] - Filter 'apiAuditLoggingFilter' configured for use
+2026-08-22 03:44:27.843 | 2026-08-21 19:44:27 [main] INFO  o.s.d.j.r.query.QueryEnhancerFactory [X-Request-Id: ] - Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-08-22 03:44:28.958 | 2026-08-21 19:44:28 [main] INFO  o.s.s.c.a.a.c.InitializeAuthenticationProviderBeanManagerConfigurer$InitializeAuthenticationProviderManagerConfigurer [X-Request-Id: ] - Global AuthenticationManager configured with AuthenticationProvider bean with name authenticationProvider
+2026-08-22 03:44:28.960 | 2026-08-21 19:44:28 [main] WARN  o.s.s.c.a.a.c.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer [X-Request-Id: ] - Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used by Spring Security for automatically configuring username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider. If the current configuration is intentional, to turn off this warning, increase the logging level of 'org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer' to ERROR
+2026-08-22 03:44:29.299 | 2026-08-21 19:44:29 [main] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration [X-Request-Id: ] - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-08-22 03:44:30.046 | 2026-08-21 19:44:30 [main] INFO  o.s.b.a.e.web.EndpointLinksResolver [X-Request-Id: ] - Exposing 3 endpoints beneath base path '/actuator'
+2026-08-22 03:44:30.217 | 2026-08-21 19:44:30 [main] DEBUG o.s.s.web.DefaultSecurityFilterChain [X-Request-Id: ] - Will secure Or [Mvc [pattern='/actuator/**']] with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, LogoutFilter, BasicAuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, ExceptionTranslationFilter, AuthorizationFilter
+2026-08-22 03:44:30.280 | 2026-08-21 19:44:30 [main] DEBUG o.s.s.web.DefaultSecurityFilterChain [X-Request-Id: ] - Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, LogoutFilter, CorrelationIdFilter, BffIdentityFilter, ApiKeyAuthenticationFilter, JwtAuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, SessionManagementFilter, ExceptionTranslationFilter, AuthorizationFilter
+2026-08-22 03:44:31.094 | 2026-08-21 19:44:31 [main] INFO  o.s.m.s.b.SimpleBrokerMessageHandler [X-Request-Id: ] - Starting...
+2026-08-22 03:44:31.095 | 2026-08-21 19:44:31 [main] INFO  o.s.m.s.b.SimpleBrokerMessageHandler [X-Request-Id: ] - BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@51c8a421]]
+2026-08-22 03:44:31.097 | 2026-08-21 19:44:31 [main] INFO  o.s.m.s.b.SimpleBrokerMessageHandler [X-Request-Id: ] - Started.
+2026-08-22 03:44:31.097 | 2026-08-21 19:44:31 [main] INFO  o.a.coyote.http11.Http11NioProtocol [X-Request-Id: ] - Starting ProtocolHandler ["http-nio-0.0.0.0-8080"]
+2026-08-22 03:44:31.119 | 2026-08-21 19:44:31 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer [X-Request-Id: ] - Tomcat started on port 8080 (http) with context path '/'
+2026-08-22 03:44:31.147 | 2026-08-21 19:44:31 [main] INFO  c.company.banking.BankingApplication [X-Request-Id: ] - Started BankingApplication in 16.588 seconds (process running for 17.929)
+2026-08-22 03:44:31.280 | 2026-08-21 19:44:31 [MessageBroker-7] DEBUG org.hibernate.SQL [X-Request-Id: ] - 
+2026-08-22 03:44:31.280 |     select
+2026-08-22 03:44:31.280 |         icl1_0.id,
+2026-08-22 03:44:31.280 |         icl1_0.attempt_count,
+2026-08-22 03:44:31.280 |         icl1_0.callback_url,
+2026-08-22 03:44:31.280 |         icl1_0.created_at,
+2026-08-22 03:44:31.280 |         icl1_0.next_retry_at,
+2026-08-22 03:44:31.280 |         icl1_0.payload,
+2026-08-22 03:44:31.280 |         icl1_0.payment_session_id,
+2026-08-22 03:44:31.280 |         icl1_0.response_body,
+2026-08-22 03:44:31.280 |         icl1_0.response_code,
+2026-08-22 03:44:31.280 |         icl1_0.status,
+2026-08-22 03:44:31.280 |         icl1_0.updated_at 
+2026-08-22 03:44:31.280 |     from
+2026-08-22 03:44:31.280 |         institution_callback_log icl1_0 
+2026-08-22 03:44:31.280 |     where
+2026-08-22 03:44:31.280 |         icl1_0.status=? 
+2026-08-22 03:44:31.280 |         and icl1_0.next_retry_at<?
+2026-08-22 03:44:31.281 | Hibernate: 
+2026-08-22 03:44:31.281 |     select
+2026-08-22 03:44:31.281 |         icl1_0.id,
+2026-08-22 03:44:31.281 |         icl1_0.attempt_count,
+2026-08-22 03:44:31.281 |         icl1_0.callback_url,
+2026-08-22 03:44:31.281 |         icl1_0.created_at,
+2026-08-22 03:44:31.281 |         icl1_0.next_retry_at,
+2026-08-22 03:44:31.281 |         icl1_0.payload,
+2026-08-22 03:44:31.281 |         icl1_0.payment_session_id,
+2026-08-22 03:44:31.281 |         icl1_0.response_body,
+2026-08-22 03:44:31.281 |         icl1_0.response_code,
+2026-08-22 03:44:31.281 |         icl1_0.status,
+2026-08-22 03:44:31.281 |         icl1_0.updated_at 
+2026-08-22 03:44:31.281 |     from
+2026-08-22 03:44:31.281 |         institution_callback_log icl1_0 
+2026-08-22 03:44:31.281 |     where
+2026-08-22 03:44:31.281 |         icl1_0.status=? 
+2026-08-22 03:44:31.281 |         and icl1_0.next_retry_at<?
+2026-08-22 03:44:31.317 | 2026-08-21 19:44:31 [main] DEBUG org.hibernate.SQL [X-Request-Id: ] - 
+2026-08-22 03:44:31.317 |     select
+2026-08-22 03:44:31.317 |         c1_0.id,
+2026-08-22 03:44:31.317 |         c1_0.created_at,
+2026-08-22 03:44:31.317 |         c1_0.email,
+2026-08-22 03:44:31.317 |         c1_0.employment_status,
+2026-08-22 03:44:31.317 |         c1_0.first_name,
+2026-08-22 03:44:31.317 |         c1_0.job_title,
+2026-08-22 03:44:31.317 |         c1_0.kyc_status,
+2026-08-22 03:44:31.317 |         c1_0.last_name,
+2026-08-22 03:44:31.317 |         c1_0.locked,
+2026-08-22 03:44:31.317 |         c1_0.monthly_income,
+2026-08-22 03:44:31.317 |         c1_0.password,
+2026-08-22 03:44:31.317 |         c1_0.risk_profile,
+2026-08-22 03:44:31.317 |         c1_0.role,
+2026-08-22 03:44:31.317 |         c1_0.source_of_funds 
+2026-08-22 03:44:31.317 |     from
+2026-08-22 03:44:31.317 |         customers c1_0 
+2026-08-22 03:44:31.317 |     where
+2026-08-22 03:44:31.317 |         upper(c1_0.email)=upper(?)
+2026-08-22 03:44:31.317 | Hibernate: 
+2026-08-22 03:44:31.317 |     select
+2026-08-22 03:44:31.317 |         c1_0.id,
+2026-08-22 03:44:31.317 |         c1_0.created_at,
+2026-08-22 03:44:31.317 |         c1_0.email,
+2026-08-22 03:44:31.317 |         c1_0.employment_status,
+2026-08-22 03:44:31.317 |         c1_0.first_name,
+2026-08-22 03:44:31.317 |         c1_0.job_title,
+2026-08-22 03:44:31.317 |         c1_0.kyc_status,
+2026-08-22 03:44:31.317 |         c1_0.last_name,
+2026-08-22 03:44:31.317 |         c1_0.locked,
+2026-08-22 03:44:31.317 |         c1_0.monthly_income,
+2026-08-22 03:44:31.317 |         c1_0.password,
+2026-08-22 03:44:31.317 |         c1_0.risk_profile,
+2026-08-22 03:44:31.317 |         c1_0.role,
+2026-08-22 03:44:31.317 |         c1_0.source_of_funds 
+2026-08-22 03:44:31.317 |     from
+2026-08-22 03:44:31.317 |         customers c1_0 
+2026-08-22 03:44:31.317 |     where
+2026-08-22 03:44:31.317 |         upper(c1_0.email)=upper(?)
+2026-08-22 03:44:31.341 | 2026-08-21 19:44:31 [main] DEBUG org.hibernate.SQL [X-Request-Id: ] - 
+2026-08-22 03:44:31.341 |     select
+2026-08-22 03:44:31.341 |         c1_0.id,
+2026-08-22 03:44:31.341 |         c1_0.created_at,
+2026-08-22 03:44:31.341 |         c1_0.email,
+2026-08-22 03:44:31.341 |         c1_0.employment_status,
+2026-08-22 03:44:31.341 |         c1_0.first_name,
+2026-08-22 03:44:31.341 |         c1_0.job_title,
+2026-08-22 03:44:31.341 |         c1_0.kyc_status,
+2026-08-22 03:44:31.341 |         c1_0.last_name,
+2026-08-22 03:44:31.341 |         c1_0.locked,
+2026-08-22 03:44:31.341 |         c1_0.monthly_income,
+2026-08-22 03:44:31.341 |         c1_0.password,
+2026-08-22 03:44:31.341 |         c1_0.risk_profile,
+2026-08-22 03:44:31.341 |         c1_0.role,
+2026-08-22 03:44:31.341 |         c1_0.source_of_funds 
+2026-08-22 03:44:31.341 |     from
+2026-08-22 03:44:31.341 |         customers c1_0 
+2026-08-22 03:44:31.341 |     where
+2026-08-22 03:44:31.341 |         upper(c1_0.email)=upper(?)
+2026-08-22 03:44:31.341 | Hibernate: 
+2026-08-22 03:44:31.341 |     select
+2026-08-22 03:44:31.341 |         c1_0.id,
+2026-08-22 03:44:31.341 |         c1_0.created_at,
+2026-08-22 03:44:31.341 |         c1_0.email,
+2026-08-22 03:44:31.341 |         c1_0.employment_status,
+2026-08-22 03:44:31.341 |         c1_0.first_name,
+2026-08-22 03:44:31.341 |         c1_0.job_title,
+2026-08-22 03:44:31.341 |         c1_0.kyc_status,
+2026-08-22 03:44:31.341 |         c1_0.last_name,
+2026-08-22 03:44:31.341 |         c1_0.locked,
+2026-08-22 03:44:31.341 |         c1_0.monthly_income,
+2026-08-22 03:44:31.341 |         c1_0.password,
+2026-08-22 03:44:31.341 |         c1_0.risk_profile,
+2026-08-22 03:44:31.341 |         c1_0.role,
+2026-08-22 03:44:31.341 |         c1_0.source_of_funds 
+2026-08-22 03:44:31.341 |     from
+2026-08-22 03:44:31.341 |         customers c1_0 
+2026-08-22 03:44:31.341 |     where
+2026-08-22 03:44:31.341 |         upper(c1_0.email)=upper(?)
+2026-08-22 03:44:33.550 | 2026-08-21 19:44:33 [http-nio-0.0.0.0-8080-exec-1] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] [X-Request-Id: ] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-08-22 03:44:33.551 | 2026-08-21 19:44:33 [http-nio-0.0.0.0-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet [X-Request-Id: ] - Initializing Servlet 'dispatcherServlet'
+2026-08-22 03:44:33.554 | 2026-08-21 19:44:33 [http-nio-0.0.0.0-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet [X-Request-Id: ] - Completed initialization in 4 ms
+2026-08-22 03:44:33.574 | 2026-08-21 19:44:33 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:44:33.593 | 2026-08-21 19:44:33 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:44:33.696 | 2026-08-21 19:44:33 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 44a04382-01bf-41e1-aeff-add8e8d547da] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:44:33.696 | 2026-08-21 19:44:33 [http-nio-0.0.0.0-8080-exec-1] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 44a04382-01bf-41e1-aeff-add8e8d547da] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 101ms
+2026-08-22 03:44:43.773 | 2026-08-21 19:44:43 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:44:43.774 | 2026-08-21 19:44:43 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:44:43.781 | 2026-08-21 19:44:43 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: d56c4332-77b2-4b23-87f5-f5f37ed898de] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:44:43.781 | 2026-08-21 19:44:43 [http-nio-0.0.0.0-8080-exec-2] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: d56c4332-77b2-4b23-87f5-f5f37ed898de] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 7ms
+2026-08-22 03:44:53.871 | 2026-08-21 19:44:53 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:44:53.872 | 2026-08-21 19:44:53 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:44:53.876 | 2026-08-21 19:44:53 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: eedc4068-2e43-47a9-91d0-dd96d3d900ab] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:44:53.876 | 2026-08-21 19:44:53 [http-nio-0.0.0.0-8080-exec-3] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: eedc4068-2e43-47a9-91d0-dd96d3d900ab] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:45:00.001 | 2026-08-21 19:45:00 [MessageBroker-2] INFO  c.c.b.p.a.PaymentReconciliationService [X-Request-Id: ] - [RECONCILIATION] Starting scheduled sweep for stuck PAYMENT_INTENTS...
+2026-08-22 03:45:00.012 | 2026-08-21 19:45:00 [MessageBroker-2] DEBUG org.hibernate.SQL [X-Request-Id: ] - 
+2026-08-22 03:45:00.014 |     select
+2026-08-22 03:45:00.014 |         pi1_0.id,
+2026-08-22 03:45:00.014 |         pi1_0.amount,
+2026-08-22 03:45:00.014 |         pi1_0.created_at,
+2026-08-22 03:45:00.014 |         pi1_0.currency,
+2026-08-22 03:45:00.014 |         pi1_0.customer_account_number,
+2026-08-22 03:45:00.014 |         pi1_0.description,
+2026-08-22 03:45:00.014 |         pi1_0.fee_amount,
+2026-08-22 03:45:00.014 |         pi1_0.intent_id,
+2026-08-22 03:45:00.014 |         pi1_0.merchant_id,
+2026-08-22 03:45:00.014 |         pi1_0.status,
+2026-08-22 03:45:00.014 |         pi1_0.updated_at 
+2026-08-22 03:45:00.014 |     from
+2026-08-22 03:45:00.014 |         payment_intents pi1_0
+2026-08-22 03:45:00.014 | Hibernate: 
+2026-08-22 03:45:00.014 |     select
+2026-08-22 03:45:00.014 |         pi1_0.id,
+2026-08-22 03:45:00.014 |         pi1_0.amount,
+2026-08-22 03:45:00.014 |         pi1_0.created_at,
+2026-08-22 03:45:00.014 |         pi1_0.currency,
+2026-08-22 03:45:00.014 |         pi1_0.customer_account_number,
+2026-08-22 03:45:00.014 |         pi1_0.description,
+2026-08-22 03:45:00.014 |         pi1_0.fee_amount,
+2026-08-22 03:45:00.014 |         pi1_0.intent_id,
+2026-08-22 03:45:00.014 |         pi1_0.merchant_id,
+2026-08-22 03:45:00.014 |         pi1_0.status,
+2026-08-22 03:45:00.014 |         pi1_0.updated_at 
+2026-08-22 03:45:00.014 |     from
+2026-08-22 03:45:00.014 |         payment_intents pi1_0
+2026-08-22 03:45:00.023 | 2026-08-21 19:45:00 [MessageBroker-2] INFO  c.c.b.p.a.PaymentReconciliationService [X-Request-Id: ] - [RECONCILIATION] Sweep completed. Processed 0 intents.
+2026-08-22 03:45:03.944 | 2026-08-21 19:45:03 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:45:03.946 | 2026-08-21 19:45:03 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:45:03.950 | 2026-08-21 19:45:03 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 896a1866-544b-4e90-b7c8-fcb2ebde9e12] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:45:03.950 | 2026-08-21 19:45:03 [http-nio-0.0.0.0-8080-exec-4] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 896a1866-544b-4e90-b7c8-fcb2ebde9e12] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:45:14.014 | 2026-08-21 19:45:14 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:45:14.015 | 2026-08-21 19:45:14 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:45:14.018 | 2026-08-21 19:45:14 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: ff5805e8-81e5-4110-89a3-92e810f8d2a3] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:45:14.018 | 2026-08-21 19:45:14 [http-nio-0.0.0.0-8080-exec-5] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: ff5805e8-81e5-4110-89a3-92e810f8d2a3] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:45:24.117 | 2026-08-21 19:45:24 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:45:24.118 | 2026-08-21 19:45:24 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:45:24.123 | 2026-08-21 19:45:24 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: e5494bb6-f063-445b-9c7b-237dab86cd5b] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:45:24.123 | 2026-08-21 19:45:24 [http-nio-0.0.0.0-8080-exec-6] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: e5494bb6-f063-445b-9c7b-237dab86cd5b] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 5ms
+2026-08-22 03:45:31.036 | 2026-08-21 19:45:31 [MessageBroker-1] INFO  o.s.w.s.c.WebSocketMessageBrokerStats [X-Request-Id: ] - WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 10, active threads = 1, queued tasks = 7, completed tasks = 2]
+2026-08-22 03:45:31.329 | 2026-08-21 19:45:31 [MessageBroker-5] DEBUG org.hibernate.SQL [X-Request-Id: ] - 
+2026-08-22 03:45:31.329 |     select
+2026-08-22 03:45:31.329 |         icl1_0.id,
+2026-08-22 03:45:31.329 |         icl1_0.attempt_count,
+2026-08-22 03:45:31.329 |         icl1_0.callback_url,
+2026-08-22 03:45:31.329 |         icl1_0.created_at,
+2026-08-22 03:45:31.329 |         icl1_0.next_retry_at,
+2026-08-22 03:45:31.329 |         icl1_0.payload,
+2026-08-22 03:45:31.329 |         icl1_0.payment_session_id,
+2026-08-22 03:45:31.329 |         icl1_0.response_body,
+2026-08-22 03:45:31.329 |         icl1_0.response_code,
+2026-08-22 03:45:31.329 |         icl1_0.status,
+2026-08-22 03:45:31.329 |         icl1_0.updated_at 
+2026-08-22 03:45:31.329 |     from
+2026-08-22 03:45:31.329 |         institution_callback_log icl1_0 
+2026-08-22 03:45:31.329 |     where
+2026-08-22 03:45:31.329 |         icl1_0.status=? 
+2026-08-22 03:45:31.329 |         and icl1_0.next_retry_at<?
+2026-08-22 03:45:31.329 | Hibernate: 
+2026-08-22 03:45:31.329 |     select
+2026-08-22 03:45:31.329 |         icl1_0.id,
+2026-08-22 03:45:31.329 |         icl1_0.attempt_count,
+2026-08-22 03:45:31.329 |         icl1_0.callback_url,
+2026-08-22 03:45:31.329 |         icl1_0.created_at,
+2026-08-22 03:45:31.329 |         icl1_0.next_retry_at,
+2026-08-22 03:45:31.329 |         icl1_0.payload,
+2026-08-22 03:45:31.329 |         icl1_0.payment_session_id,
+2026-08-22 03:45:31.329 |         icl1_0.response_body,
+2026-08-22 03:45:31.329 |         icl1_0.response_code,
+2026-08-22 03:45:31.329 |         icl1_0.status,
+2026-08-22 03:45:31.329 |         icl1_0.updated_at 
+2026-08-22 03:45:31.329 |     from
+2026-08-22 03:45:31.329 |         institution_callback_log icl1_0 
+2026-08-22 03:45:31.329 |     where
+2026-08-22 03:45:31.329 |         icl1_0.status=? 
+2026-08-22 03:45:31.329 |         and icl1_0.next_retry_at<?
+2026-08-22 03:45:34.196 | 2026-08-21 19:45:34 [http-nio-0.0.0.0-8080-exec-7] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:45:34.196 | 2026-08-21 19:45:34 [http-nio-0.0.0.0-8080-exec-7] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:45:34.200 | 2026-08-21 19:45:34 [http-nio-0.0.0.0-8080-exec-7] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 31d6ff5d-e9e5-40f2-b010-48a89423f4db] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:45:34.200 | 2026-08-21 19:45:34 [http-nio-0.0.0.0-8080-exec-7] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 31d6ff5d-e9e5-40f2-b010-48a89423f4db] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:45:44.277 | 2026-08-21 19:45:44 [http-nio-0.0.0.0-8080-exec-8] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:45:44.278 | 2026-08-21 19:45:44 [http-nio-0.0.0.0-8080-exec-8] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:45:44.281 | 2026-08-21 19:45:44 [http-nio-0.0.0.0-8080-exec-8] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: a22a27e7-17b1-487f-9cb7-e6b36fea328a] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:45:44.281 | 2026-08-21 19:45:44 [http-nio-0.0.0.0-8080-exec-8] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: a22a27e7-17b1-487f-9cb7-e6b36fea328a] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:45:54.359 | 2026-08-21 19:45:54 [http-nio-0.0.0.0-8080-exec-9] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:45:54.360 | 2026-08-21 19:45:54 [http-nio-0.0.0.0-8080-exec-9] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:45:54.364 | 2026-08-21 19:45:54 [http-nio-0.0.0.0-8080-exec-9] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 12cf1622-f3a0-43e0-9655-d8088de08ff1] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:45:54.364 | 2026-08-21 19:45:54 [http-nio-0.0.0.0-8080-exec-9] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 12cf1622-f3a0-43e0-9655-d8088de08ff1] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:46:04.459 | 2026-08-21 19:46:04 [http-nio-0.0.0.0-8080-exec-10] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:46:04.460 | 2026-08-21 19:46:04 [http-nio-0.0.0.0-8080-exec-10] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:46:04.463 | 2026-08-21 19:46:04 [http-nio-0.0.0.0-8080-exec-10] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 8f32a055-f4f6-468e-a03c-9c6c6d403383] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:46:04.463 | 2026-08-21 19:46:04 [http-nio-0.0.0.0-8080-exec-10] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 8f32a055-f4f6-468e-a03c-9c6c6d403383] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:46:14.551 | 2026-08-21 19:46:14 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:46:14.552 | 2026-08-21 19:46:14 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:46:14.556 | 2026-08-21 19:46:14 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 1e116c94-a97e-47a6-82be-f8f9acfdffef] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:46:14.556 | 2026-08-21 19:46:14 [http-nio-0.0.0.0-8080-exec-1] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 1e116c94-a97e-47a6-82be-f8f9acfdffef] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:46:24.633 | 2026-08-21 19:46:24 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:46:24.634 | 2026-08-21 19:46:24 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:46:24.638 | 2026-08-21 19:46:24 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: f6bbd2ba-0d7a-4e7b-a08d-6998bc8344c6] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:46:24.638 | 2026-08-21 19:46:24 [http-nio-0.0.0.0-8080-exec-2] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: f6bbd2ba-0d7a-4e7b-a08d-6998bc8344c6] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:46:31.332 | 2026-08-21 19:46:31 [MessageBroker-3] DEBUG org.hibernate.SQL [X-Request-Id: ] - 
+2026-08-22 03:46:31.332 |     select
+2026-08-22 03:46:31.332 |         icl1_0.id,
+2026-08-22 03:46:31.332 |         icl1_0.attempt_count,
+2026-08-22 03:46:31.332 |         icl1_0.callback_url,
+2026-08-22 03:46:31.332 |         icl1_0.created_at,
+2026-08-22 03:46:31.332 |         icl1_0.next_retry_at,
+2026-08-22 03:46:31.332 |         icl1_0.payload,
+2026-08-22 03:46:31.332 |         icl1_0.payment_session_id,
+2026-08-22 03:46:31.332 |         icl1_0.response_body,
+2026-08-22 03:46:31.332 |         icl1_0.response_code,
+2026-08-22 03:46:31.332 |         icl1_0.status,
+2026-08-22 03:46:31.332 |         icl1_0.updated_at 
+2026-08-22 03:46:31.332 |     from
+2026-08-22 03:46:31.332 |         institution_callback_log icl1_0 
+2026-08-22 03:46:31.332 |     where
+2026-08-22 03:46:31.332 |         icl1_0.status=? 
+2026-08-22 03:46:31.332 |         and icl1_0.next_retry_at<?
+2026-08-22 03:46:31.332 | Hibernate: 
+2026-08-22 03:46:31.332 |     select
+2026-08-22 03:46:31.332 |         icl1_0.id,
+2026-08-22 03:46:31.332 |         icl1_0.attempt_count,
+2026-08-22 03:46:31.332 |         icl1_0.callback_url,
+2026-08-22 03:46:31.332 |         icl1_0.created_at,
+2026-08-22 03:46:31.332 |         icl1_0.next_retry_at,
+2026-08-22 03:46:31.332 |         icl1_0.payload,
+2026-08-22 03:46:31.332 |         icl1_0.payment_session_id,
+2026-08-22 03:46:31.332 |         icl1_0.response_body,
+2026-08-22 03:46:31.332 |         icl1_0.response_code,
+2026-08-22 03:46:31.332 |         icl1_0.status,
+2026-08-22 03:46:31.332 |         icl1_0.updated_at 
+2026-08-22 03:46:31.332 |     from
+2026-08-22 03:46:31.332 |         institution_callback_log icl1_0 
+2026-08-22 03:46:31.332 |     where
+2026-08-22 03:46:31.332 |         icl1_0.status=? 
+2026-08-22 03:46:31.332 |         and icl1_0.next_retry_at<?
+2026-08-22 03:46:34.741 | 2026-08-21 19:46:34 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:46:34.741 | 2026-08-21 19:46:34 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:46:34.749 | 2026-08-21 19:46:34 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 69da4d0d-0afb-4263-a28d-8b4964286d2d] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:46:34.750 | 2026-08-21 19:46:34 [http-nio-0.0.0.0-8080-exec-3] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 69da4d0d-0afb-4263-a28d-8b4964286d2d] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 8ms
+2026-08-22 03:46:44.830 | 2026-08-21 19:46:44 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:46:44.831 | 2026-08-21 19:46:44 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:46:44.834 | 2026-08-21 19:46:44 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 91d18976-118b-45b7-a093-bf8234be2cd5] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:46:44.834 | 2026-08-21 19:46:44 [http-nio-0.0.0.0-8080-exec-4] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 91d18976-118b-45b7-a093-bf8234be2cd5] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:46:54.930 | 2026-08-21 19:46:54 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:46:54.932 | 2026-08-21 19:46:54 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:46:54.936 | 2026-08-21 19:46:54 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 09fb3189-e636-450f-838d-11e7ce2abffc] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:46:54.936 | 2026-08-21 19:46:54 [http-nio-0.0.0.0-8080-exec-5] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 09fb3189-e636-450f-838d-11e7ce2abffc] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:47:05.028 | 2026-08-21 19:47:05 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:47:05.029 | 2026-08-21 19:47:05 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:47:05.033 | 2026-08-21 19:47:05 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 73648b4f-2df6-422a-938e-469dd4647b10] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:47:05.033 | 2026-08-21 19:47:05 [http-nio-0.0.0.0-8080-exec-6] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 73648b4f-2df6-422a-938e-469dd4647b10] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:47:15.097 | 2026-08-21 19:47:15 [http-nio-0.0.0.0-8080-exec-7] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:47:15.097 | 2026-08-21 19:47:15 [http-nio-0.0.0.0-8080-exec-7] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:47:15.101 | 2026-08-21 19:47:15 [http-nio-0.0.0.0-8080-exec-7] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: b5755894-9b0f-418c-b955-2f2c095ac651] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:47:15.101 | 2026-08-21 19:47:15 [http-nio-0.0.0.0-8080-exec-7] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: b5755894-9b0f-418c-b955-2f2c095ac651] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:47:25.226 | 2026-08-21 19:47:25 [http-nio-0.0.0.0-8080-exec-8] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:47:25.227 | 2026-08-21 19:47:25 [http-nio-0.0.0.0-8080-exec-8] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:47:25.230 | 2026-08-21 19:47:25 [http-nio-0.0.0.0-8080-exec-8] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 82e9c704-1899-4249-b191-3600a1635214] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:47:25.230 | 2026-08-21 19:47:25 [http-nio-0.0.0.0-8080-exec-8] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 82e9c704-1899-4249-b191-3600a1635214] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:47:31.335 | 2026-08-21 19:47:31 [MessageBroker-7] DEBUG org.hibernate.SQL [X-Request-Id: ] - 
+2026-08-22 03:47:31.335 |     select
+2026-08-22 03:47:31.335 |         icl1_0.id,
+2026-08-22 03:47:31.335 |         icl1_0.attempt_count,
+2026-08-22 03:47:31.335 |         icl1_0.callback_url,
+2026-08-22 03:47:31.335 |         icl1_0.created_at,
+2026-08-22 03:47:31.335 |         icl1_0.next_retry_at,
+2026-08-22 03:47:31.335 |         icl1_0.payload,
+2026-08-22 03:47:31.335 |         icl1_0.payment_session_id,
+2026-08-22 03:47:31.335 |         icl1_0.response_body,
+2026-08-22 03:47:31.335 |         icl1_0.response_code,
+2026-08-22 03:47:31.335 |         icl1_0.status,
+2026-08-22 03:47:31.335 |         icl1_0.updated_at 
+2026-08-22 03:47:31.335 |     from
+2026-08-22 03:47:31.335 |         institution_callback_log icl1_0 
+2026-08-22 03:47:31.335 |     where
+2026-08-22 03:47:31.335 |         icl1_0.status=? 
+2026-08-22 03:47:31.335 |         and icl1_0.next_retry_at<?
+2026-08-22 03:47:31.335 | Hibernate: 
+2026-08-22 03:47:31.335 |     select
+2026-08-22 03:47:31.335 |         icl1_0.id,
+2026-08-22 03:47:31.335 |         icl1_0.attempt_count,
+2026-08-22 03:47:31.336 |         icl1_0.callback_url,
+2026-08-22 03:47:31.336 |         icl1_0.created_at,
+2026-08-22 03:47:31.336 |         icl1_0.next_retry_at,
+2026-08-22 03:47:31.336 |         icl1_0.payload,
+2026-08-22 03:47:31.336 |         icl1_0.payment_session_id,
+2026-08-22 03:47:31.336 |         icl1_0.response_body,
+2026-08-22 03:47:31.336 |         icl1_0.response_code,
+2026-08-22 03:47:31.336 |         icl1_0.status,
+2026-08-22 03:47:31.336 |         icl1_0.updated_at 
+2026-08-22 03:47:31.336 |     from
+2026-08-22 03:47:31.336 |         institution_callback_log icl1_0 
+2026-08-22 03:47:31.336 |     where
+2026-08-22 03:47:31.336 |         icl1_0.status=? 
+2026-08-22 03:47:31.336 |         and icl1_0.next_retry_at<?
+2026-08-22 03:47:35.296 | 2026-08-21 19:47:35 [http-nio-0.0.0.0-8080-exec-9] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:47:35.297 | 2026-08-21 19:47:35 [http-nio-0.0.0.0-8080-exec-9] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:47:35.301 | 2026-08-21 19:47:35 [http-nio-0.0.0.0-8080-exec-9] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: d4dca3d5-0b80-45d0-9818-ffe0c2c7276e] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:47:35.301 | 2026-08-21 19:47:35 [http-nio-0.0.0.0-8080-exec-9] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: d4dca3d5-0b80-45d0-9818-ffe0c2c7276e] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:47:45.385 | 2026-08-21 19:47:45 [http-nio-0.0.0.0-8080-exec-10] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:47:45.387 | 2026-08-21 19:47:45 [http-nio-0.0.0.0-8080-exec-10] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:47:45.392 | 2026-08-21 19:47:45 [http-nio-0.0.0.0-8080-exec-10] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 0f2a2397-09b5-43d7-8718-88060eeb92f6] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:47:45.392 | 2026-08-21 19:47:45 [http-nio-0.0.0.0-8080-exec-10] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 0f2a2397-09b5-43d7-8718-88060eeb92f6] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:47:55.489 | 2026-08-21 19:47:55 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:47:55.490 | 2026-08-21 19:47:55 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:47:55.496 | 2026-08-21 19:47:55 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: ceb95b4b-e072-4e8a-922b-3f2469ac3d47] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:47:55.496 | 2026-08-21 19:47:55 [http-nio-0.0.0.0-8080-exec-1] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: ceb95b4b-e072-4e8a-922b-3f2469ac3d47] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 6ms
+2026-08-22 03:48:05.580 | 2026-08-21 19:48:05 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:48:05.580 | 2026-08-21 19:48:05 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:48:05.585 | 2026-08-21 19:48:05 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 4bb973ba-d575-4f07-a638-35c3784fbd15] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:48:05.585 | 2026-08-21 19:48:05 [http-nio-0.0.0.0-8080-exec-2] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 4bb973ba-d575-4f07-a638-35c3784fbd15] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 5ms
+2026-08-22 03:48:15.668 | 2026-08-21 19:48:15 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:48:15.668 | 2026-08-21 19:48:15 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:48:15.672 | 2026-08-21 19:48:15 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 4122d47a-1039-424c-881e-19a3199235da] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:48:15.672 | 2026-08-21 19:48:15 [http-nio-0.0.0.0-8080-exec-3] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 4122d47a-1039-424c-881e-19a3199235da] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:48:25.737 | 2026-08-21 19:48:25 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:48:25.738 | 2026-08-21 19:48:25 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:48:25.742 | 2026-08-21 19:48:25 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 6a8246c4-e672-4a73-8fbd-f4edc4365a3d] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:48:25.742 | 2026-08-21 19:48:25 [http-nio-0.0.0.0-8080-exec-4] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 6a8246c4-e672-4a73-8fbd-f4edc4365a3d] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:48:31.324 | 2026-08-21 19:48:31 [MessageBroker-4] DEBUG org.hibernate.SQL [X-Request-Id: ] - 
+2026-08-22 03:48:31.324 |     select
+2026-08-22 03:48:31.324 |         icl1_0.id,
+2026-08-22 03:48:31.324 |         icl1_0.attempt_count,
+2026-08-22 03:48:31.324 |         icl1_0.callback_url,
+2026-08-22 03:48:31.324 |         icl1_0.created_at,
+2026-08-22 03:48:31.324 |         icl1_0.next_retry_at,
+2026-08-22 03:48:31.324 |         icl1_0.payload,
+2026-08-22 03:48:31.324 |         icl1_0.payment_session_id,
+2026-08-22 03:48:31.324 |         icl1_0.response_body,
+2026-08-22 03:48:31.324 |         icl1_0.response_code,
+2026-08-22 03:48:31.324 |         icl1_0.status,
+2026-08-22 03:48:31.324 |         icl1_0.updated_at 
+2026-08-22 03:48:31.324 |     from
+2026-08-22 03:48:31.324 |         institution_callback_log icl1_0 
+2026-08-22 03:48:31.324 |     where
+2026-08-22 03:48:31.324 |         icl1_0.status=? 
+2026-08-22 03:48:31.324 |         and icl1_0.next_retry_at<?
+2026-08-22 03:48:31.324 | Hibernate: 
+2026-08-22 03:48:31.324 |     select
+2026-08-22 03:48:31.324 |         icl1_0.id,
+2026-08-22 03:48:31.324 |         icl1_0.attempt_count,
+2026-08-22 03:48:31.324 |         icl1_0.callback_url,
+2026-08-22 03:48:31.324 |         icl1_0.created_at,
+2026-08-22 03:48:31.324 |         icl1_0.next_retry_at,
+2026-08-22 03:48:31.324 |         icl1_0.payload,
+2026-08-22 03:48:31.324 |         icl1_0.payment_session_id,
+2026-08-22 03:48:31.324 |         icl1_0.response_body,
+2026-08-22 03:48:31.324 |         icl1_0.response_code,
+2026-08-22 03:48:31.324 |         icl1_0.status,
+2026-08-22 03:48:31.324 |         icl1_0.updated_at 
+2026-08-22 03:48:31.324 |     from
+2026-08-22 03:48:31.324 |         institution_callback_log icl1_0 
+2026-08-22 03:48:31.324 |     where
+2026-08-22 03:48:31.324 |         icl1_0.status=? 
+2026-08-22 03:48:31.324 |         and icl1_0.next_retry_at<?
+2026-08-22 03:48:35.829 | 2026-08-21 19:48:35 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:48:35.830 | 2026-08-21 19:48:35 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:48:35.833 | 2026-08-21 19:48:35 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: d9f6fcd5-8db9-405d-a16e-111196f32f5b] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:48:35.833 | 2026-08-21 19:48:35 [http-nio-0.0.0.0-8080-exec-5] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: d9f6fcd5-8db9-405d-a16e-111196f32f5b] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:48:45.909 | 2026-08-21 19:48:45 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:48:45.910 | 2026-08-21 19:48:45 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:48:45.914 | 2026-08-21 19:48:45 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 18fed90e-c24a-463a-bb43-7294d52c92fb] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:48:45.914 | 2026-08-21 19:48:45 [http-nio-0.0.0.0-8080-exec-6] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 18fed90e-c24a-463a-bb43-7294d52c92fb] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:48:56.030 | 2026-08-21 19:48:56 [http-nio-0.0.0.0-8080-exec-7] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:48:56.031 | 2026-08-21 19:48:56 [http-nio-0.0.0.0-8080-exec-7] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:48:56.034 | 2026-08-21 19:48:56 [http-nio-0.0.0.0-8080-exec-7] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 33852f57-28fa-4924-b716-fdc823443a1f] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:48:56.034 | 2026-08-21 19:48:56 [http-nio-0.0.0.0-8080-exec-7] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 33852f57-28fa-4924-b716-fdc823443a1f] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:49:06.129 | 2026-08-21 19:49:06 [http-nio-0.0.0.0-8080-exec-8] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:49:06.129 | 2026-08-21 19:49:06 [http-nio-0.0.0.0-8080-exec-8] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:49:06.133 | 2026-08-21 19:49:06 [http-nio-0.0.0.0-8080-exec-8] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 5fbab432-bdba-4ae6-a7ea-d1801d12c434] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:49:06.133 | 2026-08-21 19:49:06 [http-nio-0.0.0.0-8080-exec-8] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 5fbab432-bdba-4ae6-a7ea-d1801d12c434] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:49:16.230 | 2026-08-21 19:49:16 [http-nio-0.0.0.0-8080-exec-9] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:49:16.231 | 2026-08-21 19:49:16 [http-nio-0.0.0.0-8080-exec-9] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:49:16.234 | 2026-08-21 19:49:16 [http-nio-0.0.0.0-8080-exec-9] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 6047c114-10c2-40d1-b634-5a754927f9cb] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:49:16.234 | 2026-08-21 19:49:16 [http-nio-0.0.0.0-8080-exec-9] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 6047c114-10c2-40d1-b634-5a754927f9cb] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:49:26.327 | 2026-08-21 19:49:26 [http-nio-0.0.0.0-8080-exec-10] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:49:26.327 | 2026-08-21 19:49:26 [http-nio-0.0.0.0-8080-exec-10] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:49:26.332 | 2026-08-21 19:49:26 [http-nio-0.0.0.0-8080-exec-10] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 0f68fb4d-e1e3-4a98-9a47-f03e59b36fb9] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:49:26.332 | 2026-08-21 19:49:26 [http-nio-0.0.0.0-8080-exec-10] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 0f68fb4d-e1e3-4a98-9a47-f03e59b36fb9] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 5ms
+2026-08-22 03:49:31.325 | 2026-08-21 19:49:31 [MessageBroker-10] DEBUG org.hibernate.SQL [X-Request-Id: ] - 
+2026-08-22 03:49:31.325 |     select
+2026-08-22 03:49:31.325 |         icl1_0.id,
+2026-08-22 03:49:31.325 |         icl1_0.attempt_count,
+2026-08-22 03:49:31.325 |         icl1_0.callback_url,
+2026-08-22 03:49:31.325 |         icl1_0.created_at,
+2026-08-22 03:49:31.325 |         icl1_0.next_retry_at,
+2026-08-22 03:49:31.325 |         icl1_0.payload,
+2026-08-22 03:49:31.325 |         icl1_0.payment_session_id,
+2026-08-22 03:49:31.325 |         icl1_0.response_body,
+2026-08-22 03:49:31.325 |         icl1_0.response_code,
+2026-08-22 03:49:31.325 |         icl1_0.status,
+2026-08-22 03:49:31.325 |         icl1_0.updated_at 
+2026-08-22 03:49:31.325 |     from
+2026-08-22 03:49:31.325 |         institution_callback_log icl1_0 
+2026-08-22 03:49:31.325 |     where
+2026-08-22 03:49:31.325 |         icl1_0.status=? 
+2026-08-22 03:49:31.325 |         and icl1_0.next_retry_at<?
+2026-08-22 03:49:31.325 | Hibernate: 
+2026-08-22 03:49:31.325 |     select
+2026-08-22 03:49:31.325 |         icl1_0.id,
+2026-08-22 03:49:31.325 |         icl1_0.attempt_count,
+2026-08-22 03:49:31.325 |         icl1_0.callback_url,
+2026-08-22 03:49:31.325 |         icl1_0.created_at,
+2026-08-22 03:49:31.325 |         icl1_0.next_retry_at,
+2026-08-22 03:49:31.325 |         icl1_0.payload,
+2026-08-22 03:49:31.325 |         icl1_0.payment_session_id,
+2026-08-22 03:49:31.325 |         icl1_0.response_body,
+2026-08-22 03:49:31.325 |         icl1_0.response_code,
+2026-08-22 03:49:31.325 |         icl1_0.status,
+2026-08-22 03:49:31.325 |         icl1_0.updated_at 
+2026-08-22 03:49:31.325 |     from
+2026-08-22 03:49:31.325 |         institution_callback_log icl1_0 
+2026-08-22 03:49:31.325 |     where
+2026-08-22 03:49:31.325 |         icl1_0.status=? 
+2026-08-22 03:49:31.325 |         and icl1_0.next_retry_at<?
+2026-08-22 03:49:36.404 | 2026-08-21 19:49:36 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:49:36.405 | 2026-08-21 19:49:36 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:49:36.409 | 2026-08-21 19:49:36 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 755ef2d9-6f0e-4e71-a137-94095373da71] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:49:36.409 | 2026-08-21 19:49:36 [http-nio-0.0.0.0-8080-exec-1] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 755ef2d9-6f0e-4e71-a137-94095373da71] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:49:46.495 | 2026-08-21 19:49:46 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:49:46.496 | 2026-08-21 19:49:46 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:49:46.499 | 2026-08-21 19:49:46 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 7a519235-c20b-42a5-9515-e8adabebf198] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:49:46.499 | 2026-08-21 19:49:46 [http-nio-0.0.0.0-8080-exec-2] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 7a519235-c20b-42a5-9515-e8adabebf198] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:49:56.577 | 2026-08-21 19:49:56 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:49:56.578 | 2026-08-21 19:49:56 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:49:56.581 | 2026-08-21 19:49:56 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 2dbf440c-24ae-46e7-aae3-db2faf3b76fe] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:49:56.581 | 2026-08-21 19:49:56 [http-nio-0.0.0.0-8080-exec-3] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 2dbf440c-24ae-46e7-aae3-db2faf3b76fe] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:50:06.661 | 2026-08-21 19:50:06 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:50:06.662 | 2026-08-21 19:50:06 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:50:06.665 | 2026-08-21 19:50:06 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 38f6e381-37b4-4c1a-937d-38b10bc1eb2b] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:50:06.665 | 2026-08-21 19:50:06 [http-nio-0.0.0.0-8080-exec-4] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 38f6e381-37b4-4c1a-937d-38b10bc1eb2b] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:50:16.759 | 2026-08-21 19:50:16 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:50:16.760 | 2026-08-21 19:50:16 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:50:16.763 | 2026-08-21 19:50:16 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: ce63c32c-c743-4cdd-9b3f-27fd9e934547] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:50:16.763 | 2026-08-21 19:50:16 [http-nio-0.0.0.0-8080-exec-5] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: ce63c32c-c743-4cdd-9b3f-27fd9e934547] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:50:26.870 | 2026-08-21 19:50:26 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:50:26.871 | 2026-08-21 19:50:26 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:50:26.874 | 2026-08-21 19:50:26 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 6e9a03bf-7924-4fb5-b372-eb0968df9676] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:50:26.874 | 2026-08-21 19:50:26 [http-nio-0.0.0.0-8080-exec-6] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 6e9a03bf-7924-4fb5-b372-eb0968df9676] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:50:31.328 | 2026-08-21 19:50:31 [MessageBroker-11] DEBUG org.hibernate.SQL [X-Request-Id: ] - 
+2026-08-22 03:50:31.328 |     select
+2026-08-22 03:50:31.328 |         icl1_0.id,
+2026-08-22 03:50:31.328 |         icl1_0.attempt_count,
+2026-08-22 03:50:31.328 |         icl1_0.callback_url,
+2026-08-22 03:50:31.328 |         icl1_0.created_at,
+2026-08-22 03:50:31.328 |         icl1_0.next_retry_at,
+2026-08-22 03:50:31.328 |         icl1_0.payload,
+2026-08-22 03:50:31.328 |         icl1_0.payment_session_id,
+2026-08-22 03:50:31.328 |         icl1_0.response_body,
+2026-08-22 03:50:31.328 |         icl1_0.response_code,
+2026-08-22 03:50:31.328 |         icl1_0.status,
+2026-08-22 03:50:31.328 |         icl1_0.updated_at 
+2026-08-22 03:50:31.328 |     from
+2026-08-22 03:50:31.328 |         institution_callback_log icl1_0 
+2026-08-22 03:50:31.328 |     where
+2026-08-22 03:50:31.328 |         icl1_0.status=? 
+2026-08-22 03:50:31.328 |         and icl1_0.next_retry_at<?
+2026-08-22 03:50:31.328 | Hibernate: 
+2026-08-22 03:50:31.328 |     select
+2026-08-22 03:50:31.328 |         icl1_0.id,
+2026-08-22 03:50:31.328 |         icl1_0.attempt_count,
+2026-08-22 03:50:31.328 |         icl1_0.callback_url,
+2026-08-22 03:50:31.328 |         icl1_0.created_at,
+2026-08-22 03:50:31.328 |         icl1_0.next_retry_at,
+2026-08-22 03:50:31.328 |         icl1_0.payload,
+2026-08-22 03:50:31.328 |         icl1_0.payment_session_id,
+2026-08-22 03:50:31.328 |         icl1_0.response_body,
+2026-08-22 03:50:31.328 |         icl1_0.response_code,
+2026-08-22 03:50:31.328 |         icl1_0.status,
+2026-08-22 03:50:31.328 |         icl1_0.updated_at 
+2026-08-22 03:50:31.328 |     from
+2026-08-22 03:50:31.328 |         institution_callback_log icl1_0 
+2026-08-22 03:50:31.328 |     where
+2026-08-22 03:50:31.328 |         icl1_0.status=? 
+2026-08-22 03:50:31.328 |         and icl1_0.next_retry_at<?
+2026-08-22 03:50:36.968 | 2026-08-21 19:50:36 [http-nio-0.0.0.0-8080-exec-7] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:50:36.969 | 2026-08-21 19:50:36 [http-nio-0.0.0.0-8080-exec-7] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:50:36.972 | 2026-08-21 19:50:36 [http-nio-0.0.0.0-8080-exec-7] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 85e4e0e2-e838-4f5b-9eab-5e6f21290092] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:50:36.972 | 2026-08-21 19:50:36 [http-nio-0.0.0.0-8080-exec-7] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 85e4e0e2-e838-4f5b-9eab-5e6f21290092] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:50:47.053 | 2026-08-21 19:50:47 [http-nio-0.0.0.0-8080-exec-8] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:50:47.053 | 2026-08-21 19:50:47 [http-nio-0.0.0.0-8080-exec-8] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:50:47.057 | 2026-08-21 19:50:47 [http-nio-0.0.0.0-8080-exec-8] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: bbdfd3eb-86ca-4292-b0e8-ecc8adf48ee1] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:50:47.057 | 2026-08-21 19:50:47 [http-nio-0.0.0.0-8080-exec-8] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: bbdfd3eb-86ca-4292-b0e8-ecc8adf48ee1] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:50:57.159 | 2026-08-21 19:50:57 [http-nio-0.0.0.0-8080-exec-9] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:50:57.160 | 2026-08-21 19:50:57 [http-nio-0.0.0.0-8080-exec-9] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:50:57.164 | 2026-08-21 19:50:57 [http-nio-0.0.0.0-8080-exec-9] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 0c1b8bf7-1be5-406d-ad5d-a2c454ddfd1d] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:50:57.164 | 2026-08-21 19:50:57 [http-nio-0.0.0.0-8080-exec-9] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 0c1b8bf7-1be5-406d-ad5d-a2c454ddfd1d] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:51:07.253 | 2026-08-21 19:51:07 [http-nio-0.0.0.0-8080-exec-10] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:51:07.253 | 2026-08-21 19:51:07 [http-nio-0.0.0.0-8080-exec-10] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:51:07.257 | 2026-08-21 19:51:07 [http-nio-0.0.0.0-8080-exec-10] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 0b9ff3c7-bf2c-40c5-b086-6c10b45a342e] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:51:07.257 | 2026-08-21 19:51:07 [http-nio-0.0.0.0-8080-exec-10] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 0b9ff3c7-bf2c-40c5-b086-6c10b45a342e] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:51:17.353 | 2026-08-21 19:51:17 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:51:17.353 | 2026-08-21 19:51:17 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:51:17.357 | 2026-08-21 19:51:17 [http-nio-0.0.0.0-8080-exec-1] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: e12f5ef5-e740-4fe4-839c-4e6d7928457e] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:51:17.357 | 2026-08-21 19:51:17 [http-nio-0.0.0.0-8080-exec-1] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: e12f5ef5-e740-4fe4-839c-4e6d7928457e] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:51:27.434 | 2026-08-21 19:51:27 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:51:27.434 | 2026-08-21 19:51:27 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:51:27.438 | 2026-08-21 19:51:27 [http-nio-0.0.0.0-8080-exec-2] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 5d913480-ebd4-4c74-b736-fc03b463d917] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:51:27.438 | 2026-08-21 19:51:27 [http-nio-0.0.0.0-8080-exec-2] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 5d913480-ebd4-4c74-b736-fc03b463d917] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:51:31.336 | 2026-08-21 19:51:31 [MessageBroker-11] DEBUG org.hibernate.SQL [X-Request-Id: ] - 
+2026-08-22 03:51:31.336 |     select
+2026-08-22 03:51:31.336 |         icl1_0.id,
+2026-08-22 03:51:31.336 |         icl1_0.attempt_count,
+2026-08-22 03:51:31.336 |         icl1_0.callback_url,
+2026-08-22 03:51:31.336 |         icl1_0.created_at,
+2026-08-22 03:51:31.336 |         icl1_0.next_retry_at,
+2026-08-22 03:51:31.336 |         icl1_0.payload,
+2026-08-22 03:51:31.336 |         icl1_0.payment_session_id,
+2026-08-22 03:51:31.336 |         icl1_0.response_body,
+2026-08-22 03:51:31.336 |         icl1_0.response_code,
+2026-08-22 03:51:31.336 |         icl1_0.status,
+2026-08-22 03:51:31.336 |         icl1_0.updated_at 
+2026-08-22 03:51:31.336 |     from
+2026-08-22 03:51:31.336 |         institution_callback_log icl1_0 
+2026-08-22 03:51:31.336 |     where
+2026-08-22 03:51:31.336 |         icl1_0.status=? 
+2026-08-22 03:51:31.336 |         and icl1_0.next_retry_at<?
+2026-08-22 03:51:31.336 | Hibernate: 
+2026-08-22 03:51:31.336 |     select
+2026-08-22 03:51:31.336 |         icl1_0.id,
+2026-08-22 03:51:31.336 |         icl1_0.attempt_count,
+2026-08-22 03:51:31.336 |         icl1_0.callback_url,
+2026-08-22 03:51:31.336 |         icl1_0.created_at,
+2026-08-22 03:51:31.336 |         icl1_0.next_retry_at,
+2026-08-22 03:51:31.336 |         icl1_0.payload,
+2026-08-22 03:51:31.336 |         icl1_0.payment_session_id,
+2026-08-22 03:51:31.336 |         icl1_0.response_body,
+2026-08-22 03:51:31.336 |         icl1_0.response_code,
+2026-08-22 03:51:31.336 |         icl1_0.status,
+2026-08-22 03:51:31.336 |         icl1_0.updated_at 
+2026-08-22 03:51:31.336 |     from
+2026-08-22 03:51:31.336 |         institution_callback_log icl1_0 
+2026-08-22 03:51:31.336 |     where
+2026-08-22 03:51:31.336 |         icl1_0.status=? 
+2026-08-22 03:51:31.336 |         and icl1_0.next_retry_at<?
+2026-08-22 03:51:37.514 | 2026-08-21 19:51:37 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:51:37.515 | 2026-08-21 19:51:37 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:51:37.520 | 2026-08-21 19:51:37 [http-nio-0.0.0.0-8080-exec-3] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: 9779bbc1-59a0-4e3c-a3cf-0c8f841434b3] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:51:37.520 | 2026-08-21 19:51:37 [http-nio-0.0.0.0-8080-exec-3] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: 9779bbc1-59a0-4e3c-a3cf-0c8f841434b3] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 5ms
+2026-08-22 03:51:47.620 | 2026-08-21 19:51:47 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:51:47.621 | 2026-08-21 19:51:47 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:51:47.624 | 2026-08-21 19:51:47 [http-nio-0.0.0.0-8080-exec-4] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: a45af786-a87f-4b01-81c8-e4e9d0a56aa4] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:51:47.624 | 2026-08-21 19:51:47 [http-nio-0.0.0.0-8080-exec-4] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: a45af786-a87f-4b01-81c8-e4e9d0a56aa4] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms
+2026-08-22 03:51:57.717 | 2026-08-21 19:51:57 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:51:57.718 | 2026-08-21 19:51:57 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:51:57.722 | 2026-08-21 19:51:57 [http-nio-0.0.0.0-8080-exec-5] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: f53b45dc-7264-469d-8147-fdf3159cee99] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:51:57.722 | 2026-08-21 19:51:57 [http-nio-0.0.0.0-8080-exec-5] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: f53b45dc-7264-469d-8147-fdf3159cee99] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 4ms
+2026-08-22 03:52:07.807 | 2026-08-21 19:52:07 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Securing GET /actuator/health
+2026-08-22 03:52:07.808 | 2026-08-21 19:52:07 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy [X-Request-Id: ] - Secured GET /actuator/health
+2026-08-22 03:52:07.812 | 2026-08-21 19:52:07 [http-nio-0.0.0.0-8080-exec-6] DEBUG o.s.s.w.a.AnonymousAuthenticationFilter [X-Request-Id: b0174551-c36c-43cc-8b13-91a5ccf5c7c9] - Set SecurityContextHolder to anonymous SecurityContext
+2026-08-22 03:52:07.812 | 2026-08-21 19:52:07 [http-nio-0.0.0.0-8080-exec-6] INFO  c.c.b.w.filter.RequestLoggingFilter [X-Request-Id: b0174551-c36c-43cc-8b13-91a5ccf5c7c9] - [HTTP LOG] GET /actuator/health - Status: 200 - Duration: 3ms

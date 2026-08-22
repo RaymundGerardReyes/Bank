@@ -1,0 +1,81 @@
+{
+  "project": "banking",
+  "result": "PASSED",
+  "ports": [
+    {
+      "host_ip": "127.0.0.1",
+      "host_port": 5435,
+      "protocol": "tcp",
+      "requested": {
+        "project": "banking",
+        "service": "database"
+      },
+      "registry": {
+        "status": "ACTIVE",
+        "owner_project": "banking",
+        "owner_service": "database"
+      },
+      "runtime": {
+        "type": "docker",
+        "container_id": "458ebe71ec97",
+        "container_name": "banking_db",
+        "compose_project": "banking",
+        "compose_service": "database",
+        "container_port": 5432,
+        "protocol": "tcp"
+      },
+      "classification": "OWNED BY CURRENT PROJECT",
+      "result": "PASS"
+    },
+    {
+      "host_ip": "0.0.0.0",
+      "host_port": 8080,
+      "protocol": "tcp",
+      "requested": {
+        "project": "banking",
+        "service": "nginx"
+      },
+      "registry": {
+        "status": "ACTIVE",
+        "owner_project": "banking",
+        "owner_service": "nginx"
+      },
+      "runtime": {
+        "type": "docker",
+        "container_id": "0c01cd6c0fd5",
+        "container_name": "banking_gateway",
+        "compose_project": "banking",
+        "compose_service": "nginx",
+        "container_port": 80,
+        "protocol": "tcp"
+      },
+      "classification": "OWNED BY CURRENT PROJECT",
+      "result": "PASS"
+    },
+    {
+      "host_ip": "127.0.0.1",
+      "host_port": 3001,
+      "protocol": "tcp",
+      "requested": {
+        "project": "banking",
+        "service": "web-app"
+      },
+      "registry": {
+        "status": "ACTIVE",
+        "owner_project": "banking",
+        "owner_service": "web-app"
+      },
+      "runtime": {
+        "type": "docker",
+        "container_id": "a48511a85154",
+        "container_name": "banking_frontend",
+        "compose_project": "banking",
+        "compose_service": "web-app",
+        "container_port": 3000,
+        "protocol": "tcp"
+      },
+      "classification": "OWNED BY CURRENT PROJECT",
+      "result": "PASS"
+    }
+  ]
+}
