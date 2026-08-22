@@ -8,8 +8,13 @@ services:
     container_name: banking_gateway
     restart: unless-stopped
     environment:
-      - PLATFORM_DOMAIN=${PLATFORM_DOMAIN:?PLATFORM_DOMAIN must be defined}
       - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
+      - UI_PUBLIC_HOST=${UI_PUBLIC_HOST}
+      - API_PUBLIC_HOST=${API_PUBLIC_HOST}
+      - PAYMENT_WEBHOOK_HOST=${PAYMENT_WEBHOOK_HOST}
+      - PLATFORM_DOMAIN=${PLATFORM_DOMAIN}
+      - BACKEND_UPSTREAM_HOST=${BACKEND_UPSTREAM_HOST:-backend}
+      - BACKEND_UPSTREAM_PORT=${BACKEND_UPSTREAM_PORT:-8080}
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/templates/nginx.conf.template:ro
     ports:
@@ -20,9 +25,10 @@ services:
       web-app:
         condition: service_started
     networks:
-      app-net:
+      frontend-net:
         aliases:
           - soc-nginx-proxy
+      api-net: {}
 
   # ==========================================================
   # CLOUDFLARE ZERO TRUST TUNNEL
@@ -32,13 +38,12 @@ services:
     container_name: banking_cloudflared_edge
     restart: unless-stopped
     networks:
-      - app-net
+      - frontend-net
     user: "65532:65532"
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
       - TUNNEL_EDGE_BIND_ADDRESS=0.0.0.0
       - TUNNEL_TRANSPORT_PROTOCOL=http2
-      - TUNNEL_ORIGIN_SERVER_NAME=banking_gateway
     depends_on:
       nginx:
         condition: service_started
@@ -57,17 +62,17 @@ services:
       - "8080"
     environment:
       APP_ENV: ${APP_ENV:-production}
-      DB_HOST: database
-      DB_PORT: 5432
-      DB_NAME: ${POSTGRES_DB:-banking}
-      DB_USER: ${POSTGRES_USER:-postgres}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
       MAIL_HOST: ${MAIL_HOST}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_FROM: ${MAIL_FROM}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      FRONTEND_PUBLIC_ORIGIN: ${FRONTEND_PUBLIC_ORIGIN}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS}
       PASSKEY_RP_ID: ${PASSKEY_RP_ID}
@@ -84,7 +89,8 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - app-net
+      - api-net
+      - database-net
 
   # ==========================================================
   # FRONTEND (Next.js)
@@ -113,7 +119,8 @@ services:
       ENABLE_PASSKEY_AUTH: ${ENABLE_PASSKEY_AUTH}
       ENABLE_DEV_API_DOCS: ${ENABLE_DEV_API_DOCS}
     networks:
-      - app-net
+      - frontend-net
+      - api-net
 
   # ==========================================================
   # DATABASE (PostgreSQL)
@@ -123,23 +130,28 @@ services:
     container_name: banking_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-banking}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-banking}" ]
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
     networks:
-      - app-net
+      - database-net
 
 networks:
-  app-net:
+  frontend-net:
     driver: bridge
+  api-net:
+    driver: bridge
+  database-net:
+    driver: bridge
+    internal: true
 
 volumes:
   pgdata:
