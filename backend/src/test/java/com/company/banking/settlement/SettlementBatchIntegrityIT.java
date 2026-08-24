@@ -10,9 +10,8 @@ import com.company.banking.transaction.infrastructure.TransactionJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import com.company.banking.config.LedgerSpyIntegrationTest;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -27,9 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
-@SpringBootTest
-@ActiveProfiles("test")
-public class SettlementBatchIntegrityIT {
+public class SettlementBatchIntegrityIT extends LedgerSpyIntegrationTest {
 
     @Autowired
     private SettlementBatchService settlementBatchService;
@@ -37,8 +34,7 @@ public class SettlementBatchIntegrityIT {
     @Autowired
     private TransactionJpaRepository transactionRepository;
 
-    @MockitoSpyBean
-    private SettlementBatchJpaRepository settlementBatchRepository;
+
 
     private final Long TEST_MERCHANT_ID = 42L;
     private final Long TEST_WINDOW_ID = 20260823L;
@@ -46,8 +42,7 @@ public class SettlementBatchIntegrityIT {
 
     @BeforeEach
     public void setup() {
-        transactionRepository.deleteAll();
-        settlementBatchRepository.deleteAll();
+
     }
 
     private void seedTransaction(BigDecimal amount, TransactionStatus status) {
@@ -104,7 +99,7 @@ public class SettlementBatchIntegrityIT {
         seedTransaction(new BigDecimal("5000.00"), TransactionStatus.COMPLETED);
 
         // Sabotage the database save to simulate a mid-flight crash
-        doThrow(new RuntimeException("Simulated Network Outage")).when(settlementBatchRepository).save(any());
+        doThrow(new RuntimeException("Simulated Network Outage")).when(settlementBatchRepository).saveAndFlush(any());
 
         assertThrows(RuntimeException.class, () -> {
             settlementBatchService.createSettlementBatch(TEST_MERCHANT_ID, TEST_WINDOW_ID, "DEST-BANK", "ROUTING-123");

@@ -149,6 +149,7 @@ public class AuthenticationController {
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "User not found."));
                 
         customer.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        customer.setLocked(false);
         customerPersistencePort.save(customer);
         
         // NOTE: passwordResetTokenService.consumeToken() has been removed because it is now handled atomically above.

@@ -52,6 +52,24 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setContentType("application/json");
+                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                    
+                    String path = request.getRequestURI();
+                    String message;
+                    if (path.startsWith("/api/v1/gateway")) {
+                        message = "Unauthorized: Invalid, expired, or missing API Key";
+                        request.setAttribute("GATEWAY_AUTH_STAGE", "API_KEY_REJECTED");
+                        request.setAttribute("GATEWAY_AUTH_FAILURE_REASON", "API_KEY_MISSING");
+                    } else {
+                        message = "Unauthorized: Invalid or missing session token";
+                    }
+                        
+                    response.getWriter().write("{\"success\":false,\"message\":\"" + message + "\"}");
+                })
+            )
             .authenticationProvider(authenticationProvider)
             .addFilterBefore(correlationIdFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(bffIdentityFilter, UsernamePasswordAuthenticationFilter.class)

@@ -49,6 +49,39 @@ public class ApiAuditEvent {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "api_key_id")
+    private Long apiKeyId;
+
+    @Column(name = "environment")
+    private String environment;
+
+    @Column(name = "linked_account_id")
+    private String linkedAccountId;
+
+    @Column(name = "granted_scopes")
+    private String grantedScopes;
+
+    @Column(name = "authentication_status")
+    private String authenticationStatus;
+
+    @Column(name = "authorization_status")
+    private String authorizationStatus;
+
+    @Column(name = "auth_failure_reason")
+    private String authFailureReason;
+
+    @Column(name = "request_stage")
+    private String requestStage;
+
+    @Column(name = "status_family")
+    private String statusFamily;
+
+    @Column(name = "latency_ms")
+    private Long latencyMs;
+
+    @Column(name = "idempotency_key")
+    private String idempotencyKey;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

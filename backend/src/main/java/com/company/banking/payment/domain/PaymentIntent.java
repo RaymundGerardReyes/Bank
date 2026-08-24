@@ -29,20 +29,20 @@ public class PaymentIntent {
     @Column(name = "merchant_id", nullable = false)
     private Long merchantId;
 
-    @Column(name = "customer_account_number", nullable = false)
+    @Column(name = "customer_account_number")
     private String customerAccountNumber;
 
     @Column(nullable = false)
     private BigDecimal amount;
 
-    @Column(nullable = false)
+    @Column(name = "currency", nullable = false)
     private String currency;
 
     @Column(name = "fee_amount", nullable = false)
     private BigDecimal feeAmount;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private PaymentIntentStatus status;
     
     @Column(columnDefinition = "TEXT")

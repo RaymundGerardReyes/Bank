@@ -21,7 +21,7 @@ public class CheckoutSession {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false, updatable = false)
+    @Column(name = "session_id", unique = true, nullable = false, updatable = false)
     private String sessionId; // Opaque cs_... token
 
     @Column(name = "merchant_id", nullable = false, updatable = false)
@@ -30,31 +30,33 @@ public class CheckoutSession {
     @Column(name = "idempotency_key", nullable = false, updatable = false)
     private String idempotencyKey;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "payment_intent_id", nullable = false, updatable = false)
     private String paymentIntentId; // References PaymentIntent.intentId (pi_...)
 
     @Column(nullable = false, updatable = false)
     private BigDecimal amount;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "currency", nullable = false, updatable = false)
     private String currency;
 
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private CheckoutSessionStatus status;
 
+    @Column(name = "selected_payment_method")
     private String selectedPaymentMethod;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "success_url", nullable = false, updatable = false)
     private String successUrl;
 
+    @Column(name = "cancel_url")
     private String cancelUrl;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
+    @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 }

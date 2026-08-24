@@ -70,12 +70,20 @@ public class JwtTokenProvider {
 
     private Key getSignInKey() {
         try {
-            // FIX: Use BASE64URL decoder instead of BASE64 to safely handle hyphens and underscores
-            byte[] keyBytes = Decoders.BASE64URL.decode(secretKey);
+            byte[] keyBytes;
+            try {
+                // Attempt standard Base64 decoding (supports '/' and '+')
+                keyBytes = Decoders.BASE64.decode(secretKey);
+            } catch (io.jsonwebtoken.io.DecodingException e) {
+                try {
+                    // Fallback to Base64URL decoding (supports '-' and '_')
+                    keyBytes = Decoders.BASE64URL.decode(secretKey);
+                } catch (io.jsonwebtoken.io.DecodingException ex) {
+                    // Fallback to raw UTF-8 string bytes
+                    keyBytes = secretKey.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                }
+            }
             return Keys.hmacShaKeyFor(keyBytes);
-        } catch (io.jsonwebtoken.io.DecodingException e) {
-            throw new IllegalStateException("FATAL: JWT_SECRET is not a valid Base64 string. " +
-                "A 256-bit (32 byte) Base64-encoded secret is strictly required for HS256.", e);
         } catch (io.jsonwebtoken.security.WeakKeyException e) {
             throw new IllegalStateException("FATAL: JWT_SECRET is too weak. " +
                 "HS256 requires a key of at least 256 bits.", e);

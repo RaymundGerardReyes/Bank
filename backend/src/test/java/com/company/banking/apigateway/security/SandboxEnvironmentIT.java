@@ -72,6 +72,9 @@ public class SandboxEnvironmentIT {
                 "sk_test_mock", 
                 99L, 
                 "TEST", 
+                1L,
+                "VA-TEST-123",
+                java.util.Set.of("payments:write"),
                 List.of(new SimpleGrantedAuthority("SCOPE_PAYMENTS"))
         );
         SecurityContextHolder.getContext().setAuthentication(testToken);

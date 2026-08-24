@@ -68,5 +68,6 @@ tasks.named('test') {
     
     // FIX: Prevent Gradle from eating all your RAM and crashing the JVM
     maxParallelForks = 1
+    forkEvery = 0
     maxHeapSize = "1G"
 }

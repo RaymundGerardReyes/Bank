@@ -14,9 +14,8 @@ import com.company.banking.transaction.infrastructure.TransactionJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import com.company.banking.config.LedgerSpyIntegrationTest;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,9 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
-@SpringBootTest
-@ActiveProfiles("test")
-public class CheckoutPaymentConfirmationIT {
+public class CheckoutPaymentConfirmationIT extends LedgerSpyIntegrationTest {
     @Autowired private com.company.banking.account.infrastructure.AccountJpaRepository accountJpaRepository;
     @Autowired private com.company.banking.settlement.infrastructure.MerchantBalanceJpaRepository merchantBalanceRepository;
 
@@ -54,8 +51,6 @@ public class CheckoutPaymentConfirmationIT {
     @Autowired
     private TransactionJpaRepository transactionRepository;
 
-    @MockitoSpyBean
-    private LedgerEntryJpaRepository ledgerEntryRepository; // Spied to simulate DB failures
 
     private CheckoutSession activeSession;
     private PaymentIntent activeIntent;
@@ -65,31 +60,35 @@ public class CheckoutPaymentConfirmationIT {
 
     @BeforeEach
     public void setup() {
-        authorizationRepository.deleteAll();
-        sessionRepository.deleteAll();
-        intentRepository.deleteAll();
-        transactionRepository.deleteAll();
-        ledgerEntryRepository.deleteAll();
-        merchantBalanceRepository.deleteAll();
-        accountJpaRepository.deleteAll();
 
-        // Seed Customer Account
-        customerAccount = accountPersistencePort.save(Account.builder()
-                .accountNumber("CUST-CONF-1001")
-                .customerId(10L)
-                .balance(new BigDecimal("10000.00"))
-                .currency("PHP")
-                .status(AccountStatus.ACTIVE)
-                .build());
 
-        // Seed Merchant Settlement Account
-        merchantAccount = accountPersistencePort.save(Account.builder()
-                .accountNumber("MERCHANT-SETTLEMENT-99")
-                .customerId(99L)
-                .balance(new BigDecimal("0.00"))
-                .currency("PHP")
-                .status(AccountStatus.ACTIVE)
-                .build());
+        // Seed Customer Account idempotently
+        customerAccount = accountPersistencePort.findByAccountNumber("CUST-CONF-1001")
+                .map(acc -> {
+                    acc.setBalance(new BigDecimal("10000.00"));
+                    return accountPersistencePort.save(acc);
+                })
+                .orElseGet(() -> accountPersistencePort.save(Account.builder()
+                        .accountNumber("CUST-CONF-1001")
+                        .customerId(10L)
+                        .balance(new BigDecimal("10000.00"))
+                        .currency("PHP")
+                        .status(AccountStatus.ACTIVE)
+                        .build()));
+
+        // Seed Merchant Settlement Account idempotently
+        merchantAccount = accountPersistencePort.findByAccountNumber("MERCHANT-SETTLEMENT-99")
+                .map(acc -> {
+                    acc.setBalance(new BigDecimal("0.00"));
+                    return accountPersistencePort.save(acc);
+                })
+                .orElseGet(() -> accountPersistencePort.save(Account.builder()
+                        .accountNumber("MERCHANT-SETTLEMENT-99")
+                        .customerId(99L)
+                        .balance(new BigDecimal("0.00"))
+                        .currency("PHP")
+                        .status(AccountStatus.ACTIVE)
+                        .build()));
 
         // Seed AUTHORIZED Intent
         activeIntent = intentRepository.save(PaymentIntent.builder()

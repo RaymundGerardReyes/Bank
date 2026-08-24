@@ -11,8 +11,7 @@ import com.company.banking.common.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import com.company.banking.config.BaseIntegrationTest;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -22,9 +21,7 @@ import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
-@ActiveProfiles("test")
-public class CheckoutSessionIntegrityIT {
+public class CheckoutSessionIntegrityIT extends BaseIntegrationTest {
 
     @Autowired
     private CheckoutSessionService checkoutSessionService;
@@ -35,11 +32,6 @@ public class CheckoutSessionIntegrityIT {
     @Autowired
     private PaymentIntentJpaRepository intentRepository;
 
-    @BeforeEach
-    public void setup() {
-        sessionRepository.deleteAll();
-        intentRepository.deleteAll();
-    }
 
     @Test
     public void createSession_ShouldBeIdempotentAndDeriveServerSideAmount() {

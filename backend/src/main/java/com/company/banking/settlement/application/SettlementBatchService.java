@@ -68,7 +68,7 @@ public class SettlementBatchService {
 
         try {
             // The DB UNIQUE constraint on batch_reference provides our ultimate race-condition safety net
-            batch = settlementBatchRepository.save(batch);
+            batch = settlementBatchRepository.saveAndFlush(batch);
         } catch (DataIntegrityViolationException e) {
             throw new ConflictException("Settlement batch operation is idempotent. Blocked at database level.");
         }

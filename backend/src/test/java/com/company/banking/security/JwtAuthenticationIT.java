@@ -72,6 +72,7 @@ public class JwtAuthenticationIT {
 
         mockMvc.perform(get("/api/v1/accounts")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken)
+                .header("X-Internal-BFF-Key", "super_secret_bff_key")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
     }

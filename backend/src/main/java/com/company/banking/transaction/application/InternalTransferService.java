@@ -46,6 +46,8 @@ public class InternalTransferService implements TransactionUseCase {
     private final AuditEventPublisher auditEventPublisher;
     private final ZeroBalanceSweepService zeroBalanceSweepService;
     private final PushNotificationPort pushNotificationPort;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final com.company.banking.transaction.infrastructure.TransactionJpaRepository transactionRepository;
 
     private final com.company.banking.account.application.GlobalAccountLockGuard globalAccountLockGuard;
 
@@ -96,16 +98,32 @@ public class InternalTransferService implements TransactionUseCase {
 
         transferPolicy.validateVelocity(source, request.getAmount(), Collections.emptyList());
 
-        // 5. Atomic Balance Mutations
-        source.setBalance(source.getBalance().subtract(request.getAmount()));
-        destination.setBalance(destination.getBalance().add(request.getAmount()));
-
-        accountPersistencePort.save(source);
-        accountPersistencePort.save(destination);
-
-        // 6. Double-Entry Ledger Creation
+        // 5. Create Transaction anchor FIRST (status=PENDING) so accounting records precede balance mutations.
+        //    Order: Transaction → LedgerEntries → Balance updates → Transaction COMPLETED.
+        //    If any step after Transaction creation fails the whole @Transactional rolls back cleanly.
         String txRef = "TXN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
+        Transaction transaction = Transaction.builder()
+                .transactionReference(txRef)
+                .idempotencyKey(request.getIdempotencyKey())
+                .sourceAccountNumber(source.getAccountNumber())
+                .destinationAccountNumber(destination.getAccountNumber())
+                .amount(request.getAmount())
+                .currency(source.getCurrency())
+                .status(TransactionStatus.PENDING)
+                .description(request.getDescription())
+                .build();
+
+        Transaction savedTx;
+        try {
+            savedTx = transactionRepository.saveAndFlush(transaction);
+        } catch (DataIntegrityViolationException e) {
+            Transaction concurrentTx = ledgerPersistencePort.findByIdempotencyKey(request.getIdempotencyKey())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.CONFLICT, "Transfer failed due to unresolvable concurrency collision"));
+            return TransactionResponse.fromEntity(concurrentTx);
+        }
+
+        // 6. Double-Entry Ledger (anchored to the Transaction reference that now exists in DB)
         LedgerEntry debitEntry = LedgerEntry.builder()
                 .transactionReference(txRef)
                 .accountNumber(source.getAccountNumber())
@@ -124,29 +142,21 @@ public class InternalTransferService implements TransactionUseCase {
 
         ledgerPersistencePort.saveLedgerEntries(Arrays.asList(debitEntry, creditEntry));
 
-        // 7. Transaction Posting
-        Transaction transaction = Transaction.builder()
-                .transactionReference(txRef)
-                .idempotencyKey(request.getIdempotencyKey())
-                .sourceAccountNumber(source.getAccountNumber())
-                .destinationAccountNumber(destination.getAccountNumber())
-                .amount(request.getAmount())
-                .currency(source.getCurrency())
-                .status(TransactionStatus.COMPLETED)
-                .description(request.getDescription())
-                .build();
+        // 7. Balance mutations — occur AFTER the full accounting record exists
+        source.setBalance(source.getBalance().subtract(request.getAmount()));
+        destination.setBalance(destination.getBalance().add(request.getAmount()));
+        accountPersistencePort.save(source);
+        accountPersistencePort.save(destination);
 
-        Transaction savedTx;
-        try {
-            savedTx = ledgerPersistencePort.save(transaction);
-        } catch (DataIntegrityViolationException e) {
-            throw new ConflictException("Transfer operation is idempotent. Blocked at database level.");
-        }
+        // 8. Mark Transaction as COMPLETED now that all accounting and balance mutations succeeded
+        savedTx.setStatus(TransactionStatus.COMPLETED);
+        savedTx = ledgerPersistencePort.save(savedTx);
 
+        // 9. Audit log (synchronous, in-transaction — audit failure should still roll back)
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
         org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String actor = (auth != null && auth.getName() != null) ? auth.getName() : "SYSTEM";
-        
+
         auditEventPublisher.publishEvent(
                 "Internal Transfer Completed",
                 actor,
@@ -154,11 +164,14 @@ public class InternalTransferService implements TransactionUseCase {
                 correlationId
         );
 
-        pushNotificationPort.sendPush(
-                actor,
-                "Transfer Successful",
-                String.format("Your transfer of ₱%.2f was completed successfully.", request.getAmount())
-        );
+        // 10. Publish Event for Side Effects (Executes AFTER_COMMIT via TransferNotificationListener)
+        eventPublisher.publishEvent(new TransferCompletedEvent(
+                savedTx.getTransactionReference(),
+                source.getAccountNumber(),
+                destination.getAccountNumber(),
+                savedTx.getAmount(),
+                savedTx.getCurrency()
+        ));
 
         return TransactionResponse.fromEntity(savedTx);
     }

@@ -94,6 +94,6 @@ public class GatewayManagementAuthorizationIT {
     public void unauthenticatedCannotAccessGatewayManagement() throws Exception {
         mockMvc.perform(get("/api/v1/webhooks")
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isForbidden()); // or 401
+                .andExpect(status().isUnauthorized());
     }
 }

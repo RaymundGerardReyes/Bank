@@ -94,7 +94,26 @@ public class PaymentIntentOrchestrationService {
                 .idempotencyKey(request.getIdempotencyKey())
                 .build();
         
-        intent = paymentIntentRepository.save(intent);
+        try {
+            intent = paymentIntentRepository.save(intent);
+            paymentIntentRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            log.info("Concurrent creation for idempotency key: {}", request.getIdempotencyKey());
+            PaymentIntent existing = paymentIntentRepository.findByIdempotencyKey(request.getIdempotencyKey())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.CONFLICT, "Concurrent creation conflict"));
+                    
+            List<PaymentAttempt> attempts = paymentAttemptRepository.findByPaymentIntentId(existing.getId());
+            PaymentAttempt attempt = attempts.isEmpty() ? null : attempts.get(0);
+            
+            return PaymentSessionResponse.builder()
+                    .paymentIntentId(existing.getIntentId())
+                    .provider(attempt != null ? attempt.getProvider() : "INTERNAL")
+                    .checkoutType("HOSTED_CHECKOUT")
+                    .checkoutUrl(attempt != null ? attempt.getCheckoutUrl() : "")
+                    .expiresAt(attempt != null ? attempt.getExpiresAt() : java.time.LocalDateTime.now().plusHours(1))
+                    .transactionReference(existing.getIntentId())
+                    .build();
+        }
 
         ExternalCheckoutRequest checkoutReq = ExternalCheckoutRequest.builder()
                 .paymentIntentId(intent.getIntentId())
@@ -113,6 +132,7 @@ public class PaymentIntentOrchestrationService {
             log.error("SECURITY VIOLATION: Provider returned an untrusted checkout URL: {}", session.getCheckoutUrl());
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "Invalid or untrusted payment gateway checkout URL");
         }
+        validateCheckoutUrl(session.getCheckoutUrl(), session.getProvider().name());
 
         PaymentAttempt attempt = PaymentAttempt.builder()
                 .attemptId(UUID.randomUUID().toString())
@@ -140,24 +160,55 @@ public class PaymentIntentOrchestrationService {
                 .build();
     }
 
-    private boolean isSafeCheckoutUrl(String urlString) {
-        if (urlString == null || (!urlString.startsWith("https://") && !urlString.startsWith("http://"))) {
-            log.warn("URL rejected: Not HTTP/HTTPS or is null.");
-            return false;
-        }
+    /**
+     * Validates the generated checkout URL against a strict allowlist.
+     */
+    public void validateCheckoutUrl(String checkoutUrl, String providerCode) {
+        try {
+            URI uri = new URI(checkoutUrl);
 
+            // 1. Enforce HTTPS
+            if (!"https".equalsIgnoreCase(uri.getScheme())) {
+                log.error("Security Alert: Provider {} returned a non-HTTPS URL: {}", providerCode, checkoutUrl);
+                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "Secure checkout generation failed.");
+            }
+
+            String host = uri.getHost();
+            if (host == null) {
+                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "Invalid checkout URL structure.");
+            }
+
+            // 2. Strict Host Allowlist matching
+            boolean isValidHost = switch (providerCode.toUpperCase()) {
+                case "PAYMONGO" -> host.equals("paymongo.com") || host.endsWith(".paymongo.com");
+                case "PAYNAMICS" -> host.equals("paynamics.net") || host.endsWith(".paynamics.net");
+                case "MAYA" -> host.equals("maya.ph") || host.endsWith(".maya.ph");
+                case "INTERNAL" -> host.equals(allowedInternalHost) || host.endsWith("." + allowedInternalHost);
+                default -> host.equals(allowedInternalHost) || host.endsWith("." + allowedInternalHost);
+            };
+
+            if (!isValidHost) {
+                log.error("Security Alert: Untrusted checkout domain {} for provider {}", host, providerCode);
+                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "Checkout URL failed security allowlist check.");
+            }
+
+        } catch (URISyntaxException e) {
+            log.error("Failed to parse checkout URL: {}", checkoutUrl, e);
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "Malformed checkout URL returned from provider.");
+        }
+    }
+
+    private boolean isSafeCheckoutUrl(String urlString) {
         try {
             URI uri = new URI(urlString);
             String host = uri.getHost();
-
-            if (host == null) {
-                return false;
-            }
-
-            return host.equals(allowedInternalHost) || host.endsWith("." + allowedInternalHost) || host.equals("localhost") || host.equals("backend");
-
-        } catch (URISyntaxException e) {
-            log.warn("URL rejected: Malformed syntax.");
+            return "https".equalsIgnoreCase(uri.getScheme()) && 
+                   host != null && 
+                   (host.equals("paymongo.com") || host.endsWith(".paymongo.com") || 
+                    host.equals("maya.ph") || host.endsWith(".maya.ph") ||
+                    host.equals(allowedInternalHost) || host.endsWith("." + allowedInternalHost));
+        } catch (Exception e) {
+            log.warn("URL rejected: Malformed syntax or invalid host.");
             return false;
         }
     }

@@ -78,6 +78,49 @@ public class PaymentEventOutboxService {
         }
     }
 
+    public void enqueuePaymentAuthorized(PaymentIntent intent, com.company.banking.payment.domain.PaymentAuthorization authorization) {
+        String eventId = "evt_" + UUID.randomUUID().toString().replace("-", "");
+        int nextSequence = outboxRepository.countByAggregateTypeAndAggregateId("PAYMENT_INTENT", intent.getIntentId()) + 1;
+
+        try {
+            Map<String, Object> authData = new HashMap<>();
+            authData.put("id", authorization.getAuthorizationReference());
+            authData.put("paymentIntentId", intent.getIntentId());
+            authData.put("amount", authorization.getAmount());
+            authData.put("status", intent.getStatus().name());
+
+            Map<String, Object> dataNode = new HashMap<>();
+            dataNode.put("authorization", authData);
+
+            Map<String, Object> finalPayload = new HashMap<>();
+            finalPayload.put("id", eventId);
+            finalPayload.put("type", PaymentEventType.CHECKOUT_PAYMENT_AUTHORIZED.name());
+            finalPayload.put("api_version", "v1");
+            finalPayload.put("created_at", LocalDateTime.now().toString());
+            finalPayload.put("data", dataNode);
+
+            PaymentEventOutbox event = PaymentEventOutbox.builder()
+                    .eventId(eventId)
+                    .merchantId(intent.getMerchantId())
+                    .aggregateType("PAYMENT_INTENT")
+                    .aggregateId(intent.getIntentId())
+                    .sequence(nextSequence)
+                    .apiVersion("v1")
+                    .idempotencyKey("payment-authorized:" + authorization.getAuthorizationReference())
+                    .eventType(PaymentEventType.CHECKOUT_PAYMENT_AUTHORIZED)
+                    .payload(objectMapper.writeValueAsString(finalPayload))
+                    .status(PaymentEventOutboxStatus.PENDING)
+                    .attemptCount(0)
+                    .build();
+
+            outboxRepository.save(event);
+            log.info("[OUTBOX] Enqueued {} for Intent {} (Seq: {})", event.getEventType(), intent.getIntentId(), nextSequence);
+        } catch (Exception e) {
+            log.error("Failed to construct outbox payload for authorization {}", authorization.getAuthorizationReference(), e);
+            throw new RuntimeException("Could not serialize outbox event", e);
+        }
+    }
+
     public void enqueuePaymentRefunded(PaymentIntent intent, Refund refund) {
         String eventId = "evt_" + UUID.randomUUID().toString().replace("-", "");
         int nextSequence = outboxRepository.countByAggregateTypeAndAggregateId("PAYMENT_INTENT", intent.getIntentId()) + 1;

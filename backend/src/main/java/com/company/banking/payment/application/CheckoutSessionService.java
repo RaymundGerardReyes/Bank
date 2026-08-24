@@ -83,6 +83,7 @@ public class CheckoutSessionService {
                     .expiresAt(LocalDateTime.now().plusHours(1))
                     .build());
 
+            sessionRepository.flush();
             return mapToResponse(session);
 
         } catch (DataIntegrityViolationException e) {

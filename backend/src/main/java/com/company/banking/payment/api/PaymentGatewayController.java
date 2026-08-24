@@ -50,9 +50,9 @@ public class PaymentGatewayController {
     // NEW ENDPOINT: Phase 4
     @PostMapping("/intents")
     public ResponseEntity<ApiResponse<PaymentSessionResponse>> createPaymentIntent(
-            @RequestHeader("X-Client-Id") String clientId,
+            @RequestHeader(value = "X-Client-Id", required = false) String clientId,
             @RequestBody CreatePaymentIntentRequest request) {
-        
+            
         Long merchantId = extractMerchantId(clientId);
         PaymentSessionResponse response = orchestrationService.createAndInitiatePayment(merchantId, request);
         

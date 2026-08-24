@@ -26,9 +26,8 @@ import com.company.banking.transaction.infrastructure.TransactionJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import com.company.banking.config.LedgerSpyIntegrationTest;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -44,9 +43,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
-@SpringBootTest
-@ActiveProfiles("test")
-public class SettlementFinalityIT {
+public class SettlementFinalityIT extends LedgerSpyIntegrationTest {
 
     @Autowired private InternalPaymentExecutionService paymentService;
     @Autowired private SettlementBatchService batchService;
@@ -58,7 +55,7 @@ public class SettlementFinalityIT {
     @Autowired private MerchantBalanceJpaRepository merchantBalanceRepository;
     @Autowired private PaymentIntentJpaRepository paymentIntentRepository;
     @Autowired private TransactionJpaRepository transactionRepository;
-    @MockitoSpyBean private LedgerEntryJpaRepository ledgerEntryRepository;
+
     @Autowired private SettlementBatchJpaRepository batchRepository;
     @Autowired private SettlementInstructionJpaRepository instructionRepository;
     @Autowired private SettlementExceptionJpaRepository exceptionRepository;
@@ -76,39 +73,44 @@ public class SettlementFinalityIT {
 
     @BeforeEach
     public void setup() {
-        // 1. Total System Purge
-        exceptionRepository.deleteAll();
-        instructionRepository.deleteAll();
-        batchRepository.deleteAll();
-        ledgerEntryRepository.deleteAll();
-        transactionRepository.deleteAll();
-        refundRepository.deleteAll();
-        paymentAttemptRepository.deleteAll();
-        paymentEventRepository.deleteAll();
-        paymentIntentRepository.deleteAll();
-        merchantBalanceRepository.deleteAll();
-        accountJpaRepository.deleteAll();
 
-        // 2. Establish Conserved Financial Baseline
-        accountPersistencePort.save(Account.builder()
-                .accountNumber(CUSTOMER_ACC).customerId(1L).currency("PHP")
-                .balance(new BigDecimal("100000.00")).status(AccountStatus.ACTIVE)
-                .allowOutgoing(true).allowIncoming(true).build());
 
-        accountPersistencePort.save(Account.builder()
-                .accountNumber(SUSPENSE_ACC).customerId(MERCHANT_ID).currency("PHP")
-                .balance(new BigDecimal("0.00")).status(AccountStatus.ACTIVE)
-                .allowOutgoing(true).allowIncoming(true).build());
+        // 2. Establish Conserved Financial Baseline idempotently
+        accountPersistencePort.findByAccountNumber(CUSTOMER_ACC)
+                .map(acc -> {
+                    acc.setBalance(new BigDecimal("100000.00"));
+                    return accountPersistencePort.save(acc);
+                })
+                .orElseGet(() -> accountPersistencePort.save(Account.builder()
+                        .accountNumber(CUSTOMER_ACC).customerId(1L).currency("PHP")
+                        .balance(new BigDecimal("100000.00")).status(AccountStatus.ACTIVE)
+                        .allowOutgoing(true).allowIncoming(true).build()));
 
-        accountPersistencePort.save(Account.builder()
-                .accountNumber(DEST_ACC).customerId(MERCHANT_ID).currency("PHP")
-                .balance(new BigDecimal("0.00")).status(AccountStatus.ACTIVE)
-                .allowOutgoing(true).allowIncoming(true).build());
+        accountPersistencePort.findByAccountNumber(SUSPENSE_ACC)
+                .map(acc -> {
+                    acc.setBalance(new BigDecimal("0.00"));
+                    return accountPersistencePort.save(acc);
+                })
+                .orElseGet(() -> accountPersistencePort.save(Account.builder()
+                        .accountNumber(SUSPENSE_ACC).customerId(MERCHANT_ID).currency("PHP")
+                        .balance(new BigDecimal("0.00")).status(AccountStatus.ACTIVE)
+                        .allowOutgoing(true).allowIncoming(true).build()));
 
-        merchantBalanceRepository.save(MerchantBalance.builder()
-                .merchantId(MERCHANT_ID).availableBalance(new BigDecimal("0.00"))
-                .pendingBalance(new BigDecimal("0.00")).currency("PHP")
-                .updatedAt(LocalDateTime.now()).build());
+        accountPersistencePort.findByAccountNumber(DEST_ACC)
+                .map(acc -> {
+                    acc.setBalance(new BigDecimal("0.00"));
+                    return accountPersistencePort.save(acc);
+                })
+                .orElseGet(() -> accountPersistencePort.save(Account.builder()
+                        .accountNumber(DEST_ACC).customerId(MERCHANT_ID).currency("PHP")
+                        .balance(new BigDecimal("0.00")).status(AccountStatus.ACTIVE)
+                        .allowOutgoing(true).allowIncoming(true).build()));
+
+        merchantBalanceRepository.findByMerchantId(MERCHANT_ID)
+                .orElseGet(() -> merchantBalanceRepository.save(MerchantBalance.builder()
+                        .merchantId(MERCHANT_ID).availableBalance(new BigDecimal("0.00"))
+                        .pendingBalance(new BigDecimal("0.00")).currency("PHP")
+                        .updatedAt(LocalDateTime.now()).build()));
     }
 
     /**
@@ -253,7 +255,7 @@ public class SettlementFinalityIT {
         SettlementInstruction instruction = instructionService.generateInstructionFromBatch(batch.getBatchReference());
 
         // ATTACK: Direct DB tampering bypassing JPA's updatable=false protection
-        jdbcTemplate.update("UPDATE settlement_instructions SET amount = ? WHERE id = ?", new BigDecimal("50000.00"), instruction.getId());
+        jdbcTemplate.update("UPDATE \"settlement_instructions\" SET amount = ? WHERE id = ?", new BigDecimal("50000.00"), instruction.getId());
         entityManager.clear();
 
         // Reconcile

@@ -14,9 +14,8 @@ import com.company.banking.transaction.infrastructure.TransactionJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import com.company.banking.config.LedgerSpyIntegrationTest;
+
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -30,9 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
-@SpringBootTest
-@ActiveProfiles("test")
-public class InternalPaymentGatewayIT {
+public class InternalPaymentGatewayIT extends LedgerSpyIntegrationTest {
     @Autowired private com.company.banking.account.infrastructure.AccountJpaRepository accountJpaRepository;
 
     @Autowired
@@ -50,20 +47,20 @@ public class InternalPaymentGatewayIT {
     @Autowired
     private com.company.banking.payment.infrastructure.RefundJpaRepository refundRepository;
     
-    @MockitoSpyBean
-    private LedgerPersistencePort ledgerPersistencePort;
 
     private Account testAccount;
     private PaymentIntent testIntent;
 
     @BeforeEach
     public void setup() {
-        // Clear state to avoid data contamination between tests
-        refundRepository.deleteAll();
-        transactionJpaRepository.deleteAll();
-        intentRepository.deleteAll();
-        accountJpaRepository.deleteAll();
-        accountPersistencePort.save(Account.builder().accountNumber("MERCHANT-SETTLEMENT-99").customerId(99L).balance(new BigDecimal("0.00")).currency("PHP").status(AccountStatus.ACTIVE).allowOutgoing(true).allowIncoming(true).build());
+        // Clear state to avoid data contamination between tests (handled by TestDatabaseCleaner)
+
+        accountPersistencePort.findByAccountNumber("MERCHANT-SETTLEMENT-99")
+                .map(acc -> {
+                    acc.setBalance(new BigDecimal("0.00"));
+                    return accountPersistencePort.save(acc);
+                })
+                .orElseGet(() -> accountPersistencePort.save(Account.builder().accountNumber("MERCHANT-SETTLEMENT-99").customerId(99L).balance(new BigDecimal("0.00")).currency("PHP").status(AccountStatus.ACTIVE).allowOutgoing(true).allowIncoming(true).build()));
         
         // Setup Account
         testAccount = Account.builder()

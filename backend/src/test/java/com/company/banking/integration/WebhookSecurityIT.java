@@ -1,7 +1,6 @@
 package com.company.banking.integration;
 
-import com.company.banking.payment.domain.PaymentAttempt;
-import com.company.banking.payment.infrastructure.PaymentAttemptJpaRepository;
+import com.company.banking.payment.application.PaymentStateMachineService;
 import com.company.banking.payment.infrastructure.InboundWebhookEventJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -11,6 +10,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import javax.crypto.Mac;
@@ -24,6 +24,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -42,30 +43,26 @@ public class WebhookSecurityIT {
     private DataSource dataSource;
 
     @Autowired
-    private PaymentAttemptJpaRepository attemptRepository;
+    private InboundWebhookEventJpaRepository webhookEventRepository;
 
     @Autowired
-    private InboundWebhookEventJpaRepository webhookEventRepository;
+    private com.company.banking.payment.application.PaymentWebhookService paymentWebhookService;
+
+    // CRITICAL FIX: Isolate the test to Webhook Concurrency ONLY.
+    // Mocking the state machine prevents "Payment Intent Not Found" errors 
+    // when the winning thread attempts to process the mock event.
+    @MockitoBean
+    private PaymentStateMachineService stateMachineService;
 
     @BeforeEach
     void setUp() {
         webhookEventRepository.deleteAll();
-        attemptRepository.deleteAll();
     }
 
     @Test
     @DisplayName("Security Gate: Webhook Concurrency & Replay Protection")
     public void testConcurrentWebhookDeliveries() throws Exception {
         String eventId = "evt_" + UUID.randomUUID().toString();
-        
-        // Seed matching PaymentAttempt so stateMachineService.processAttemptOutcome succeeds
-        attemptRepository.save(PaymentAttempt.builder()
-                .attemptId("att_" + UUID.randomUUID().toString())
-                .paymentIntentId(1L)
-                .provider("PAYMONGO")
-                .providerReference(eventId)
-                .status("PROCESSING")
-                .build());
 
         String payload = """
             {
@@ -85,11 +82,11 @@ public class WebhookSecurityIT {
         String webhookSecret = "whsec_test_secret_123456789";
         String timestamp = "1700000000";
         String signedPayload = timestamp + "." + payload;
-
         Mac mac = Mac.getInstance("HmacSHA256");
         SecretKeySpec keySpec = new SecretKeySpec(webhookSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         mac.init(keySpec);
         String hmacHex = HexFormat.of().formatHex(mac.doFinal(signedPayload.getBytes(StandardCharsets.UTF_8)));
+
         String validSignatureHeader = "t=" + timestamp + ",te=" + hmacHex;
 
         int concurrentRequests = 3;
@@ -102,7 +99,7 @@ public class WebhookSecurityIT {
         for (int i = 0; i < concurrentRequests; i++) {
             executor.submit(() -> {
                 try {
-                    startPistol.await(); 
+                    startPistol.await();
                     
                     mockMvc.perform(post("/api/v1/webhooks/payment/paymongo")
                             .with(csrf()) // Bypass CSRF protection for this test request
@@ -142,12 +139,49 @@ public class WebhookSecurityIT {
             }
         }
 
-        System.out.println("==================================================");
-        System.out.println("SUCCESSFUL RESPONSES: " + successfulResponses.get());
-        System.out.println("SAVED RECORDS IN DB: " + savedRecords);
-        System.out.println("==================================================");
+        assertEquals(1, savedRecords, "Exactly 1 webhook record should be saved");
+        assertEquals(concurrentRequests, successfulResponses.get(), "All requests should return 200 OK");
+    }
 
-        assertTrue(successfulResponses.get() >= 0);
-        assertTrue(savedRecords >= 0);
+    @Test
+    public void concurrentWebhookDelivery_ShouldProcessExactlyOnceAndReturnGracefully() throws InterruptedException {
+        int threads = 10;
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        CountDownLatch startPistol = new CountDownLatch(1);
+        CountDownLatch finishLine = new CountDownLatch(threads);
+        
+        AtomicInteger successfulExecutions = new AtomicInteger(0);
+        String sharedEventId = "evt_" + UUID.randomUUID().toString();
+
+        for (int i = 0; i < threads; i++) {
+            executor.submit(() -> {
+                try {
+                    startPistol.await(); // Hold threads until all are ready
+                    
+                    // All threads hit the service at the exact same time
+                    paymentWebhookService.processWebhook(sharedEventId, "PAYMONGO", "{\"status\":\"paid\"}");
+                    
+                    // If no exception bubbled up (i.e., gracefully caught), count as success
+                    successfulExecutions.incrementAndGet();
+                } catch (Exception e) {
+                    // Print any unexpected exceptions for debugging
+                    e.printStackTrace();
+                } finally {
+                    finishLine.countDown();
+                }
+            });
+        }
+
+        startPistol.countDown(); // Fire!
+        finishLine.await(5, TimeUnit.SECONDS);
+        executor.shutdown();
+
+        // 1. Verify exactly one record was saved to the database
+        assertEquals(1, webhookEventRepository.count(),
+             "Database constraint must guarantee exactly 1 canonical webhook record exists.");
+
+        // 2. Verify all threads returned smoothly without throwing 500 errors
+        assertEquals(10, successfulExecutions.get(),
+             "All concurrent requests must return gracefully (200 OK) to prevent provider retries.");
     }
 }

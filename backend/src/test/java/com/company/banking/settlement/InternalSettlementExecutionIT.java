@@ -15,9 +15,8 @@ import com.company.banking.transaction.infrastructure.TransactionJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import com.company.banking.config.LedgerSpyIntegrationTest;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -33,9 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
-@SpringBootTest
-@ActiveProfiles("test")
-public class InternalSettlementExecutionIT {
+public class InternalSettlementExecutionIT extends LedgerSpyIntegrationTest {
 
     @Autowired
     private InternalSettlementExecutionService executionService;
@@ -52,8 +49,7 @@ public class InternalSettlementExecutionIT {
     @Autowired
     private TransactionJpaRepository transactionRepository;
 
-    @MockitoSpyBean
-    private LedgerEntryJpaRepository ledgerEntryRepository;
+
 
     private SettlementInstruction reconciledInstruction;
     private final Long TEST_MERCHANT_ID = 77L;
@@ -65,28 +61,35 @@ public class InternalSettlementExecutionIT {
 
     @BeforeEach
     public void setup() {
-        transactionRepository.deleteAll();
-        ledgerEntryRepository.deleteAll();
-        instructionRepository.deleteAll();
-        merchantBalanceRepository.deleteAll();
-        accountJpaRepository.deleteAll();
 
-        // Seed Suspense & Destination Accounts
-        accountPersistencePort.save(Account.builder()
-                .accountNumber(SUSPENSE_ACC).customerId(TEST_MERCHANT_ID)
-                .balance(new BigDecimal("50000.00")).currency("PHP").status(AccountStatus.ACTIVE)
-                .allowOutgoing(true).allowIncoming(true).build());
 
-        accountPersistencePort.save(Account.builder()
-                .accountNumber(DEST_ACC).customerId(TEST_MERCHANT_ID)
-                .balance(new BigDecimal("0.00")).currency("PHP").status(AccountStatus.ACTIVE)
-                .allowOutgoing(true).allowIncoming(true).build());
+        // Seed Suspense & Destination Accounts idempotently
+        accountPersistencePort.findByAccountNumber(SUSPENSE_ACC)
+                .map(acc -> {
+                    acc.setBalance(new BigDecimal("50000.00"));
+                    return accountPersistencePort.save(acc);
+                })
+                .orElseGet(() -> accountPersistencePort.save(Account.builder()
+                        .accountNumber(SUSPENSE_ACC).customerId(TEST_MERCHANT_ID)
+                        .balance(new BigDecimal("50000.00")).currency("PHP").status(AccountStatus.ACTIVE)
+                        .allowOutgoing(true).allowIncoming(true).build()));
 
-        // Seed Merchant Operational Balance
-        merchantBalanceRepository.save(MerchantBalance.builder()
-                .merchantId(TEST_MERCHANT_ID).availableBalance(new BigDecimal("0.00"))
-                .pendingBalance(new BigDecimal("0.00")).currency("PHP")
-                .updatedAt(LocalDateTime.now()).build());
+        accountPersistencePort.findByAccountNumber(DEST_ACC)
+                .map(acc -> {
+                    acc.setBalance(new BigDecimal("0.00"));
+                    return accountPersistencePort.save(acc);
+                })
+                .orElseGet(() -> accountPersistencePort.save(Account.builder()
+                        .accountNumber(DEST_ACC).customerId(TEST_MERCHANT_ID)
+                        .balance(new BigDecimal("0.00")).currency("PHP").status(AccountStatus.ACTIVE)
+                        .allowOutgoing(true).allowIncoming(true).build()));
+
+        // Seed Merchant Operational Balance idempotently
+        merchantBalanceRepository.findByMerchantId(TEST_MERCHANT_ID)
+                .orElseGet(() -> merchantBalanceRepository.save(MerchantBalance.builder()
+                        .merchantId(TEST_MERCHANT_ID).availableBalance(new BigDecimal("0.00"))
+                        .pendingBalance(new BigDecimal("0.00")).currency("PHP")
+                        .updatedAt(LocalDateTime.now()).build()));
 
         // Seed RECONCILED Instruction
         reconciledInstruction = instructionRepository.save(SettlementInstruction.builder()

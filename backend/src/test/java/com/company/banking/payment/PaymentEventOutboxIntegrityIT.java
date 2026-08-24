@@ -14,9 +14,8 @@ import com.company.banking.transaction.infrastructure.TransactionJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import com.company.banking.config.LedgerSpyIntegrationTest;
+
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -26,9 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
-@SpringBootTest
-@ActiveProfiles("test")
-public class PaymentEventOutboxIntegrityIT {
+public class PaymentEventOutboxIntegrityIT extends LedgerSpyIntegrationTest {
     @Autowired private com.company.banking.account.infrastructure.AccountJpaRepository accountJpaRepository;
 
     @Autowired
@@ -46,8 +43,6 @@ public class PaymentEventOutboxIntegrityIT {
     @Autowired
     private AccountPersistencePort accountPersistencePort;
 
-    @MockitoSpyBean
-    private LedgerPersistencePort ledgerPersistencePort; // Used to simulate failures
 
     private Account customerAccount;
     private Account merchantAccount;
@@ -55,10 +50,7 @@ public class PaymentEventOutboxIntegrityIT {
 
     @BeforeEach
     public void setup() {
-        outboxRepository.deleteAll();
-        transactionRepository.deleteAll();
-        intentRepository.deleteAll();
-        accountJpaRepository.deleteAll();
+
 
         customerAccount = accountPersistencePort.save(Account.builder()
                 .accountNumber("INT-OB-1001-" + UUID.randomUUID().toString().substring(0, 5))
@@ -68,13 +60,18 @@ public class PaymentEventOutboxIntegrityIT {
                 .status(AccountStatus.ACTIVE)
                 .build());
 
-        merchantAccount = accountPersistencePort.save(Account.builder()
-                .accountNumber("MERCHANT-SETTLEMENT-99")
-                .customerId(99L)
-                .balance(new BigDecimal("0.00"))
-                .currency("PHP")
-                .status(AccountStatus.ACTIVE)
-                .build());
+        merchantAccount = accountPersistencePort.findByAccountNumber("MERCHANT-SETTLEMENT-99")
+                .map(acc -> {
+                    acc.setBalance(new BigDecimal("0.00"));
+                    return accountPersistencePort.save(acc);
+                })
+                .orElseGet(() -> accountPersistencePort.save(Account.builder()
+                        .accountNumber("MERCHANT-SETTLEMENT-99")
+                        .customerId(99L)
+                        .balance(new BigDecimal("0.00"))
+                        .currency("PHP")
+                        .status(AccountStatus.ACTIVE)
+                        .build()));
 
         testIntent = intentRepository.save(PaymentIntent.builder()
                 .intentId("pi_" + UUID.randomUUID())

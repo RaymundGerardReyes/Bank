@@ -38,6 +38,7 @@ public class ExternalPaymentService implements ExternalPaymentUseCase {
     
     private final ZeroBalanceSweepService zeroBalanceSweepService; // <-- Inject Sweep Service
     private final TransactionAccountResolver accountResolver;
+    private final com.company.banking.payment.infrastructure.PaymentEventOutboxJpaRepository outboxRepository;
 
     // AML / CDD dependencies
     private final com.company.banking.customer.application.port.out.CustomerPersistencePort customerPersistencePort;
@@ -87,43 +88,11 @@ public class ExternalPaymentService implements ExternalPaymentUseCase {
         // STEP 5: Digital Authentication
         log.info("[{} STEP 5] Applying digital authentication and non-repudiation seals to payload.", railName);
 
-        // STEP 6: Network Transmission
-        log.info("[{} STEP 6] Transmitting to Gateway (Routing: {})", railName, request.getRoutingNumber());
-        boolean gatewaySuccess = paymentGatewayPort.processExternalPayment(
-                request.getSourceAccountNumber(),
-                request.getRoutingNumber(),
-                request.getDestinationAccountNumber(),
-                request.getAmount()
-        );
+        // ARCHITECTURE CHANGE: We do NOT deduct the balance or write ledger entries yet.
+        // We record the transaction as PENDING and queue the network call to the Outbox.
+        log.info("[{} STEP 6 & 10] Atomically saving PENDING transaction and queueing Outbox event.", railName);
 
-        if (!gatewaySuccess) {
-            throw new BusinessException(ErrorCode.PAYMENT_GATEWAY_ERROR, "Processor rejected " + railName + " transmission");
-        }
-
-        // STEP 10: Settlement (Strict Double-Entry Ledger Update)
-        log.info("[{} STEP 10] Settling funds internally. Enforcing double-entry ledger integrity.", railName);
-        source.setBalance(source.getBalance().subtract(request.getAmount()));
-        accountPersistencePort.save(source);
-        
         String extAccountIdentifier = "EXT:" + request.getRoutingNumber() + "-" + request.getDestinationAccountNumber();
-
-        com.company.banking.transaction.domain.LedgerEntry debitEntry = com.company.banking.transaction.domain.LedgerEntry.builder()
-                .transactionReference(txRef)
-                .accountNumber(source.getAccountNumber())
-                .entryType(com.company.banking.transaction.domain.EntryType.DEBIT)
-                .amount(request.getAmount())
-                .currency(source.getCurrency())
-                .build();
-
-        com.company.banking.transaction.domain.LedgerEntry creditEntry = com.company.banking.transaction.domain.LedgerEntry.builder()
-                .transactionReference(txRef)
-                .accountNumber(extAccountIdentifier)
-                .entryType(com.company.banking.transaction.domain.EntryType.CREDIT)
-                .amount(request.getAmount())
-                .currency(source.getCurrency())
-                .build();
-
-        ledgerPersistencePort.saveLedgerEntries(java.util.Arrays.asList(debitEntry, creditEntry));
 
         Transaction transaction = Transaction.builder()
                 .transactionReference(txRef)
@@ -132,11 +101,35 @@ public class ExternalPaymentService implements ExternalPaymentUseCase {
                 .destinationAccountNumber(extAccountIdentifier)
                 .amount(request.getAmount())
                 .currency(source.getCurrency())
-                .status(TransactionStatus.COMPLETED)
+                .status(TransactionStatus.PENDING)
                 .description(railName + " Transfer to " + request.getRecipientName())
                 .build();
 
         Transaction saved = ledgerPersistencePort.save(transaction);
+
+        // Queue Outbox Event for async external network transmission
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            String payload = mapper.writeValueAsString(request);
+            
+            com.company.banking.payment.domain.PaymentEventOutbox outboxEvent = com.company.banking.payment.domain.PaymentEventOutbox.builder()
+                    .eventId("EVT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                    .merchantId(0L) // No merchant for wire transfer
+                    .aggregateType("TRANSACTION")
+                    .aggregateId(txRef)
+                    .sequence(1)
+                    .idempotencyKey(request.getIdempotencyKey() + "-OUTBOX")
+                    .eventType(com.company.banking.payment.domain.PaymentEventType.CHECKOUT_PAYMENT_SUCCEEDED)
+                    .apiVersion("v1")
+                    .payload(payload)
+                    .status(com.company.banking.payment.domain.PaymentEventOutboxStatus.PENDING)
+                    .attemptCount(0)
+                    .build();
+            
+            outboxRepository.save(outboxEvent);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to queue outbox event", e);
+        }
 
         // STEP 10.5: Asynchronous Transaction Monitoring (AML/CFT)
         log.info("[{} STEP 10.5] Triggering AML/CFT transaction monitoring rules...", railName);

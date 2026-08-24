@@ -18,7 +18,6 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Component
 @RequiredArgsConstructor
 @Slf4j
 public class ApiSignatureFilter extends OncePerRequestFilter {

@@ -20,6 +20,9 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Optional;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
@@ -33,16 +36,19 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        String apiKeyHeader = request.getHeader("X-API-Key");
-
-        if (apiKeyHeader == null || apiKeyHeader.trim().isEmpty()) {
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7).trim();
-                if (token.startsWith("sk_")) {
-                    apiKeyHeader = token;
-                }
+        String path = request.getRequestURI();
+        if (path.contains("/gateway")) {
+            log.info("[API KEY FILTER DEBUG] Incoming request to {}", path);
+            java.util.Enumeration<String> headerNames = request.getHeaderNames();
+            while (headerNames.hasMoreElements()) {
+                String headerName = headerNames.nextElement();
+                log.info("[API KEY FILTER DEBUG] Header: {} = {}", headerName, request.getHeader(headerName));
             }
+        }
+
+        String apiKeyHeader = extractApiKey(request);
+        if (path.contains("/gateway")) {
+            log.info("[API KEY FILTER DEBUG] Extracted API Key: {}", apiKeyHeader);
         }
 
         if (apiKeyHeader != null && !apiKeyHeader.trim().isEmpty()) {
@@ -50,6 +56,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             Optional<ApiKey> apiKeyOpt = apiKeyPersistencePort.findByKeyHash(keyHash);
 
             if (apiKeyOpt.isEmpty() || !apiKeyOpt.get().isActive()) {
+                request.setAttribute("GATEWAY_AUTH_STAGE", "API_KEY_REJECTED");
+                request.setAttribute("GATEWAY_AUTH_FAILURE_REASON", "API_KEY_INVALID");
                 sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN, ErrorCode.UNAUTHORIZED.getCode(), "Invalid or revoked API key");
                 return;
             }
@@ -59,6 +67,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             // 1. Validate CIDR Whitelist
             String clientIp = resolveClientIp(request);
             if (!cidrValidator.isIpWhitelisted(clientIp, apiKey.getCidrWhitelist())) {
+                request.setAttribute("GATEWAY_AUTH_STAGE", "IP_REJECTED");
+                request.setAttribute("GATEWAY_AUTH_FAILURE_REASON", "IP_NOT_WHITELISTED");
                 sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN, ErrorCode.IP_NOT_WHITELISTED.getCode(), ErrorCode.IP_NOT_WHITELISTED.getDefaultMessage());
                 return;
             }
@@ -69,11 +79,15 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             String requiredScope = resolveRequiredScope(requestPath, requestMethod);
 
             if ("UNMAPPED_ENDPOINT".equals(requiredScope)) {
+                request.setAttribute("GATEWAY_AUTH_STAGE", "SCOPE_REJECTED");
+                request.setAttribute("GATEWAY_AUTH_FAILURE_REASON", "UNMAPPED_ENDPOINT");
                 sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN, ErrorCode.ENDPOINT_NOT_SCOPED.getCode(), ErrorCode.ENDPOINT_NOT_SCOPED.getDefaultMessage());
                 return;
             }
 
             if (requiredScope != null && (apiKey.getScopes() == null || !apiKey.getScopes().contains(requiredScope))) {
+                request.setAttribute("GATEWAY_AUTH_STAGE", "SCOPE_REJECTED");
+                request.setAttribute("GATEWAY_AUTH_FAILURE_REASON", "SCOPE_DENIED");
                 sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN, ErrorCode.INSUFFICIENT_API_SCOPE.getCode(), ErrorCode.INSUFFICIENT_API_SCOPE.getDefaultMessage());
                 return;
             }
@@ -83,12 +97,59 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                     apiKeyHeader,
                     apiKey.getMerchantId(),
                     apiKey.getEnvironment(),
+                    apiKey.getId(),
+                    apiKey.getLinkedAccountId(),
+                    apiKey.getScopes(),
                     Collections.singletonList(new SimpleGrantedAuthority("ROLE_MERCHANT_API"))
             );
             SecurityContextHolder.getContext().setAuthentication(auth);
+            
+            request.setAttribute("GATEWAY_API_KEY_ID", apiKey.getId());
+            request.setAttribute("GATEWAY_LINKED_ACCOUNT_ID", apiKey.getLinkedAccountId());
+            request.setAttribute("GATEWAY_MERCHANT_ID", apiKey.getMerchantId());
+            request.setAttribute("GATEWAY_AUTH_STAGE", "API_KEY_AUTHENTICATED");
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String extractApiKey(HttpServletRequest request) {
+        String apiKey = request.getHeader("X-API-Key");
+        String authHeader = request.getHeader("Authorization");
+        
+        if (request.getRequestURI().startsWith("/api/v1/gateway/")) {
+            log.debug("[GATEWAY DEBUG] Path: {}, X-API-Key present: {}, Authorization present: {}", 
+                request.getRequestURI(), 
+                apiKey != null ? "YES (length " + apiKey.length() + ")" : "NO",
+                authHeader != null ? (authHeader.length() > 15 ? authHeader.substring(0, 15) + "..." : authHeader) : "NO");
+        }
+
+        // 1. Check for standard X-API-Key header
+        if (apiKey != null && !apiKey.isBlank()) {
+            return apiKey.trim(); // .trim() removes any \r\n from .NET configurations
+        }
+
+        // 2. Fallback to Authorization: Bearer
+        if (authHeader != null && !authHeader.isBlank()) {
+            String trimmed = authHeader.trim();
+            if (trimmed.startsWith("Bearer ")) {
+                String token = trimmed.substring(7).trim();
+                if (token.startsWith("sk_")) {
+                    return token;
+                } else if (request.getRequestURI().startsWith("/api/v1/gateway/")) {
+                    log.warn("[GATEWAY DEBUG] Bearer token found but does NOT start with 'sk_'. Length: {}", token.length());
+                }
+            }
+            // 3. Fallback to Authorization: ApiKey (Common in external integrations)
+            if (trimmed.startsWith("ApiKey ")) {
+                return trimmed.substring(7).trim();
+            }
+            if (trimmed.startsWith("sk_")) {
+                return trimmed;
+            }
+        }
+
+        return null;
     }
 
     private String resolveClientIp(HttpServletRequest request) {
@@ -100,17 +161,18 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private String resolveRequiredScope(String path, String method) {
-        // Explicit Allowlist for genuinely open routes or gateway routes verified by API key
-        if (path.startsWith("/api/v1/health") || path.startsWith("/v3/api-docs") || path.startsWith("/api/v1/gateway/")) {
+        // Explicit Allowlist for genuinely open routes
+        if (path.startsWith("/api/v1/health") || path.startsWith("/v3/api-docs")) {
             return null; 
         }
 
         // 1. Virtual Account Management (VAM)
-        if (path.startsWith("/api/v1/accounts") && "POST".equalsIgnoreCase(method)) return "accounts:write";
-        if (path.startsWith("/api/v1/accounts") && "GET".equalsIgnoreCase(method)) return "accounts:read";
+        if ((path.startsWith("/api/v1/accounts") || path.startsWith("/api/v1/gateway/accounts")) && "POST".equalsIgnoreCase(method)) return "accounts:write";
+        if ((path.startsWith("/api/v1/accounts") || path.startsWith("/api/v1/gateway/accounts")) && "GET".equalsIgnoreCase(method)) return "accounts:read";
 
-        // 2. Payments
-        if (path.startsWith("/api/v1/payments") && "POST".equalsIgnoreCase(method)) return "payments:write";
+        // 2. Payments & Checkout
+        if ((path.startsWith("/api/v1/payments") || path.startsWith("/api/v1/gateway/payments") || path.startsWith("/api/v1/gateway/checkout")) && "POST".equalsIgnoreCase(method)) return "payments:write";
+        if ((path.startsWith("/api/v1/payments") || path.startsWith("/api/v1/gateway/payments") || path.startsWith("/api/v1/gateway/checkout")) && "GET".equalsIgnoreCase(method)) return "payments:read";
 
         // 3. Payroll & Batch Distribution
         if (path.startsWith("/api/v1/batch") && "POST".equalsIgnoreCase(method)) return "payroll:write";

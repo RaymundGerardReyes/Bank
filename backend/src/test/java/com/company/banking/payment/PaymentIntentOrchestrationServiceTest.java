@@ -59,4 +59,27 @@ public class PaymentIntentOrchestrationServiceTest {
         
         assertTrue(exception.getMessage().contains("Not authorized"));
     }
+
+    @Test
+    public void validateCheckoutUrl_ShouldRejectHttpAndMaliciousDomains() {
+        // Test 1: Reject HTTP (Non-Secure)
+        assertThrows(BusinessException.class, () -> {
+            service.validateCheckoutUrl("http://paymongo.com/checkout", "PAYMONGO");
+        }, "Must reject non-HTTPS URLs");
+
+        // Test 2: Reject completely malicious domain
+        assertThrows(BusinessException.class, () -> {
+            service.validateCheckoutUrl("https://evil.com/?q=paymongo.com", "PAYMONGO");
+        }, "Must reject domains that merely contain the target string");
+
+        // Test 3: Reject malicious suffix spoofing
+        assertThrows(BusinessException.class, () -> {
+            service.validateCheckoutUrl("https://paymongo.com.evil.net/checkout", "PAYMONGO");
+        }, "Must reject domains where the trusted host is spoofed as a subdomain");
+
+        // Test 4: Accept exactly matching valid domain
+        assertDoesNotThrow(() -> {
+            service.validateCheckoutUrl("https://paymongo.com/checkout/123", "PAYMONGO");
+        }, "Must accept exact valid domains");
+    }
 }

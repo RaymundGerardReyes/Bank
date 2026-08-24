@@ -29,8 +29,8 @@ public class BffIdentityFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Allow actuator, OpenAPI specs, and status endpoints to bypass BFF key validation
-        if (path.startsWith("/actuator") || path.startsWith("/v3/api-docs") || path.equals("/status") || path.equals("/error")) {
+        // Allow actuator, OpenAPI specs, status endpoints, and public gateway routes to bypass BFF key validation
+        if (path.startsWith("/actuator") || path.startsWith("/v3/api-docs") || path.equals("/status") || path.equals("/error") || path.startsWith("/api/v1/gateway/")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -45,6 +45,9 @@ public class BffIdentityFilter extends OncePerRequestFilter {
 
         if (providedKey == null || !providedKey.equals(expectedBffSecret)) {
             log.warn("[SECURITY] Blocked direct API access attempt to {} - Invalid or missing BFF key.", path);
+            
+            request.setAttribute("GATEWAY_AUTH_STAGE", "BFF_REJECTED");
+            request.setAttribute("GATEWAY_AUTH_FAILURE_REASON", "BFF_KEY_MISSING_OR_INVALID");
 
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);

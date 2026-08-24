@@ -23,7 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.test.annotation.DirtiesContext;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -39,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+
 public class PaymentExecutionIntegrityIT {
 
     @Autowired
@@ -181,10 +181,11 @@ public class PaymentExecutionIntegrityIT {
         CountDownLatch latch = new CountDownLatch(1);
         CountDownLatch completionLatch = new CountDownLatch(threadCount);
         
+        String eventId = "evt_" + UUID.randomUUID().toString();
         // Mock a raw webhook payload simulating a successful payment
         String rawPayload = "{\n" +
                 "  \"data\": {\n" +
-                "    \"id\": \"evt_test123\",\n" +
+                "    \"id\": \"" + eventId + "\",\n" +
                 "    \"type\": \"event\",\n" +
                 "    \"attributes\": {\n" +
                 "      \"type\": \"checkout_session.payment.paid\",\n" +

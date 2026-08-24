@@ -28,6 +28,8 @@ public class InternalAccountAuthorizationService {
     private final PaymentAuthorizationJpaRepository authorizationRepository;
     private final AccountPersistencePort accountPersistencePort;
 
+    private final PaymentEventOutboxService outboxService;
+
     @Transactional
     public CheckoutSessionResponse authorizeInternalAccount(String checkoutToken, String customerAccountNumber) {
         log.info("[CHECKOUT AUTHORIZATION] Attempting authorization for session {}", checkoutToken);
@@ -37,7 +39,7 @@ public class InternalAccountAuthorizationService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Checkout session not found"));
 
         // 2. Idempotency & State Checks
-        if (session.getStatus() == CheckoutSessionStatus.AUTHORIZED) {
+        if (session.getStatus() == CheckoutSessionStatus.AUTHORIZED || authorizationRepository.findByCheckoutSessionId(checkoutToken).isPresent()) {
             log.info("[CHECKOUT AUTHORIZATION] Session {} is already authorized. Idempotent return.", checkoutToken);
             return mapToResponse(session);
         }
@@ -86,6 +88,11 @@ public class InternalAccountAuthorizationService {
                 .authorizedAt(LocalDateTime.now())
                 .expiresAt(LocalDateTime.now().plusDays(7))
                 .build();
+        if (authorizationRepository.findByCheckoutSessionId(session.getSessionId()).isPresent()) {
+            log.info("[CHECKOUT AUTHORIZATION] Concurrent authorization for session {}. Returning existing record.", checkoutToken);
+            return mapToResponse(session);
+        }
+
         authorizationRepository.save(authorization);
 
         // 6. Transition Payment Intent
@@ -96,6 +103,9 @@ public class InternalAccountAuthorizationService {
         // 7. Transition Checkout Session
         session.setStatus(CheckoutSessionStatus.AUTHORIZED);
         CheckoutSession savedSession = sessionRepository.save(session);
+
+        // 8. Enqueue Outbox Event
+        outboxService.enqueuePaymentAuthorized(intent, authorization);
 
         return mapToResponse(savedSession);
     }

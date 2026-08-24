@@ -1,68 +1,53 @@
 package com.company.banking.apigateway.security;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.web.util.matcher.IpAddressMatcher;
 import org.springframework.stereotype.Component;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
+@Slf4j
 @Component
 public class CidrWhitelistValidator {
 
     public boolean isIpWhitelisted(String clientIp, String cidrWhitelist) {
+        return isIpAllowed(clientIp, cidrWhitelist);
+    }
+
+    public boolean isIpAllowed(String clientIp, String cidrWhitelist) {
         if (cidrWhitelist == null || cidrWhitelist.trim().isEmpty() || cidrWhitelist.contains("0.0.0.0/0")) {
-            return true;
+            return true; // Allow all if unconfigured or explicitly set to 0.0.0.0/0
         }
 
-        String[] cidrs = cidrWhitelist.split(",");
-        for (String rawCidr : cidrs) {
-            String cidr = rawCidr.trim();
-            if (cidr.equals("0.0.0.0/0") || cidr.equals(clientIp)) {
+        if (clientIp == null || clientIp.trim().isEmpty()) {
+            return false;
+        }
+
+        String[] allowedIps = cidrWhitelist.split(",");
+
+        for (String allowedIp : allowedIps) {
+            String cleanIp = allowedIp.trim();
+            if (cleanIp.isEmpty()) {
+                continue;
+            }
+
+            if ("0.0.0.0/0".equals(cleanIp) || cleanIp.equals(clientIp.trim())) {
                 return true;
             }
-            if (matchesCidr(clientIp, cidr)) {
-                return true;
+
+            // Automatically append /32 for single IPs missing the subnet mask
+            if (!cleanIp.contains("/")) {
+                cleanIp = cleanIp + "/32";
+            }
+
+            try {
+                IpAddressMatcher ipMatcher = new IpAddressMatcher(cleanIp);
+                if (ipMatcher.matches(clientIp.trim())) {
+                    return true;
+                }
+            } catch (IllegalArgumentException e) {
+                log.warn("[CIDR VALIDATOR] Invalid CIDR format detected and bypassed: {}", cleanIp);
             }
         }
 
         return false;
-    }
-
-    private boolean matchesCidr(String ipStr, String cidrStr) {
-        try {
-            if (!cidrStr.contains("/")) {
-                cidrStr = cidrStr + "/32";
-            }
-
-            String[] parts = cidrStr.split("/");
-            InetAddress targetAddr = InetAddress.getByName(ipStr);
-            InetAddress cidrAddr = InetAddress.getByName(parts[0]);
-            int prefixLength = Integer.parseInt(parts[1]);
-
-            byte[] targetBytes = targetAddr.getAddress();
-            byte[] cidrBytes = cidrAddr.getAddress();
-
-            if (targetBytes.length != cidrBytes.length) {
-                return false;
-            }
-
-            int bytesToCheck = prefixLength / 8;
-            for (int i = 0; i < bytesToCheck; i++) {
-                if (targetBytes[i] != cidrBytes[i]) {
-                    return false;
-                }
-            }
-
-            int remainderBits = prefixLength % 8;
-            if (remainderBits > 0 && bytesToCheck < targetBytes.length) {
-                int mask = (0xFF00 >> remainderBits) & 0xFF;
-                if ((targetBytes[bytesToCheck] & mask) != (cidrBytes[bytesToCheck] & mask)) {
-                    return false;
-                }
-            }
-
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
     }
 }

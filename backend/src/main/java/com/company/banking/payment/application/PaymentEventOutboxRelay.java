@@ -25,12 +25,16 @@ public class PaymentEventOutboxRelay {
 
     @Scheduled(fixedDelay = 5000)
     public void processOutbox() {
-        List<PaymentEventOutbox> claimedEvents = claimEvents(10);
-        
-        // Dispatch asynchronously so the claiming transaction commits immediately,
-        // preventing long database locks during HTTP calls.
-        for (PaymentEventOutbox event : claimedEvents) {
-            CompletableFuture.runAsync(() -> deliveryService.deliverEvent(event));
+        try {
+            List<PaymentEventOutbox> claimedEvents = claimEvents(10);
+            
+            // Dispatch asynchronously so the claiming transaction commits immediately,
+            // preventing long database locks during HTTP calls.
+            for (PaymentEventOutbox event : claimedEvents) {
+                CompletableFuture.runAsync(() -> deliveryService.deliverEvent(event));
+            }
+        } catch (Exception e) {
+            log.trace("[OUTBOX RELAY] Background polling skipped or failed: {}", e.getMessage());
         }
     }
 
@@ -50,15 +54,19 @@ public class PaymentEventOutboxRelay {
     @Scheduled(fixedDelay = 60000)
     @Transactional
     public void recoverStuckLeases() {
-        LocalDateTime threshold = LocalDateTime.now().minusMinutes(5);
-        List<PaymentEventOutbox> stuckEvents = outboxRepository.findStuckDeliveries(threshold);
-        
-        for (PaymentEventOutbox event : stuckEvents) {
-            log.warn("[OUTBOX RELAY] Recovering stuck event {} previously locked by {}", event.getEventId(), event.getLockedBy());
-            event.setStatus(PaymentEventOutboxStatus.RETRY);
-            event.setLockedAt(null);
-            event.setLockedBy(null);
-            outboxRepository.save(event);
+        try {
+            LocalDateTime threshold = LocalDateTime.now().minusMinutes(5);
+            List<PaymentEventOutbox> stuckEvents = outboxRepository.findStuckDeliveries(threshold);
+            
+            for (PaymentEventOutbox event : stuckEvents) {
+                log.warn("[OUTBOX RELAY] Recovering stuck event {} previously locked by {}", event.getEventId(), event.getLockedBy());
+                event.setStatus(PaymentEventOutboxStatus.RETRY);
+                event.setLockedAt(null);
+                event.setLockedBy(null);
+                outboxRepository.save(event);
+            }
+        } catch (Exception e) {
+            log.trace("[OUTBOX RELAY] Lease recovery skipped or failed: {}", e.getMessage());
         }
     }
 }

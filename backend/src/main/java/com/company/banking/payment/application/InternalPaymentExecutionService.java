@@ -41,6 +41,7 @@ public class InternalPaymentExecutionService {
     private final PaymentStateTransitionPolicy statePolicy;
     private final RefundJpaRepository refundRepository;
     private final PaymentEventOutboxService outboxService;
+    private final com.company.banking.transaction.infrastructure.TransactionJpaRepository transactionRepository;
 
     /**
      * Phase 4A: Hardened Canonical CAPTURE flow.
@@ -74,11 +75,9 @@ public class InternalPaymentExecutionService {
         if (accountA.compareTo(accountB) < 0) {
             firstLock = accountPersistencePort.findByAccountNumberForUpdate(accountA)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Account not found: " + accountA));
-            secondLock = accountPersistencePort.findByAccountNumberForUpdate(accountB)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Account not found: " + accountB));
+            secondLock = getOrCreateAccount(accountB, merchantId, intent.getCurrency());
         } else {
-            firstLock = accountPersistencePort.findByAccountNumberForUpdate(accountB)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Account not found: " + accountB));
+            firstLock = getOrCreateAccount(accountB, merchantId, intent.getCurrency());
             secondLock = accountPersistencePort.findByAccountNumberForUpdate(accountA)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Account not found: " + accountA));
         }
@@ -98,9 +97,27 @@ public class InternalPaymentExecutionService {
         accountPersistencePort.save(sourceAccount);
         accountPersistencePort.save(merchantSettlementAccount);
 
-        // Create Transaction & Double-Entry Ledger
+        // Create Transaction & FLUSH FIRST to satisfy Foreign Key constraints
         String txRef = "INT-CAP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         
+        Transaction transaction = Transaction.builder()
+                .transactionReference(txRef)
+                .idempotencyKey(captureIdempotencyKey)
+                .sourceAccountNumber(sourceAccount.getAccountNumber())
+                .destinationAccountNumber("MERCHANT-SETTLEMENT-" + merchantId)
+                .amount(intent.getAmount())
+                .currency(intent.getCurrency())
+                .status(TransactionStatus.COMPLETED)
+                .description("Internal Payment Capture: " + intentId)
+                .build();
+                
+        try {
+            // DB constraint UNIQUE(idempotency_key) guarantees exactly-once execution
+            transactionRepository.saveAndFlush(transaction);
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException("Capture operation is idempotent. Blocked at database level.");
+        }
+
         LedgerEntry debitEntry = LedgerEntry.builder()
                 .transactionReference(txRef)
                 .accountNumber(sourceAccount.getAccountNumber())
@@ -118,24 +135,6 @@ public class InternalPaymentExecutionService {
                 .build();
 
         ledgerPersistencePort.saveLedgerEntries(Arrays.asList(debitEntry, creditEntry));
-
-        Transaction transaction = Transaction.builder()
-                .transactionReference(txRef)
-                .idempotencyKey(captureIdempotencyKey)
-                .sourceAccountNumber(sourceAccount.getAccountNumber())
-                .destinationAccountNumber("MERCHANT-SETTLEMENT-" + merchantId)
-                .amount(intent.getAmount())
-                .currency(intent.getCurrency())
-                .status(TransactionStatus.COMPLETED)
-                .description("Internal Payment Capture: " + intentId)
-                .build();
-                
-        try {
-            // DB constraint UNIQUE(idempotency_key) guarantees exactly-once execution
-            ledgerPersistencePort.save(transaction);
-        } catch (DataIntegrityViolationException e) {
-            throw new ConflictException("Capture operation is idempotent. Blocked at database level.");
-        }
 
         // Transition State
         intent.setStatus(PaymentIntentStatus.CAPTURED);
@@ -275,11 +274,9 @@ public class InternalPaymentExecutionService {
         if (accountA.compareTo(accountB) < 0) {
             firstLock = accountPersistencePort.findByAccountNumberForUpdate(accountA)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Account not found: " + accountA));
-            secondLock = accountPersistencePort.findByAccountNumberForUpdate(accountB)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Account not found: " + accountB));
+            secondLock = getOrCreateAccount(accountB, merchantId, intent.getCurrency());
         } else {
-            firstLock = accountPersistencePort.findByAccountNumberForUpdate(accountB)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Account not found: " + accountB));
+            firstLock = getOrCreateAccount(accountB, merchantId, intent.getCurrency());
             secondLock = accountPersistencePort.findByAccountNumberForUpdate(accountA)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Account not found: " + accountA));
         }
@@ -294,8 +291,25 @@ public class InternalPaymentExecutionService {
         accountPersistencePort.save(customerAccount);
         accountPersistencePort.save(merchantSettlementAccount);
 
-        // Reverse Transaction & Double-Entry Ledger
+        // Reverse Transaction & Double-Entry Ledger: FLUSH Transaction FIRST
         String txRef = "INT-REF-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        Transaction transaction = Transaction.builder()
+                .transactionReference(txRef)
+                .idempotencyKey(refundId) // The refundId doubles as the transaction idempotency key
+                .sourceAccountNumber(merchantSettlementAccount.getAccountNumber())
+                .destinationAccountNumber(customerAccount.getAccountNumber())
+                .amount(refundAmount)
+                .currency(intent.getCurrency())
+                .status(TransactionStatus.COMPLETED)
+                .description("Refund for Payment: " + intentId + " - " + reason)
+                .build();
+
+        try {
+            transactionRepository.saveAndFlush(transaction);
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException("Refund operation is idempotent. Blocked at database level.");
+        }
 
         LedgerEntry debitEntry = LedgerEntry.builder()
                 .transactionReference(txRef)
@@ -314,23 +328,6 @@ public class InternalPaymentExecutionService {
                 .build();
 
         ledgerPersistencePort.saveLedgerEntries(Arrays.asList(debitEntry, creditEntry));
-
-        Transaction transaction = Transaction.builder()
-                .transactionReference(txRef)
-                .idempotencyKey(refundId) // The refundId doubles as the transaction idempotency key
-                .sourceAccountNumber(merchantSettlementAccount.getAccountNumber())
-                .destinationAccountNumber(customerAccount.getAccountNumber())
-                .amount(refundAmount)
-                .currency(intent.getCurrency())
-                .status(TransactionStatus.COMPLETED)
-                .description("Refund for Payment: " + intentId + " - " + reason)
-                .build();
-
-        try {
-            ledgerPersistencePort.save(transaction);
-        } catch (DataIntegrityViolationException e) {
-            throw new ConflictException("Refund operation is idempotent. Blocked at database level.");
-        }
 
         // Save Refund Record
         Refund refund = Refund.builder()
@@ -364,5 +361,16 @@ public class InternalPaymentExecutionService {
         outboxService.enqueuePaymentRefunded(intent, refund);
 
         return refund;
+    }
+
+    private Account getOrCreateAccount(String accountNumber, Long merchantId, String currency) {
+        return accountPersistencePort.findByAccountNumberForUpdate(accountNumber)
+                .orElseGet(() -> accountPersistencePort.save(Account.builder()
+                        .accountNumber(accountNumber)
+                        .customerId(merchantId)
+                        .balance(BigDecimal.ZERO)
+                        .currency(currency)
+                        .status(com.company.banking.common.enums.AccountStatus.ACTIVE)
+                        .build()));
     }
 }
