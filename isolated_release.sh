@@ -126,9 +126,10 @@ process_module() {
   IFS=',' read -r -a paths <<< "$paths_csv"
 
   local changes=""
-  for p in "${paths[@]}"; do
-    p="$(echo "$p" | xargs)"
-    if [ -n "$(git ls-files -m -o -d --exclude-standard "$p" 2>/dev/null)" ]; then
+  for i in "${!paths[@]}"; do
+    # Trim leading/trailing whitespace and update the array element
+    paths[i]="$(echo "${paths[$i]}" | xargs)"
+    if [ -n "$(git ls-files -m -o -d --exclude-standard "${paths[$i]}" 2>/dev/null)" ]; then
       changes="yes"
       break
     fi
