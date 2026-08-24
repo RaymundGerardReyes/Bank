@@ -66,20 +66,6 @@ export default function InternalTransferPage() {
   const handleAuthSuccess = async (assertion: any) => {
     setStep("SUBMITTING");
 
-    // 🚀 FULL DEV BYPASS: Skip backend completely if dummy assertion is detected
-    if (assertion?.id === "mock-credential-id") {
-      setTimeout(() => {
-        setResult({
-          status: "SUCCESS",
-          transactionReference: `DEV-INT-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-          processedAt: new Date().toISOString(),
-        });
-        setStep("SUCCESS");
-        idempotencyKeyService.clearKey();
-      }, 1000); // Small delay for realistic UI loading effect
-      return;
-    }
-
     try {
       const payload: any = {
         sourceAccountNumber: sourceAccount,

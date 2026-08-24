@@ -4,7 +4,7 @@ export const env = {
   sessionSecret: process.env.SESSION_SECRET || "",
 
   // NEW: The internal Docker network path to Spring Boot
-  backendInternalUrl: process.env.BACKEND_INTERNAL_URL || "http://backend:8080",
+  backendInternalUrl: process.env.BACKEND_INTERNAL_URL || "",
 
   // Service Identity secret (Server-side only, NO NEXT_PUBLIC_)
   internalBffApiKey: process.env.INTERNAL_BFF_API_KEY || "",
