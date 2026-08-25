@@ -41,6 +41,20 @@ public class AuthorizationAttempt {
     @Column(name = "verified_at")
     private LocalDateTime verifiedAt;
 
+    @Column(name = "auth_type")
+    private String authType;
+
+    @Column(name = "ip_address")
+    private String ipAddress;
+
+    private java.math.BigDecimal amount;
+
+    @Column(name = "source_account")
+    private String sourceAccount;
+
+    @Column(name = "destination_account")
+    private String destinationAccount;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -49,6 +63,9 @@ public class AuthorizationAttempt {
         }
         if (this.status == null) {
             this.status = "PENDING";
+        }
+        if (this.authType == null) {
+            this.authType = "WEBAUTHN";
         }
     }
 }

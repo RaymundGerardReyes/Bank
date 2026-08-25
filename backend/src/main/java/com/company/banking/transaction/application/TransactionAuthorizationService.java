@@ -20,6 +20,9 @@ import java.util.Base64;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions;
 import org.springframework.security.web.webauthn.api.Bytes;
 import org.springframework.security.web.webauthn.api.UserVerificationRequirement;
+import java.util.List;
+import java.math.BigDecimal;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -164,5 +167,97 @@ public class TransactionAuthorizationService {
         intentRepository.save(intent);
 
         return response;
+    }
+
+    @Transactional
+    public AuthorizationAttempt createPushAuthorization(Long intentId, Long userId, String ipAddress, BigDecimal amount, String sourceAccount, String destinationAccount) {
+        TransactionIntent intent = intentRepository.findById(intentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Intent not found"));
+
+        if (!intent.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "Cannot access this intent");
+        }
+
+        if (intent.getStatus() != TransactionIntentStatus.DRAFT && intent.getStatus() != TransactionIntentStatus.PENDING_AUTH && intent.getStatus() != TransactionIntentStatus.AUTHENTICATING) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Intent cannot be authorized in current state");
+        }
+
+        byte[] challengeBytes = new byte[32];
+        new SecureRandom().nextBytes(challengeBytes);
+        String challenge = new Bytes(challengeBytes).toBase64UrlString();
+
+        AuthorizationAttempt attempt = AuthorizationAttempt.builder()
+                .transactionIntentId(intent.getId())
+                .challenge(challenge)
+                .status("PENDING")
+                .authType("OOB_MOBILE")
+                .ipAddress(ipAddress)
+                .amount(amount)
+                .sourceAccount(sourceAccount)
+                .destinationAccount(destinationAccount)
+                .build();
+
+        intent.setStatus(TransactionIntentStatus.AUTHENTICATING);
+        intentRepository.save(intent);
+
+        return attemptRepository.save(attempt);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuthorizationAttempt> getPendingMobileAuthorizations(Long userId) {
+        // Find intents for this user that are in AUTHENTICATING state
+        List<TransactionIntent> userIntents = intentRepository.findAll().stream()
+                .filter(i -> i.getUserId().equals(userId) && i.getStatus() == TransactionIntentStatus.AUTHENTICATING)
+                .toList();
+        
+        List<Long> intentIds = userIntents.stream().map(TransactionIntent::getId).toList();
+        
+        // Find pending OOB_MOBILE attempts for these intents
+        return attemptRepository.findAll().stream()
+                .filter(a -> intentIds.contains(a.getTransactionIntentId()) 
+                        && "PENDING".equals(a.getStatus()) 
+                        && "OOB_MOBILE".equals(a.getAuthType())
+                        && a.getExpiresAt().isAfter(LocalDateTime.now()))
+                .toList();
+    }
+
+    @Transactional
+    public void approveMobileAuthorization(Long intentId, Long userId) {
+        TransactionIntent intent = intentRepository.findById(intentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Intent not found"));
+
+        if (!intent.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "Cannot access this intent");
+        }
+
+        AuthorizationAttempt attempt = attemptRepository.findAll().stream()
+                .filter(a -> a.getTransactionIntentId().equals(intentId) && "PENDING".equals(a.getStatus()) && "OOB_MOBILE".equals(a.getAuthType()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "No pending mobile authorization found"));
+
+        if (attempt.getExpiresAt().isBefore(LocalDateTime.now())) {
+            attempt.setStatus("EXPIRED");
+            attemptRepository.save(attempt);
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "Challenge expired");
+        }
+
+        attempt.setStatus("VERIFIED");
+        attempt.setVerifiedAt(LocalDateTime.now());
+        attemptRepository.save(attempt);
+
+        intent.setStatus(TransactionIntentStatus.AUTHORIZED);
+        intentRepository.save(intent);
+    }
+
+    @Transactional(readOnly = true)
+    public String getAuthorizationStatus(Long intentId, Long userId) {
+        TransactionIntent intent = intentRepository.findById(intentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Intent not found"));
+        
+        if (!intent.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "Cannot access this intent");
+        }
+        
+        return intent.getStatus().name();
     }
 }

@@ -1,6 +1,4 @@
 spring:
-  # Tells Spring Boot to look one directory up (cd ..) for the .env file
-  import: optional:file:../.env[.properties]
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
