@@ -1,4 +1,4 @@
-import { env } from "@/config/env";
+import { env } from "@/server/config/env";
 
 export const openApiService = {
   fetchSpec: async (): Promise<Record<string, unknown>> => {

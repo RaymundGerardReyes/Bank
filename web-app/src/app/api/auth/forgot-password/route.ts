@@ -1,11 +1,11 @@
-import { env } from "@/config/env";
+import { env } from "@/server/config/env";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const requestId = crypto.randomUUID();
-    const response = await fetch(`${env.backendApiBaseUrl}/auth/forgot-password`, {
+    const response = await fetch(`${env.backendApiBaseUrl}/api/v1/auth/forgot-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -1,7 +1,7 @@
 import { ApiKeyManager } from "@/components/features/api/ApiKeyManager";
 import { WebhookManager } from "@/components/features/api/WebhookManager";
 import { ApiReferenceViewer } from "@/components/docs/ApiReferenceViewer";
-import { env } from "@/config/env";
+import { env } from "@/server/config/env";
 
 export default function ApiGatewayPage() {
   return (

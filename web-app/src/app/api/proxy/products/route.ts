@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { env } from "@/config/env";
+import { env } from "@/server/config/env";
 
 export async function GET(request: Request) {
   const sessionCookie = request.headers.get("cookie");

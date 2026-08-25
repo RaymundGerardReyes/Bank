@@ -11,6 +11,7 @@ interface TransactionReceiptProps {
   recipient: string;
   type?: string;
   errorMessage?: string;
+  timestamp?: string;
 }
 
 export const TransactionReceipt: React.FC<TransactionReceiptProps> = ({
@@ -20,8 +21,9 @@ export const TransactionReceipt: React.FC<TransactionReceiptProps> = ({
   recipient,
   type,
   errorMessage,
+  timestamp,
 }) => {
-  const currentDate = new Date().toLocaleString("en-US", {
+  const currentDate = (timestamp ? new Date(timestamp) : new Date()).toLocaleString("en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",

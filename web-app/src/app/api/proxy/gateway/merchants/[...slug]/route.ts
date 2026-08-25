@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { env } from "@/config/env";
+import { env } from "@/server/config/env";
 
 // Handles: GET /api/proxy/gateway/merchants/[id]
 //          POST /api/proxy/gateway/merchants/[id]/advance

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { env } from "@/config/env";
+import { env } from "@/server/config/env";
 
 // Handles: POST /api/proxy/gateway/qr-payments/[intentId]
 //          GET  /api/proxy/gateway/qr-payments/[intentId]

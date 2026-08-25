@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { env } from "@/config/env";
+import { env } from "@/server/config/env";
 
 // Pattern: mirrors /api/proxy/apikeys/route.ts exactly
 function extractToken(request: Request): { token: string | null; requestId: string } {

@@ -1,4 +1,4 @@
-import { env } from '@/config/env';
+import { env } from '@/server/config/env';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ intentId: string }> }) {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { env } from "@/config/env";
+import { env } from "@/server/config/env";
 
 function extractToken(request: Request): { token: string | null; requestId: string } {
   const cookieHeader = request.headers.get("cookie") || "";

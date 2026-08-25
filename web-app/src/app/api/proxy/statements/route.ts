@@ -1,4 +1,4 @@
-import { env } from "@/config/env";
+import { env } from "@/server/config/env";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 

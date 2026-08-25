@@ -227,6 +227,7 @@ export default function BankTransferPage() {
           amount={parseFloat(amount)}
           recipient={recipientName}
           type="InstaPay / Bank Transfer"
+          timestamp={result.processedAt}
         />
       )}
       {step === "FAILED" && (

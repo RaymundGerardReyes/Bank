@@ -1,4 +1,3 @@
-import { env } from "@/config/env";
 
 export interface RequestOptions extends RequestInit {
   idempotencyKey?: string;
@@ -26,7 +25,7 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
     ? `/api${cleanEndpoint}` 
     : `/api/proxy${cleanEndpoint}`;
 
-  const baseUrl = typeof window !== "undefined" ? "" : env.appUrl;
+  const baseUrl = typeof window !== "undefined" ? "" : process.env.NEXT_PUBLIC_APP_URL || "";
   const url = endpoint.startsWith("http") ? endpoint : `${baseUrl}${apiPath}`;
 
   const response = await fetch(url, {

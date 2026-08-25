@@ -1,5 +1,7 @@
-"use client";
-
+// Server Component — no "use client" needed.
+// Logo, StarRating and Link all work as server-side components.
+// The only interactive element (CTA form) uses a plain Link instead of
+// an onSubmit handler, which avoids the React hook dispatcher entirely.
 import { Logo } from "@/components/ui/Logo";
 import { StarRating } from "@/components/ui/StarRating";
 import Link from "next/link";
@@ -201,26 +203,19 @@ export default function NovaBankLandingPage() {
             Join NovaBank today. No credit impact, no hidden fees, and zero hassle.
           </p>
 
-          <form
-            className="flex flex-col sm:flex-row gap-4 justify-center max-w-xl mx-auto"
-            onSubmit={(e) => e.preventDefault()}
-            suppressHydrationWarning
-          >
+          <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-xl mx-auto">
             <input
               type="email"
               placeholder="Enter your email address"
               className="flex-1 px-6 py-4 rounded-xl border-2 border-secondary/50 focus:border-accent focus:outline-none text-accent font-medium placeholder:text-accent/50 bg-surface"
-              required
-              suppressHydrationWarning
             />
-            <button
-              type="submit"
-              className="px-8 py-4 bg-accent hover:bg-accent/90 text-dominant font-bold rounded-xl transition-colors whitespace-nowrap shadow-lg shadow-accent/20"
-              suppressHydrationWarning
+            <Link
+              href="/register"
+              className="px-8 py-4 bg-accent hover:bg-accent/90 text-dominant font-bold rounded-xl transition-colors whitespace-nowrap shadow-lg shadow-accent/20 text-center"
             >
               Get Started in 3 Minutes
-            </button>
-          </form>
+            </Link>
+          </div>
         </div>
       </section>
 

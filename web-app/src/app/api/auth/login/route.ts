@@ -1,4 +1,4 @@
-import { env } from "@/config/env";
+import { env } from "@/server/config/env";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       password: body.password,
     };
 
-    const response = await fetch(`${env.backendApiBaseUrl}/auth/login`, {
+    const response = await fetch(`${env.backendApiBaseUrl}/api/v1/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -46,6 +46,7 @@ export async function POST(request: Request) {
 
     return res;
   } catch (error) {
+    console.error("[Login Proxy Error] Failed to reach backend:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }

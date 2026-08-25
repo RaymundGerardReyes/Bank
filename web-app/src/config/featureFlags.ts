@@ -1,8 +1,6 @@
-import { env } from "./env";
-
 export const featureFlags = {
-  enablePasskey: env.enablePasskeyAuth,
-  enableDevApiDocs: env.enableDevApiDocs,
+  enablePasskey: process.env.ENABLE_PASSKEY_AUTH,
+  enableDevApiDocs: process.env.ENABLE_DEV_API_DOCS,
   enableMfaRequired: true,
   enableAuditTrail: true,
 };

@@ -194,6 +194,7 @@ export default function InternalTransferPage() {
           amount={parseFloat(amount)}
           recipient={`NovaBank ••••${recipientAccount.slice(-4)}`}
           type="Internal Transfer"
+          timestamp={result.processedAt}
         />
       )}
       {step === "FAILED" && (

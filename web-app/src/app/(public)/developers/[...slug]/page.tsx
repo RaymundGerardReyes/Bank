@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import React from "react";
-import { env } from "@/config/env";
+import { env } from "@/server/config/env";
 import { ApiReferenceViewer } from "@/components/docs/ApiReferenceViewer";
 
 export default async function DeveloperSubRoutePage({ params }: { params: Promise<{ slug: string[] }> }) {

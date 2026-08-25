@@ -1,4 +1,4 @@
-import { env } from "@/config/env";
+import { env } from "@/server/config/env";
 import { NextResponse } from "next/server";
 
 export async function DELETE(

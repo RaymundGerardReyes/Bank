@@ -3,6 +3,7 @@ import { endpoints } from "@/services/api/endpoints";
 import { apiFetch } from "@/services/api/httpClient";
 import { idempotencyKeyService } from "./idempotencyKeyService";
 import { TransactionResult } from "@/models/TransactionTypes";
+import type { AuthenticationResponseJSON, PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/types";
 
 export interface InternalTransferPayload {
   sourceAccountNumber: string;
@@ -11,7 +12,7 @@ export interface InternalTransferPayload {
   description?: string;
   scheduledDate?: string;
   idempotencyKey?: string;
-  assertion?: any; // WebAuthn AuthenticationResponseJSON
+  assertion?: AuthenticationResponseJSON;
 }
 
 export interface DepositPayload {
@@ -34,7 +35,7 @@ export interface ExternalPaymentPayload {
   recipientName: string;
   amount: number;
   idempotencyKey?: string;
-  assertion?: any;
+  assertion?: AuthenticationResponseJSON;
 }
 
 export interface QrPhPaymentPayload {
@@ -42,7 +43,24 @@ export interface QrPhPaymentPayload {
   qrPayload: string;
   amount: number;
   idempotencyKey?: string;
-  assertion?: any;
+  assertion?: AuthenticationResponseJSON;
+}
+
+export interface CreateIntentPayload {
+  rail: "INTERNAL" | "BANK_TRANSFER" | "QR_PH";
+  sourceAccountId: string;
+  recipient: string;
+  amount: number;
+  currency: string;
+  fee: number;
+  total: number;
+  idempotencyKey: string;
+}
+
+export interface PushRequestPayload {
+  amount: number;
+  sourceAccount: string;
+  destinationAccount: string;
 }
 
 export function normalizeTransactionResult(response: any): TransactionResult {
@@ -76,7 +94,7 @@ export function normalizeTransactionResult(response: any): TransactionResult {
 
 export const transactionService = {
   // Phase D: Request WebAuthn challenge for transaction intent
-  createTransactionChallenge: async (intentPayload: any): Promise<any> => {
+  createTransactionChallenge: async (intentPayload: unknown): Promise<PublicKeyCredentialRequestOptionsJSON> => {
     // In production, this calls the backend (e.g., POST /auth/webauthn/transaction-challenge)
     // For now, we return a mocked PublicKeyCredentialRequestOptionsJSON
     return new Promise((resolve) => {
@@ -87,7 +105,7 @@ export const transactionService = {
           rpId: window.location.hostname,
           allowCredentials: [],
           userVerification: "required",
-        });
+        } as unknown as PublicKeyCredentialRequestOptionsJSON);
       }, 500);
     });
   },
@@ -114,12 +132,13 @@ export const transactionService = {
   },
 
   deposit: async (payload: DepositPayload | string, amount?: number, description?: string): Promise<ApiResponse<Transaction>> => {
-    let body: any;
+    let body: DepositPayload;
     let key: string;
     if (typeof payload === "object") {
       body = payload;
       key = payload.idempotencyKey || idempotencyKeyService.generateKey();
     } else {
+      if (amount === undefined) throw new Error("Amount is required");
       body = { accountNumber: payload, amount, description };
       key = idempotencyKeyService.generateKey();
     }
@@ -175,5 +194,26 @@ export const transactionService = {
       `${endpoints.transactions.history(accountNumber)}?page=${page}&size=${size}`, 
       { method: "GET" }
     );
+  },
+
+  // --- OOB Mobile Verification Sync Queuing ---
+  createIntent: async (payload: CreateIntentPayload): Promise<ApiResponse<unknown>> => {
+    return apiFetch<ApiResponse<unknown>>("/transactions/intents", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  createPushRequest: async (intentId: number, payload: PushRequestPayload): Promise<ApiResponse<unknown>> => {
+    return apiFetch<ApiResponse<unknown>>(`/transactions/intents/${intentId}/authorization/push-request`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  getAuthStatus: async (intentId: number): Promise<ApiResponse<{ status: string }>> => {
+    return apiFetch<ApiResponse<{ status: string }>>(`/transactions/intents/${intentId}/authorization/status`, {
+      method: "GET",
+    });
   },
 };

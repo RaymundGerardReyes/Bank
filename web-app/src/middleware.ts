@@ -1,19 +1,49 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { jwtDecode } from "jwt-decode";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+
+// Initialize Upstash Redis Rate Limiter if environment variables are present
+let ratelimit: Ratelimit | undefined;
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  ratelimit = new Ratelimit({
+    redis: Redis.fromEnv(),
+    limiter: Ratelimit.slidingWindow(60, "1 m"),
+    analytics: true,
+  });
+}
 
 // 1. Protect UI Pages
-const PROTECTED_ROUTES = ["/accounts", "/transfers", "/transactions", "/statements", "/products", "/profile", "/admin", "/api"];
+const PROTECTED_ROUTES = ["/accounts", "/transfers", "/transactions", "/statements", "/products", "/profile", "/admin", "/ops", "/api"];
 
 // 2. Protect Internal Next.js Proxies from being abused externally
 const INTERNAL_PROXY_ROUTES = [
   "/api/proxy"
 ];
 
-const ADMIN_ROUTES = ["/admin"];
+const ADMIN_ROUTES = ["/admin", "/ops"];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionToken = request.cookies.get("bank_session")?.value;
+  
+  // Rate Limiting (Stateless Edge)
+  if (ratelimit) {
+    try {
+      const ip = request.headers.get("x-forwarded-for") ?? "127.0.0.1";
+      const { success } = await ratelimit.limit(ip);
+      if (!success) {
+        if (pathname.startsWith("/api/")) {
+          return NextResponse.json({ success: false, message: "Too many requests" }, { status: 429 });
+        }
+        return new NextResponse("Too Many Requests", { status: 429 });
+      }
+    } catch (error) {
+      // FAIL-SAFE: If Upstash is temporarily unreachable, log the error but allow the request.
+      console.error("[Middleware] Redis rate limiter unavailable:", error);
+    }
+  }
 
   const isProtectedRoute = PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
   const isInternalProxyRoute = INTERNAL_PROXY_ROUTES.some((route) => pathname.startsWith(route));
@@ -23,15 +53,27 @@ export function middleware(request: NextRequest) {
   // --- ENTERPRISE FIX: Block unauthorized access to UI AND Internal API Proxies ---
   if ((isProtectedRoute && !isPublicProxyRoute) || (isInternalProxyRoute && !isPublicProxyRoute)) {
     if (!sessionToken) {
-      // If it's an API request, return a strict 401 JSON response (Don't redirect APIs to HTML login)
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ success: false, message: "Unauthorized: Invalid or missing session token" }, { status: 401 });
       }
-
-      // If it's a UI request, gracefully redirect to login
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
+    }
+
+    // --- PHASE 1: Server-Side Role Guarding (Edge JWT Decode) ---
+    if (isAdminRoute) {
+      try {
+        const decoded = jwtDecode<{ role: string }>(sessionToken);
+        if (decoded.role !== "ADMIN" && decoded.role !== "OPS_OFFICER") {
+          // If a standard USER tries to access /admin or /ops, reject them at the Edge
+          return NextResponse.redirect(new URL("/unauthorized", request.url));
+        }
+      } catch {
+        // If JWT is malformed, force re-login
+        const loginUrl = new URL("/login", request.url);
+        return NextResponse.redirect(loginUrl);
+      }
     }
   }
 

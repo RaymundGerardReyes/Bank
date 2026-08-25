@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { env } from "@/config/env";
+import { env } from "@/server/config/env";
 
 /**
  * Unified Internal Forwarding Function

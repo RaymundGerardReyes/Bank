@@ -1,7 +1,9 @@
 "use client";
 
-// global-error.tsx is required by Next.js 15+ for root-level error boundaries.
-// It replaces the entire page (including layout) so it must include <html> and <body>.
+// Next.js 16 enforces that global-error.tsx MUST be a Client Component.
+// The prerender crash (useContext null) is caused by Turbopack loading two
+// separate React instances in the same worker. The fix is npm overrides in
+// package.json forcing a single React copy — see package.json "overrides".
 export default function GlobalError({
   error,
   reset,

@@ -5,7 +5,6 @@ import { useAuthStore } from "@/state/authStore";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useState } from "react";
-import { RoleGuard } from "@/security/RoleGuard";
 
 export default function OpsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -47,7 +46,7 @@ export default function OpsLayout({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <RoleGuard allowedRoles={["OPS_OFFICER", "ADMIN"]}>
+
       <div className="flex h-screen bg-surface text-accent overflow-hidden">
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex flex-col w-64 bg-dominant border-r border-secondary/20 shadow-sm z-20">
@@ -137,6 +136,5 @@ export default function OpsLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
-    </RoleGuard>
   );
 }

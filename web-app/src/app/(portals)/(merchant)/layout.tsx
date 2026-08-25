@@ -5,8 +5,7 @@ import { useAuthStore } from "@/state/authStore";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useState } from "react";
-// Using RoleGuard once we implement Phase E, for now we will assume it exists or use standard layout pattern
-import { RoleGuard } from "@/security/RoleGuard";
+// Security checking is now handled centrally at the edge in middleware.ts
 
 export default function MerchantLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -30,7 +29,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
   ];
 
   return (
-    <RoleGuard allowedRoles={["MERCHANT"]}>
+
       <div className="flex h-screen bg-surface text-accent overflow-hidden">
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex flex-col w-64 bg-dominant border-r border-secondary/20 shadow-sm z-20">
@@ -137,6 +136,5 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
           </main>
         </div>
       </div>
-    </RoleGuard>
   );
 }

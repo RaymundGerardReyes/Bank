@@ -211,6 +211,7 @@ export default function QrPhTransferPage() {
           amount={amount}
           recipient={recipientName}
           type="QR Ph Payment"
+          timestamp={result.processedAt}
         />
       )}
       {step === "FAILED" && (

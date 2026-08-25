@@ -1,7 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
 import React, { useEffect, useState } from "react";
 import { DataTable } from "@/components/features/gateway/DataTable";
 import { fraudService } from "@/services/gateway/fraudService";
