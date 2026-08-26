@@ -49,11 +49,11 @@ public class TransferPolicy {
     public void validateVamPermissions(Account source, Account destination) {
         if (!source.isAllowOutgoing()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, 
-                "VAM Policy Enforced: Sub-account [" + source.getAccountNumber() + "] is strictly restricted from OUTGOING transactions.");
+                "VAM Policy Enforced: Account [" + source.getAccountNumber() + "] is strictly restricted from OUTGOING transactions.");
         }
         if (!destination.isAllowIncoming()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, 
-                "VAM Policy Enforced: Sub-account [" + destination.getAccountNumber() + "] is strictly restricted from INCOMING transactions.");
+                "VAM Policy Enforced: Account [" + destination.getAccountNumber() + "] is strictly restricted from INCOMING transactions.");
         }
     }
 

@@ -40,6 +40,8 @@ public class CreateCustomerService implements CreateCustomerUseCase {
                 .customerId(savedCustomer.getId())
                 .accountType("MAIN")
                 .currency("PHP")
+                .allowIncoming(true)
+                .allowOutgoing(true)
                 .build();
 
         openAccountUseCase.openAccount(accountRequest);
