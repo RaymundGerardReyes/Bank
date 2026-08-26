@@ -23,3 +23,26 @@ export interface TransactionResult {
   failureCode?: string;
   failureMessage?: string;
 }
+
+export type TransactionDirection = 'INBOUND' | 'OUTBOUND' | 'ALL';
+
+export interface TransactionHistoryFilter {
+  accountNumber: string;
+  direction?: TransactionDirection;
+  page?: number;
+  size?: number;
+}
+
+export interface TransactionHistoryRecord {
+  transactionReference: string;
+  sourceAccountNumber: string;
+  destinationAccountNumber: string;
+  senderName: string;          // Maps to the extracted name of the sender
+  recipientName: string;       // Maps to the extracted name of the receiver
+  amount: number;
+  currency: string;
+  status: string;              // e.g., 'COMPLETED', 'PENDING', 'FAILED'
+  entryType: 'CREDIT' | 'DEBIT'; // Maps to backend EntryType
+  createdAt: string;
+  description: string;
+}

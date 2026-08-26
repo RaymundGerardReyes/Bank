@@ -1,7 +1,7 @@
 "use client";
 
 import { TransactionListItem } from "@/components/features/transactions/TransactionListItem";
-import { Transaction } from "@/models/ApiResponse";
+import { TransactionHistoryRecord } from "@/models/TransactionTypes";
 import { accountService } from "@/services/account/accountService";
 import { transactionService } from "@/services/transaction/transactionService";
 import { useEffect, useState } from "react";
@@ -23,7 +23,7 @@ const SkeletonRow = () => (
 );
 
 export default function TransactionHistoryPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<TransactionHistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,7 +38,7 @@ export default function TransactionHistoryPage() {
           const primaryAcc = accRes.data[0].accountNumber;
           setActiveAccount(primaryAcc); // Save state context
 
-          const histRes = await transactionService.getHistory(primaryAcc);
+          const histRes = await transactionService.getAccountTransactionHistory({ accountNumber: primaryAcc });
           if (histRes.data && histRes.data.content) {
             setTransactions(histRes.data.content);
           }
@@ -92,9 +92,8 @@ export default function TransactionHistoryPage() {
         ) : (
           transactions.map((tx) => (
             <TransactionListItem
-              key={tx.id || tx.transactionReference}
+              key={tx.transactionReference}
               transaction={tx}
-              currentAccount={activeAccount} // <-- INJECTED 
             />
           ))
         )}

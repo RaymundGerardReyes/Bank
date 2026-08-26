@@ -1,4 +1,4 @@
-import { Account, ApiResponse } from "@/models/ApiResponse";
+import { Account, ApiResponse, UpdateAccountSettingsPayload } from "@/models/ApiResponse";
 import { endpoints } from "@/services/api/endpoints";
 import { apiFetch } from "@/services/api/httpClient";
 
@@ -13,6 +13,13 @@ export const accountService = {
   openAccount: async (payload: { customerId: number; currency: string; initialDeposit: number; accountType: string }): Promise<ApiResponse<Account>> => {
     return apiFetch<ApiResponse<Account>>(endpoints.accounts.list, {
       method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  // --- NEW: Account Governance & Controller Settings ---
+  updateAccountSettings: async (accountNumber: string, payload: UpdateAccountSettingsPayload): Promise<ApiResponse<Account>> => {
+    return apiFetch<ApiResponse<Account>>(`/accounts/${accountNumber}/settings`, {
+      method: "PATCH",
       body: JSON.stringify(payload),
     });
   },

@@ -7,6 +7,15 @@ export interface ApiResponse<T> {
   errorCode?: string;
 }
 
+export interface PagedResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+}
+
 export interface UserProfile {
   id: string;
   username: string;
@@ -19,13 +28,19 @@ export interface UserProfile {
 }
 
 export interface Account {
-  id: string;
+  id: string | number;
   accountNumber: string;
-  accountType: string;
+  accountType?: string;
   balance: number;
   currency: string;
-  status: "ACTIVE" | "FROZEN" | "CLOSED";
+  status: "ACTIVE" | "FROZEN" | "CLOSED" | string;
   
+  // --- GOVERNANCE & CONTROLLER FLAGS ---
+  frozen?: boolean;
+  allowIncoming?: boolean;
+  allowOutgoing?: boolean;
+  requireDualApproval?: boolean;
+
   // --- NEW ENTERPRISE VAM HIERARCHY FIELDS ---
   parentAccountId?: string | null;
   accountName?: string | null;
@@ -34,6 +49,13 @@ export interface Account {
   cardExpiry?: string;
   cardCvv?: string;
   createdAt: string;
+}
+
+export interface UpdateAccountSettingsPayload {
+  frozen?: boolean;
+  allowIncoming?: boolean;
+  allowOutgoing?: boolean;
+  requireDualApproval?: boolean;
 }
 
 export interface Transaction {

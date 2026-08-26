@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
-import { Transaction } from "@/models/ApiResponse";
+import { TransactionHistoryRecord } from "@/models/TransactionTypes";
 import { accountService } from "@/services/account/accountService";
 import { transactionService } from "@/services/transaction/transactionService";
 import { formatCurrency, formatDate } from "@/utils/formatters";
@@ -12,7 +12,7 @@ import { use, useEffect, useState } from "react";
 export default function TransactionReceiptPage({ params }: { params: Promise<{ txRef: string }> }) {
   const router = useRouter();
   const { txRef } = use(params);
-  const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const [transaction, setTransaction] = useState<TransactionHistoryRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeAccount, setActiveAccount] = useState<string>("");
 
@@ -24,9 +24,9 @@ export default function TransactionReceiptPage({ params }: { params: Promise<{ t
           const primaryAcc = accRes.data[0].accountNumber;
           setActiveAccount(primaryAcc); // <-- Save Active Account Context
 
-          const histRes = await transactionService.getHistory(primaryAcc);
+          const histRes = await transactionService.getAccountTransactionHistory({ accountNumber: primaryAcc });
           if (histRes.data && histRes.data.content) {
-            const found = histRes.data.content.find((t: Transaction) => t.transactionReference === txRef);
+            const found = histRes.data.content.find((t: TransactionHistoryRecord) => t.transactionReference === txRef);
             setTransaction(found || null);
           }
         }
@@ -61,7 +61,7 @@ export default function TransactionReceiptPage({ params }: { params: Promise<{ t
   }
 
   // TRUE Directional Logic applied to the Receipt
-  const isCredit = transaction.destinationAccountNumber === activeAccount || (!transaction.destinationAccountNumber && transaction.type === "DEPOSIT");
+  const isCredit = transaction.destinationAccountNumber === activeAccount || (!transaction.destinationAccountNumber && transaction.entryType === "CREDIT");
 
   const formatAccountString = (acc?: string) => {
     if (!acc) return "N/A";

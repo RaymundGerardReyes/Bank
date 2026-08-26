@@ -1,1 +1,1 @@
-export type { Account } from "./ApiResponse";
+export type { Account, UpdateAccountSettingsPayload } from "./ApiResponse";

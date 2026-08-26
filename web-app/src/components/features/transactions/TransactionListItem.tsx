@@ -1,94 +1,84 @@
-"use client";
-
-import { Transaction } from "@/models/ApiResponse";
-import { formatCurrency, formatDate, maskAccountNumber } from "@/utils/formatters";
-import { useRouter } from "next/navigation";
-import React from "react";
+import React from 'react';
+import { ArrowDownLeft, ArrowUpRight, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { TransactionHistoryRecord } from '@/models/TransactionTypes';
 
 interface TransactionListItemProps {
-  transaction: Transaction;
-  currentAccount: string;
+  transaction: TransactionHistoryRecord;
 }
 
-export const TransactionListItem: React.FC<TransactionListItemProps> = ({ transaction, currentAccount }) => {
-  const router = useRouter();
-
-  // 1. TRUE Enterprise Directional Logic: Depends entirely on the account viewing the ledger
-  const isCredit = transaction.destinationAccountNumber === currentAccount ||
-    (transaction.sourceAccountNumber === "CASH" && transaction.destinationAccountNumber === currentAccount);
-
-  const txRef = transaction.transactionReference || transaction.transactionRef || transaction.id;
-
-  // 2. Format the opposing target account to display who the money went to / came from
-  const targetAccount = isCredit ? transaction.sourceAccountNumber : transaction.destinationAccountNumber;
-  let formattedTarget = "External Bank";
-
-  if (targetAccount === "CASH") {
-    formattedTarget = "Physical Cash / Branch";
-  } else if (targetAccount?.startsWith("EXT:")) {
-    formattedTarget = "External Wire Transfer";
-  } else if (targetAccount) {
-    formattedTarget = maskAccountNumber(targetAccount); // Masks to **** 6210
-  }
-
-  // 3. Dynamic Title Formatting
-  let displayTitle = transaction.description;
-  if (!displayTitle) {
-    if (transaction.sourceAccountNumber === "CASH") displayTitle = "Cash Deposit";
-    else if (transaction.destinationAccountNumber === "CASH") displayTitle = "Cash Withdrawal";
-    else displayTitle = isCredit ? "Inbound Transfer" : "Outbound Transfer";
-  }
-
-  const safeDate = formatDate(transaction.createdAt || "").toUpperCase();
+export const TransactionListItem: React.FC<TransactionListItemProps> = ({ transaction }) => {
+  const isInbound = transaction.entryType === 'CREDIT';
+  
+  const formattedDate = new Date(transaction.createdAt).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
+  });
 
   return (
-    <button
-      onClick={() => router.push(`/transactions/receipt/${txRef}`)}
-      className="w-full text-left flex items-center justify-between p-5 bg-dominant border border-secondary/30 rounded-xl hover:border-secondary/60 hover:shadow-lg hover:shadow-secondary/5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sky-500 group"
-      aria-label={`View receipt for transaction ${txRef}`}
-    >
+    <div className="flex items-center justify-between p-4 bg-white border-b border-slate-100 hover:bg-slate-50 transition-colors duration-150 group first:rounded-t-2xl last:rounded-b-2xl last:border-b-0">
+      
+      {/* Left Section: Icon & Details */}
       <div className="flex items-center gap-4">
-        {/* Aesthetic Visual Indicator Icon */}
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${isCredit
-            ? "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100"
-            : "bg-surface text-accent group-hover:bg-secondary/20"
-          }`}>
-          {isCredit ? (
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18" />
-            </svg>
-          )}
+        
+        {/* Dynamic Icon based on Inbound/Outbound */}
+        <div className={`p-3 rounded-full flex-shrink-0 ${
+          isInbound ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600'
+        }`}>
+          {isInbound ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
         </div>
 
-        {/* Transaction Meta */}
-        <div className="flex flex-col gap-1">
-          <h5 className="font-extrabold text-accent text-[16px] truncate max-w-[200px] sm:max-w-xs group-hover:text-sky-700 transition-colors">
-            {displayTitle}
-          </h5>
-          <div className="flex items-center gap-2 text-[11px] font-bold text-accent/50 uppercase tracking-widest">
-            <span>{isCredit ? 'From: ' : 'To: '} {formattedTarget}</span>
-            <span className="w-1 h-1 rounded-full bg-secondary/40 hidden sm:block"></span>
-            <span className="hidden sm:inline">{safeDate}</span>
+        {/* Transaction Text Details */}
+        <div className="flex flex-col">
+          <p className="text-sm font-semibold text-slate-900">
+            {isInbound ? `From: ${transaction.senderName}` : `To: ${transaction.recipientName}`}
+          </p>
+          <p className="text-xs text-slate-500 mt-0.5 truncate max-w-[200px] md:max-w-md">
+            {transaction.description || (isInbound ? 'Incoming Transfer' : 'Outgoing Transfer')}
+          </p>
+          <div className="flex items-center gap-1 mt-1 text-xs text-slate-400">
+            <Clock className="w-3 h-3" />
+            <span>{formattedDate}</span>
           </div>
         </div>
       </div>
 
-      {/* Financials & Status Badge */}
-      <div className="flex flex-col items-end gap-1.5">
-        <span className={`text-[17px] font-black tracking-tight ${isCredit ? "text-emerald-600" : "text-accent"}`}>
-          {isCredit ? "+" : "-"}{formatCurrency(transaction.amount, transaction.currency || "USD")}
+      {/* Right Section: Amount & Status */}
+      <div className="flex flex-col items-end gap-1">
+        <span className={`text-base font-bold ${
+          isInbound ? 'text-emerald-600' : 'text-slate-900'
+        }`}>
+          {isInbound ? '+' : '-'} {transaction.currency} {transaction.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
         </span>
-        <span className={`px-2 py-0.5 text-[9px] rounded uppercase font-extrabold tracking-widest border ${transaction.status === "COMPLETED" ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
-            transaction.status === "PENDING" ? "bg-amber-50 text-amber-600 border-amber-200" :
-              "bg-rose-50 text-rose-600 border-rose-200"
-          }`}>
-          {transaction.status}
+        
+        {/* Status Indicator */}
+        <div className="flex items-center gap-1">
+          {transaction.status === 'COMPLETED' && (
+            <>
+              <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+              <span className="text-[10px] font-medium text-emerald-600 uppercase tracking-wider">Completed</span>
+            </>
+          )}
+          {transaction.status === 'FAILED' && (
+            <>
+              <XCircle className="w-3 h-3 text-red-500" />
+              <span className="text-[10px] font-medium text-red-600 uppercase tracking-wider">Failed</span>
+            </>
+          )}
+          {transaction.status === 'PENDING' && (
+            <>
+              <Clock className="w-3 h-3 text-amber-500" />
+              <span className="text-[10px] font-medium text-amber-600 uppercase tracking-wider">Pending</span>
+            </>
+          )}
+        </div>
+        
+        {/* Subtle Transaction Reference on Hover */}
+        <span className="text-[10px] text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity font-mono">
+          Ref: {transaction.transactionReference.substring(0, 8)}...
         </span>
       </div>
-    </button>
+
+    </div>
   );
 };
+
+export default TransactionListItem;

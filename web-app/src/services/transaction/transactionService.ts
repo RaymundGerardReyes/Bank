@@ -1,8 +1,8 @@
-import { ApiResponse, Transaction } from "@/models/ApiResponse";
+import { ApiResponse, Transaction, PagedResponse } from "@/models/ApiResponse";
 import { endpoints } from "@/services/api/endpoints";
 import { apiFetch } from "@/services/api/httpClient";
 import { idempotencyKeyService } from "./idempotencyKeyService";
-import { TransactionResult } from "@/models/TransactionTypes";
+import { TransactionResult, TransactionHistoryFilter, TransactionHistoryRecord } from "@/models/TransactionTypes";
 import type { AuthenticationResponseJSON, PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/types";
 
 export interface InternalTransferPayload {
@@ -189,9 +189,21 @@ export const transactionService = {
     return Promise.reject(new Error("QR Ph integration unavailable"));
   },
 
-  getHistory: async (accountNumber: string, page = 0, size = 10): Promise<ApiResponse<{ content: Transaction[] }>> => {
-    return apiFetch<ApiResponse<{ content: Transaction[] }>>(
-      `${endpoints.transactions.history(accountNumber)}?page=${page}&size=${size}`, 
+  getAccountTransactionHistory: async (
+    filter: TransactionHistoryFilter
+  ): Promise<ApiResponse<PagedResponse<TransactionHistoryRecord>>> => {
+    const params = new URLSearchParams({
+      accountNumber: filter.accountNumber,
+    });
+    
+    if (filter.direction && filter.direction !== 'ALL') {
+      params.append('direction', filter.direction);
+    }
+    if (filter.page !== undefined) params.append('page', filter.page.toString());
+    if (filter.size !== undefined) params.append('size', filter.size.toString());
+
+    return apiFetch<ApiResponse<PagedResponse<TransactionHistoryRecord>>>(
+      `/transactions/history?${params.toString()}`,
       { method: "GET" }
     );
   },
