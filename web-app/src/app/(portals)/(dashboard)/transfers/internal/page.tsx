@@ -47,11 +47,12 @@ export default function InternalTransferPage() {
       setResult({ status: "FAILED", failureMessage: "Please enter a valid positive transfer amount." });
       return;
     }
-    if (!sourceAccount || !recipientAccount.trim()) {
+    const cleanRecipient = recipientAccount.replace(/\s+/g, '');
+    if (!sourceAccount || !cleanRecipient) {
       setResult({ status: "FAILED", failureMessage: "Source and recipient accounts are required." });
       return;
     }
-    if (sourceAccount === recipientAccount.trim()) {
+    if (sourceAccount === cleanRecipient) {
       setResult({ status: "FAILED", failureMessage: "Cannot transfer to the same account." });
       return;
     }
@@ -69,7 +70,7 @@ export default function InternalTransferPage() {
     try {
       const payload: any = {
         sourceAccountNumber: sourceAccount,
-        recipientAccountNumber: recipientAccount.trim(),
+        recipientAccountNumber: recipientAccount.replace(/\s+/g, ''),
         amount: parseFloat(amount),
         description: description.trim() || undefined,
         idempotencyKey: idempotencyKeyService.getOrCreateKey(),
@@ -86,9 +87,18 @@ export default function InternalTransferPage() {
         idempotencyKeyService.clearKey();
       }
     } catch (err: any) {
+      const errorData = err.response || {};
+      
+      // Defensively parse the error code in case React or Next.js strips the custom 'response' property from the Error object
+      let resolvedErrorCode = errorData.errorCode || errorData.error;
+      if (!resolvedErrorCode && err.message) {
+        if (err.message.includes("VAM Policy Enforced")) resolvedErrorCode = "ERR_403";
+        else if (err.message.includes("Account missing")) resolvedErrorCode = "ERR_NF_001";
+      }
+
       const normalized = normalizeTransactionResult({
         success: false,
-        error: "UNKNOWN_ERROR",
+        errorCode: resolvedErrorCode || "UNKNOWN_ERROR",
         message: err.message || "An unexpected error occurred.",
       });
       setResult(normalized);
@@ -168,7 +178,7 @@ export default function InternalTransferPage() {
       {step === "REVIEW" && (
         <TransactionReview
           from={`NovaBank ••••${sourceAccount.slice(-4)}`}
-          to={`NovaBank ••••${recipientAccount.slice(-4)}`}
+          to={`NovaBank ••••${recipientAccount.replace(/\s+/g, '').slice(-4)}`}
           amount={parseFloat(amount)}
           fee={0} // Internal transfers are free
           rail="Internal Transfer"
@@ -179,7 +189,7 @@ export default function InternalTransferPage() {
       {step === "AUTHENTICATING" && (
         <PasskeyAuthorization
           amount={parseFloat(amount)}
-          recipient={`NovaBank ••••${recipientAccount.slice(-4)}`}
+          recipient={`NovaBank ••••${recipientAccount.replace(/\s+/g, '').slice(-4)}`}
           onSuccess={handleAuthSuccess}
           onCancel={() => setStep("FORM")}
         />
@@ -192,7 +202,7 @@ export default function InternalTransferPage() {
           status={step as "SUCCESS" | "PENDING"}
           reference={result.transactionReference}
           amount={parseFloat(amount)}
-          recipient={`NovaBank ••••${recipientAccount.slice(-4)}`}
+          recipient={`NovaBank ••••${recipientAccount.replace(/\s+/g, '').slice(-4)}`}
           type="Internal Transfer"
           timestamp={result.processedAt}
         />

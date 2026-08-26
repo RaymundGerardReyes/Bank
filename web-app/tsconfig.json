@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@/app/(dashboard)/*": [
+        "./src/app/(portals)/(dashboard)/*"
       ]
     }
   },

@@ -12,6 +12,10 @@ const resolveBackendOrigin = (url?: string): string => {
     } else if (resolved.includes("://backend")) {
       resolved = resolved.replace("://backend", "://127.0.0.1:8086");
     }
+  } else if (isDockerContainer) {
+    if (resolved.includes("://backend:8086")) {
+      resolved = resolved.replace("://backend:8086", "://backend:8080");
+    }
   }
 
   try {
@@ -47,14 +51,17 @@ if (!parsedEnv.success) {
   }
 }
 
+// If validation is skipped, fall back to process.env to prevent runtime crashes when reading properties
+const envData = parsedEnv.success ? parsedEnv.data : (process.env as any);
+
 export const env = {
-  backendApiBaseUrl: parsedEnv.data?.BACKEND_API_BASE_URL || "",
-  backendInternalUrl: parsedEnv.data?.BACKEND_INTERNAL_URL || "",
-  appUrl: parsedEnv.data?.NEXT_PUBLIC_APP_URL || "",
-  sessionSecret: parsedEnv.data?.SESSION_SECRET || "",
-  internalBffApiKey: parsedEnv.data?.INTERNAL_BFF_API_KEY || "",
-  rpId: parsedEnv.data?.NEXT_PUBLIC_WEBAUTHN_RP_ID || "",
-  openApiSpecUrl: parsedEnv.data?.OPENAPI_SPEC_URL || "",
-  enablePasskeyAuth: parsedEnv.data?.ENABLE_PASSKEY_AUTH,
-  enableDevApiDocs: parsedEnv.data?.ENABLE_DEV_API_DOCS,
+  backendApiBaseUrl: envData.BACKEND_API_BASE_URL as string,
+  backendInternalUrl: envData.BACKEND_INTERNAL_URL as string | undefined,
+  appUrl: envData.NEXT_PUBLIC_APP_URL as string,
+  sessionSecret: envData.SESSION_SECRET as string,
+  internalBffApiKey: envData.INTERNAL_BFF_API_KEY as string,
+  rpId: envData.NEXT_PUBLIC_WEBAUTHN_RP_ID as string,
+  openApiSpecUrl: envData.OPENAPI_SPEC_URL as string,
+  enablePasskeyAuth: envData.ENABLE_PASSKEY_AUTH as string | undefined,
+  enableDevApiDocs: envData.ENABLE_DEV_API_DOCS as string | undefined,
 };

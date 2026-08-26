@@ -31,7 +31,8 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
     if (typeof window !== "undefined") {
       const hostname = window.location.hostname;
       const isLocalDomain = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0";
-      const isDevEnv = process.env.NODE_ENV === "development";
+      const envVal = process.env.NODE_ENV as string;
+      const isDevEnv = envVal === "development" || envVal === "Development" || envVal === "Dev";
       
       setIsLocalDev(isLocalDomain || isDevEnv);
     }
@@ -200,9 +201,20 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
             We've sent a secure push notification to your Expo Banking App to verify this transfer of <strong>₱{amount.toFixed(2)}</strong>.
           </p>
         </div>
-        <Button variant="ghost" onClick={onCancel} className="w-full mt-4">
-          Cancel Transfer
-        </Button>
+        <div className="flex flex-col gap-3 w-full mt-4">
+          {isLocalDev && (
+            <Button
+              variant="secondary"
+              onClick={handleSimulate}
+              className="w-full py-4 text-lg border-2 border-indigo-500/50 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-400"
+            >
+              [DEV] Bypass Access
+            </Button>
+          )}
+          <Button variant="ghost" onClick={onCancel} className="w-full">
+            Cancel Transfer
+          </Button>
+        </div>
       </div>
     );
   }
@@ -238,6 +250,17 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
         >
           {authenticating ? "Verifying Passkey..." : "Use Passkey to Authorize"}
         </Button>
+
+        {isLocalDev && (
+          <Button
+            variant="secondary"
+            onClick={handleSimulate}
+            className="w-full py-4 text-lg border-2 border-emerald-500/50 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400"
+            disabled={authenticating}
+          >
+            [DEV] Bypass Access
+          </Button>
+        )}
 
         <Button
           variant="ghost"

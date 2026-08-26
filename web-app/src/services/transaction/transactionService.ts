@@ -66,7 +66,7 @@ export interface PushRequestPayload {
 export function normalizeTransactionResult(response: any): TransactionResult {
   // Safe default for network/unhandled errors
   if (!response || !response.success) {
-    const errorCode = response?.error || "SERVICE_UNAVAILABLE";
+    const errorCode = response?.errorCode || response?.error || "SERVICE_UNAVAILABLE";
     
     // Phase C: If it's a network timeout or completely unhandled service crash, transition to UNKNOWN instead of FAILED
     const isNetworkUncertainty = 

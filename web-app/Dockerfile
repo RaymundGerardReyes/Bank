@@ -13,6 +13,10 @@ COPY package.json package-lock.json ./
 # the picomatch and WebAssembly peer dependency tree resolutions.
 RUN npm install --legacy-peer-deps
 
+# FIX: Strip the invalid 'v' prefix from Upstash package versions that breaks Next.js Webpack resolution
+RUN sed -i 's/"version": "v/"version": "/g' node_modules/@upstash/ratelimit/package.json || true
+RUN sed -i 's/"version": "v/"version": "/g' node_modules/@upstash/core-analytics/package.json || true
+
 # ============================================================
 # 2. BUILD STAGE
 # ============================================================

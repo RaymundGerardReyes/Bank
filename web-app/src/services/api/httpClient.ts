@@ -3,6 +3,15 @@ export interface RequestOptions extends RequestInit {
   idempotencyKey?: string;
 }
 
+export class ApiError extends Error {
+  public response: any;
+  constructor(message: string, response: any) {
+    super(message);
+    this.name = "ApiError";
+    this.response = response;
+  }
+}
+
 export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { idempotencyKey, headers: customHeaders, ...restOptions } = options;
 
@@ -35,7 +44,7 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(errorData.message || `HTTP ${response.status}: Request failed`);
+    throw new ApiError(errorData.message || `HTTP ${response.status}: Request failed`, errorData);
   }
 
   return response.json() as Promise<T>;
