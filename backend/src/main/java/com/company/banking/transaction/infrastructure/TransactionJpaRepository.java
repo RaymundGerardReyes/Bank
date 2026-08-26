@@ -19,6 +19,10 @@ public interface TransactionJpaRepository extends JpaRepository<Transaction, Lon
     Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
     
     Page<Transaction> findBySourceAccountNumberOrDestinationAccountNumber(String sourceAccountNumber, String destinationAccountNumber, Pageable pageable);
+    
+    Page<Transaction> findByDestinationAccountNumber(String destinationAccountNumber, Pageable pageable);
+    
+    Page<Transaction> findBySourceAccountNumber(String sourceAccountNumber, Pageable pageable);
 
     // --- PHASE 5A: Settlement Eligibility with Row-Level Locking ---
     // Orders by ID to prevent deadlocks when locking multiple transaction rows

@@ -19,6 +19,11 @@ public class TransactionResponse {
     private TransactionStatus status;
     private String description;
     private LocalDateTime createdAt;
+    
+    // Extra fields for UI History Mapping
+    private String senderName;
+    private String recipientName;
+    private String entryType;
 
     public static TransactionResponse fromEntity(Transaction transaction) {
         return TransactionResponse.builder()

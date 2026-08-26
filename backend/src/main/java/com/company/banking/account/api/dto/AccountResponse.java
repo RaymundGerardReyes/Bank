@@ -23,6 +23,10 @@ public class AccountResponse {
     private String swiftCode;
     private String cardExpiry;
     private String cardCvv;
+    private boolean frozen;
+    private boolean allowIncoming;
+    private boolean allowOutgoing;
+    private boolean requireDualApproval;
     private LocalDateTime createdAt;
 
     public static AccountResponse fromEntity(Account account) {
@@ -35,6 +39,10 @@ public class AccountResponse {
                 .swiftCode(account.getSwiftCode())
                 .cardExpiry(account.getCardExpiry())
                 .cardCvv(account.getCardCvv())
+                .frozen(account.isFrozen())
+                .allowIncoming(account.isAllowIncoming())
+                .allowOutgoing(account.isAllowOutgoing())
+                .requireDualApproval(account.isRequireDualApproval())
                 .createdAt(account.getCreatedAt())
                 .build();
     }

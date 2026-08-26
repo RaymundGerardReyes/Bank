@@ -37,6 +37,20 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        ApiResponse<Void> response = ApiResponse.error("Malformed or invalid JSON payload", "ERR_400", correlationId);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(org.springframework.web.HttpRequestMethodNotSupportedException ex) {
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        ApiResponse<Void> response = ApiResponse.error("HTTP method not supported", "ERR_405", correlationId);
+        return new ResponseEntity<>(response, HttpStatus.METHOD_NOT_ALLOWED);
+    }
+
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException ex, 

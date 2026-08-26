@@ -11,7 +11,7 @@ import com.company.banking.transaction.api.dto.WithdrawRequest;
 import com.company.banking.transaction.application.DisputeTransactionService;
 import com.company.banking.transaction.application.port.in.DepositUseCase;
 import com.company.banking.transaction.application.port.in.ExternalPaymentUseCase;
-import com.company.banking.transaction.application.port.in.GetTransactionHistoryUseCase;
+import com.company.banking.transaction.application.GetTransactionHistoryService;
 import com.company.banking.transaction.application.port.in.TransactionUseCase;
 import com.company.banking.transaction.application.port.in.WithdrawUseCase;
 import com.company.banking.notification.application.SendTransactionAlertService;
@@ -32,7 +32,7 @@ public class TransactionController {
     private final DepositUseCase depositUseCase;
     private final WithdrawUseCase withdrawUseCase;
     private final ExternalPaymentUseCase externalPaymentUseCase;
-    private final GetTransactionHistoryUseCase getTransactionHistoryUseCase;
+    private final GetTransactionHistoryService getTransactionHistoryService;
     private final TransactionUseCase transactionUseCase;
     private final DisputeTransactionService disputeTransactionService;
     
@@ -60,13 +60,14 @@ public class TransactionController {
         return ResponseEntity.ok(ApiResponse.success(response, "External payment processed successfully", correlationId));
     }
 
-    @GetMapping("/history/{accountNumber}")
-    public ResponseEntity<ApiResponse<PagedResponse<TransactionResponse>>> getHistory(
-            @PathVariable String accountNumber,
+    @GetMapping("/history")
+    public ResponseEntity<ApiResponse<PagedResponse<TransactionResponse>>> getTransactionHistory(
+            @RequestParam String accountNumber,
+            @RequestParam(defaultValue = "ALL") String direction,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        PagedResponse<TransactionResponse> response = getTransactionHistoryUseCase.getHistory(accountNumber, page, size);
+        PagedResponse<TransactionResponse> response = getTransactionHistoryService.getHistory(accountNumber, direction, page, size);
         return ResponseEntity.ok(ApiResponse.success(response, correlationId));
     }
 
