@@ -129,7 +129,10 @@ process_module() {
   for i in "${!paths[@]}"; do
     # Trim leading/trailing whitespace and update the array element
     paths[i]="$(echo "${paths[$i]}" | xargs)"
-    if [ -n "$(git ls-files -m -o -d --exclude-standard "${paths[$i]}" 2>/dev/null)" ]; then
+  done
+
+  for p in "${paths[@]}"; do
+    if [ -n "$(git ls-files -m -o -d --exclude-standard "$p" 2>/dev/null)" ]; then
       changes="yes"
       break
     fi
@@ -235,11 +238,11 @@ Bump reason: ${bump_reason}"
   fi
 }
 
-while IFS= read -r line || [ -n "$line" ]; do
+while IFS= read -u 3 -r line || [ -n "$line" ]; do
   [[ -z "$line" || "$line" =~ ^# ]] && continue
   IFS='|' read -r scope tag_prefix commit_type commit_desc paths_csv <<< "$line"
   process_module "$scope" "$tag_prefix" "$commit_type" "$commit_desc" "$paths_csv"
-done < "$CONFIG_FILE"
+done 3< "$CONFIG_FILE"
 
 log "=============================================================="
 log "Run finished: $(date)"
