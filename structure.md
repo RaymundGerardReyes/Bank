@@ -33,6 +33,7 @@
 |   |   |   |   `-- LoadingOverlay.tsx
 |   |   |   |-- security
 |   |   |   |   |-- BiometricPrompt.tsx
+|   |   |   |   |-- PushAuthorizationModal.tsx
 |   |   |   |   `-- SecureScreenWrapper.tsx
 |   |   |   `-- transactions
 |   |   |       `-- TransactionListItem.tsx
@@ -44,6 +45,7 @@
 |   |   |   |-- useAppLock.ts
 |   |   |   |-- useAuth.ts
 |   |   |   |-- useBiometric.ts
+|   |   |   |-- usePendingAuthorizations.ts
 |   |   |   `-- useTransactions.ts
 |   |   |-- mobile-app-structure.md
 |   |   |-- models
@@ -164,6 +166,7 @@
 |   `-- tsconfig.json
 |-- PORT_REGISTRY.md
 |-- api-gateway-hardening-prompt.md
+|-- architecture_review.md
 |-- backend
 |   |-- Backend.logs
 |   |-- CHANGELOG.md
@@ -177,6 +180,10 @@
 |   |-- dev.bat
 |   |-- docker-compose.yml
 |   |-- fix-backend-tests.mjs
+|   |-- gradle
+|   |   `-- wrapper
+|   |       |-- gradle-wrapper.jar
+|   |       `-- gradle-wrapper.properties
 |   |-- gradlew
 |   |-- gradlew.bat
 |   |-- hs_err_pid3708.log
@@ -698,6 +705,7 @@
 |   |   |   |   |           |       `-- StatementPersistenceAdapter.java
 |   |   |   |   |           |-- transaction
 |   |   |   |   |           |   |-- api
+|   |   |   |   |           |   |   |-- MobileAuthorizationController.java
 |   |   |   |   |           |   |   |-- TransactionController.java
 |   |   |   |   |           |   |   |-- TransactionIntentController.java
 |   |   |   |   |           |   |   |-- TransferController.java
@@ -821,9 +829,9 @@
 |   |   |       |       |-- V49__create_payment_authorizations_table.sql
 |   |   |       |       |-- V4__products_and_statements.sql
 |   |   |       |       |-- V50__fix_schema_validation_gaps.sql
-|   |   |       |       |-- V51__add_ledger_fk_and_balance_check.sql
 |   |   |       |       |-- V51__extend_api_audit_events.sql
 |   |   |       |       |-- V52__add_ledger_fk_and_balance_check.sql
+|   |   |       |       |-- V53__add_auth_attempt_metadata.sql
 |   |   |       |       |-- V5__api_gateway_and_security.sql
 |   |   |       |       |-- V6__orchestration_and_routing.sql
 |   |   |       |       |-- V7__payroll_and_ledger.sql
@@ -836,8 +844,11 @@
 |   |       |       `-- company
 |   |       |           `-- banking
 |   |       |               |-- account
+|   |       |               |   |-- AccountProvisioningPathIT.java
 |   |       |               |   `-- api
 |   |       |               |       `-- AccountApiIT.java
+|   |       |               |-- admin
+|   |       |               |   `-- KycApprovalPathIT.java
 |   |       |               |-- apigateway
 |   |       |               |   |-- GatewayAuditIntegrityIT.java
 |   |       |               |   |-- api
@@ -845,8 +856,12 @@
 |   |       |               |   |   `-- GatewayManagementAuthorizationIT.java
 |   |       |               |   `-- security
 |   |       |               |       |-- ApiKeyAuthenticationIT.java
+|   |       |               |       |-- ApiKeyAuthenticationPathIT.java
 |   |       |               |       |-- ApiSecurityTestSuite.java
 |   |       |               |       `-- SandboxEnvironmentIT.java
+|   |       |               |-- common
+|   |       |               |   `-- resilience
+|   |       |               |       `-- PaymentFailoverPathIT.java
 |   |       |               |-- config
 |   |       |               |   |-- BaseIntegrationTest.java
 |   |       |               |   |-- LedgerSpyIntegrationTest.java
@@ -861,6 +876,8 @@
 |   |       |               |   |-- ExternalPaymentRoutingE2E.java
 |   |       |               |   |-- InternalTransferDoubleEntryE2E.java
 |   |       |               |   `-- InternalTransferRollbackE2E.java
+|   |       |               |-- fraud
+|   |       |               |   `-- FraudAndAmlExecutionPathIT.java
 |   |       |               |-- integration
 |   |       |               |   |-- DebugBalancesIT.java
 |   |       |               |   |-- FinancialCoreInvariantIT.java
@@ -869,6 +886,8 @@
 |   |       |               |   |-- OutboundWebhookIT.java
 |   |       |               |   |-- TransferFlowIT.java
 |   |       |               |   `-- WebhookSecurityIT.java
+|   |       |               |-- notification
+|   |       |               |   `-- NotificationWorkflowPathIT.java
 |   |       |               |-- payment
 |   |       |               |   |-- CheckoutPaymentConfirmationIT.java
 |   |       |               |   |-- CheckoutSessionIntegrityIT.java
@@ -880,24 +899,31 @@
 |   |       |               |   |-- MerchantWebhookContractIT.java
 |   |       |               |   |-- MerchantWebhookDeliveryIntegrityIT.java
 |   |       |               |   |-- PaymentEventOutboxIntegrityIT.java
+|   |       |               |   |-- PaymentEventOutboxPathIT.java
 |   |       |               |   |-- PaymentExecutionIntegrityIT.java
+|   |       |               |   |-- PaymentIntentOrchestrationPathIT.java
 |   |       |               |   |-- PaymentIntentOrchestrationServiceTest.java
 |   |       |               |   |-- PaymentUrlSecurityTest.java
 |   |       |               |   `-- PublicCheckoutSessionSecurityIT.java
 |   |       |               |-- security
 |   |       |               |   |-- JwtAuthenticationIT.java
 |   |       |               |   `-- auth
-|   |       |               |       `-- AuthenticationForgotPasswordIT.java
+|   |       |               |       |-- AuthenticationForgotPasswordIT.java
+|   |       |               |       `-- AuthenticationSecurityPathIT.java
 |   |       |               |-- settlement
+|   |       |               |   |-- AdvancedSettlementAndDisputePathIT.java
 |   |       |               |   |-- InternalSettlementExecutionIT.java
 |   |       |               |   |-- SettlementBatchIntegrityIT.java
 |   |       |               |   |-- SettlementFinalityIT.java
 |   |       |               |   |-- SettlementInstructionIntegrityIT.java
 |   |       |               |   |-- SettlementIntegrityIT.java
 |   |       |               |   `-- SettlementReconciliationIT.java
+|   |       |               |-- statement
+|   |       |               |   `-- StatementGenerationPathIT.java
 |   |       |               `-- transaction
 |   |       |                   |-- InternalTransferIntegrityIT.java
 |   |       |                   |-- InternalTransferRaceConditionIT.java
+|   |       |                   |-- InternalTransferWorkflowPathIT.java
 |   |       |                   |-- TransactionAuthorizationIT.java
 |   |       |                   |-- TransactionIdempotencyIT.java
 |   |       |                   `-- application
@@ -956,6 +982,9 @@
 |-- package-lock.json
 |-- package.json
 |-- principal-devops-repo-branching-prompt.md
+|-- release_log_20260824_235252.txt
+|-- release_log_20260825_235656.txt
+|-- release_log_20260825_235927.txt
 |-- remove_dirties_context.js
 |-- revert_directories.js
 |-- scaffold-mobile.sh
@@ -986,7 +1015,9 @@
 |   |-- package.json
 |   |-- postcss.config.mjs
 |   |-- scripts
-|   |   `-- clean.mjs
+|   |   |-- clean.mjs
+|   |   |-- cleanup-proxies.mjs
+|   |   `-- fix-env-imports.mjs
 |   |-- src
 |   |   |-- app
 |   |   |   |-- (portals)
@@ -1140,93 +1171,8 @@
 |   |   |   |   |-- health
 |   |   |   |   |   `-- route.ts
 |   |   |   |   `-- proxy
-|   |   |   |       |-- [...path]
-|   |   |   |       |   `-- route.ts
-|   |   |   |       |-- accounts
-|   |   |   |       |   `-- route.ts
-|   |   |   |       |-- apikeys
-|   |   |   |       |   |-- [id]
-|   |   |   |       |   |   `-- [action]
-|   |   |   |       |   |       `-- route.ts
-|   |   |   |       |   `-- route.ts
-|   |   |   |       |-- auth
-|   |   |   |       |   |-- forgot-password
-|   |   |   |       |   |   `-- route.ts
-|   |   |   |       |   |-- login
-|   |   |   |       |   |   `-- route.ts
-|   |   |   |       |   |-- logout
-|   |   |   |       |   |   `-- route.ts
-|   |   |   |       |   |-- otp
-|   |   |   |       |   |   |-- send
-|   |   |   |       |   |   |   `-- route.ts
-|   |   |   |       |   |   `-- verify
-|   |   |   |       |   |       `-- route.ts
-|   |   |   |       |   |-- refresh
-|   |   |   |       |   |   `-- route.ts
-|   |   |   |       |   |-- register
-|   |   |   |       |   |   `-- route.ts
-|   |   |   |       |   `-- reset-password
-|   |   |   |       |       `-- route.ts
-|   |   |   |       |-- gateway
-|   |   |   |       |   |-- complaints
-|   |   |   |       |   |   |-- [...slug]
-|   |   |   |       |   |   |   `-- route.ts
-|   |   |   |       |   |   `-- route.ts
-|   |   |   |       |   |-- fraud-cases
-|   |   |   |       |   |   `-- [...slug]
-|   |   |   |       |   |       `-- route.ts
-|   |   |   |       |   |-- merchants
-|   |   |   |       |   |   |-- [...slug]
-|   |   |   |       |   |   |   `-- route.ts
-|   |   |   |       |   |   `-- route.ts
-|   |   |   |       |   |-- payments
-|   |   |   |       |   |   |-- [intentId]
-|   |   |   |       |   |   |   `-- checkout
-|   |   |   |       |   |   |       `-- route.ts
-|   |   |   |       |   |   `-- route.ts
-|   |   |   |       |   |-- qr-payments
-|   |   |   |       |   |   `-- [...slug]
-|   |   |   |       |   |       `-- route.ts
-|   |   |   |       |   |-- settlement-exceptions
-|   |   |   |       |   |   `-- [...slug]
-|   |   |   |       |   |       `-- route.ts
-|   |   |   |       |   `-- settlement-windows
-|   |   |   |       |       `-- route.ts
-|   |   |   |       |-- gateway-test
-|   |   |   |       |   `-- route.ts
-|   |   |   |       |-- governance
-|   |   |   |       |   `-- requirements
-|   |   |   |       |       |-- [...slug]
-|   |   |   |       |       |   `-- route.ts
-|   |   |   |       |       `-- route.ts
-|   |   |   |       |-- payment-intents
-|   |   |   |       |   |-- [id]
-|   |   |   |       |   |   `-- route.ts
-|   |   |   |       |   `-- route.ts
-|   |   |   |       |-- products
-|   |   |   |       |   `-- route.ts
-|   |   |   |       |-- statements
-|   |   |   |       |   |-- account
-|   |   |   |       |   |   `-- [accountNumber]
-|   |   |   |       |   |       `-- route.ts
-|   |   |   |       |   `-- route.ts
-|   |   |   |       |-- transactions
-|   |   |   |       |   |-- history
-|   |   |   |       |   |   `-- [accountNumber]
-|   |   |   |       |   |       `-- route.ts
-|   |   |   |       |   |-- receipt
-|   |   |   |       |   |   `-- route.ts
-|   |   |   |       |   `-- route.ts
-|   |   |   |       |-- transfers
-|   |   |   |       |   |-- internal
-|   |   |   |       |   |   `-- route.ts
-|   |   |   |       |   `-- route.ts
-|   |   |   |       `-- webhooks
-|   |   |   |           |-- [id]
-|   |   |   |           |   `-- route.ts
-|   |   |   |           |-- route.ts
-|   |   |   |           `-- simulate
-|   |   |   |               `-- route.ts
+|   |   |   |       `-- [...endpoint]
+|   |   |   |           `-- route.ts
 |   |   |   |-- error.tsx
 |   |   |   |-- global-error.tsx
 |   |   |   |-- globals.css
@@ -1289,7 +1235,6 @@
 |   |   |       |-- Logo.tsx
 |   |   |       `-- StarRating.tsx
 |   |   |-- config
-|   |   |   |-- env.ts
 |   |   |   `-- featureFlags.ts
 |   |   |-- hooks
 |   |   |   |-- useAccounts.ts
@@ -1315,6 +1260,9 @@
 |   |   |   |-- SessionGuard.tsx
 |   |   |   |-- csp.ts
 |   |   |   `-- rateLimiter.ts
+|   |   |-- server
+|   |   |   `-- config
+|   |   |       `-- env.ts
 |   |   |-- services
 |   |   |   |-- account
 |   |   |   |   `-- accountService.ts
@@ -1356,6 +1304,7 @@
 |   |   |   |-- logger.ts
 |   |   |   `-- validators.ts
 |   |   `-- web-app-structure.md
+|   |-- structure.md
 |   |-- tailwind.config.ts
 |   |-- tests
 |   |   |-- e2e
@@ -1367,14 +1316,34 @@
 |   |       |   |-- qrTransfer.test.tsx
 |   |       |   `-- transfers.test.tsx
 |   |       |-- pages
-|   |       |   `-- externalPaymentStatus.test.tsx
+|   |       |   |-- accounts
+|   |       |   |   `-- new.test.tsx
+|   |       |   |-- externalPaymentStatus.test.tsx
+|   |       |   `-- transfers
+|   |       |       `-- internal.test.tsx
 |   |       `-- services
 |   |           |-- authService.test.ts
 |   |           |-- merchantService.test.ts
 |   |           |-- paymentService.test.ts
 |   |           `-- transactionService.test.ts
 |   |-- tsconfig.json
+|   |-- tsconfig.tsbuildinfo
 |   `-- web-app-structure.md
 `-- web-frontend-nextjs-architecture.md
 
-426 directories, 951 files
+390 directories, 941 files
+
+### Backend Path Testing Integration Suite Artifacts
+- `backend/src/test/java/com/company/banking/account/AccountProvisioningPathIT.java`
+- `backend/src/test/java/com/company/banking/admin/KycApprovalPathIT.java`
+- `backend/src/test/java/com/company/banking/payment/PaymentEventOutboxPathIT.java`
+- `backend/src/test/java/com/company/banking/payment/PaymentIntentOrchestrationPathIT.java`
+- `backend/src/test/java/com/company/banking/common/resilience/PaymentFailoverPathIT.java`
+- `backend/src/test/java/com/company/banking/notification/NotificationWorkflowPathIT.java`
+- `backend/src/test/java/com/company/banking/transaction/InternalTransferWorkflowPathIT.java`
+- `backend/src/test/java/com/company/banking/transaction/TransactionAuthorizationPathIT.java`
+- `backend/src/test/java/com/company/banking/fraud/FraudAndAmlExecutionPathIT.java`
+- `backend/src/test/java/com/company/banking/apigateway/security/ApiKeyAuthenticationPathIT.java`
+- `backend/src/test/java/com/company/banking/settlement/AdvancedSettlementAndDisputePathIT.java`
+- `backend/src/test/java/com/company/banking/statement/StatementGenerationPathIT.java`
+
