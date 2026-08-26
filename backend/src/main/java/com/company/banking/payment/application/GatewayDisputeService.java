@@ -31,7 +31,7 @@ public class GatewayDisputeService {
         PaymentIntent intent = paymentIntentJpaRepository.findByIntentId(intentId)
                 .orElseThrow(() -> new NotFoundException("PaymentIntent not found"));
 
-        if (!"CAPTURED".equals(intent.getStatus())) {
+        if (intent.getStatus() != com.company.banking.payment.domain.PaymentIntentStatus.CAPTURED) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Disputes can only be opened against CAPTURED payment intents.");
         }
 
