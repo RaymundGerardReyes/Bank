@@ -57,3 +57,7 @@ security:
   bff:
     secret: ${INTERNAL_BFF_API_KEY:}
 
+springdoc:
+  override-with-generic-response: false
+  api-docs:
+    path: /v3/api-docs

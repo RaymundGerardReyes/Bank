@@ -185,6 +185,8 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         // 5. Treasury & Transfers
         if (path.startsWith("/api/v1/transfers") && "POST".equalsIgnoreCase(method)) return "treasury:write";
         if (path.startsWith("/api/v1/treasury") && "GET".equalsIgnoreCase(method)) return "treasury:read";
+        if (path.startsWith("/api/v1/transactions") && "POST".equalsIgnoreCase(method)) return "treasury:write";
+        if (path.startsWith("/api/v1/transactions") && "GET".equalsIgnoreCase(method)) return "treasury:read";
 
         // 6. Immutable Ledger
         if (path.startsWith("/api/v1/ledger") && "POST".equalsIgnoreCase(method)) return "ledger:write";

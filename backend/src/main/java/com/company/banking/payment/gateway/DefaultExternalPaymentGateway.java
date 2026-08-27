@@ -28,7 +28,7 @@ public class DefaultExternalPaymentGateway implements ExternalPaymentGateway {
     @Value("${payment.internal.webhook-secret:whsec_test_secret_123456789}")
     private String webhookSecret;
 
-    @Value("${PAYMENT_WEBHOOK_PUBLIC_URL:https://pay.developerph.dev}")
+    @Value("${PAYMENT_WEBHOOK_PUBLIC_URL}")
     private String paymentWebhookPublicUrl;
 
     @Override

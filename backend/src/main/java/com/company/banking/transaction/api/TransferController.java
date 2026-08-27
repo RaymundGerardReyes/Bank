@@ -21,7 +21,7 @@ public class TransferController {
 
     private final TransactionUseCase transactionUseCase;
 
-    @PostMapping("/internal")
+    @PostMapping({"/internal", "/internal/"})
     public ResponseEntity<ApiResponse<TransactionResponse>> transferInternal(@Valid @RequestBody InternalTransferRequest request) {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
         TransactionResponse response = transactionUseCase.processInternalTransfer(request);

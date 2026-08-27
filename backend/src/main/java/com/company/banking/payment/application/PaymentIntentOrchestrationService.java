@@ -33,7 +33,7 @@ import com.company.banking.payment.domain.PaymentIntentStatus;
 @Slf4j
 public class PaymentIntentOrchestrationService {
 
-    @Value("${PAYMENT_WEBHOOK_HOST:pay.developerph.dev}")
+    @Value("${PAYMENT_WEBHOOK_HOST}")
     private String allowedInternalHost;
 
     private final PaymentIntentJpaRepository paymentIntentRepository;

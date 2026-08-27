@@ -1,12 +1,12 @@
 @echo off
 cd /d "%~dp0"
 REM ==============================================================================
-REM backend\dev.bat — Windows launcher using the centralized root .env
-REM All env vars come from:  d:/Java/Bank/.env
+REM backend\dev.bat — Windows launcher using the local development .env
+REM All env vars come from:  ../.env.development
 REM
 REM Usage:
-REM   dev.bat         -> starts Spring Boot with root ../.env
+REM   dev.bat         -> starts Spring Boot with local ../.env.development
 REM ==============================================================================
 
-echo [dotenvx] Loading centralized env from ../.env
-dotenvx run --env-file=../.env -- .\gradlew.bat bootRun
+echo [dotenvx] Loading local dev env from ../.env.development
+dotenvx run --env-file=../.env.development -- .\gradlew.bat bootRun
