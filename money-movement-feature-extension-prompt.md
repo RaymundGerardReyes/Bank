@@ -1,117 +1,434 @@
-# Engineering Prompt: Money Movement Feature Hardening & Extension
+        ... 72 common frames omitted
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'flywayInitializer' defined in class path resource [org/springframework/boot/autoconfigure/flyway/FlywayAutoConfiguration$FlywayConfiguration.class]: Unable to obtain connection from database: Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------       
+SQL State  : 08001
+Error Code : 0
+Message    : Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.
 
-## Purpose of This Document
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1802)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:601)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:336)     
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:288)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:334)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:312)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+        at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:365)
+        ... 84 common frames omitted
+Caused by: org.flywaydb.core.internal.exception.FlywaySqlException: Unable to obtain connection from database: Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.  
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------       
+SQL State  : 08001
+Error Code : 0
+Message    : Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.
 
-This is a **prompt engineering artifact** — a structured instruction set intended to be handed to an AI coding assistant (or a human engineer) working directly inside the existing codebase. It does **not** introduce new architecture or replace existing logic. Every instruction below targets a specific, already-implemented file and asks for **correction, hardening, or additive extension** only. Use this as the literal prompt when requesting changes from an AI pair-programmer, one section at a time, so review stays scoped and diff-able per component.
+        at org.flywaydb.core.internal.jdbc.JdbcUtils.openConnection(JdbcUtils.java:71)
+        at org.flywaydb.core.internal.jdbc.JdbcConnectionFactory.<init>(JdbcConnectionFactory.java:76)
+        at org.flywaydb.core.FlywayExecutor.execute(FlywayExecutor.java:137)
+        at org.flywaydb.core.Flyway.migrate(Flyway.java:176)   
+        at org.springframework.boot.autoconfigure.flyway.FlywayMigrationInitializer.afterPropertiesSet(FlywayMigrationInitializer.java:66)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1849)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1798)
+        ... 93 common frames omitted
+Caused by: org.postgresql.util.PSQLException: Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.    
+        at org.postgresql.core.v3.ConnectionFactoryImpl.openConnectionImpl(ConnectionFactoryImpl.java:352)
+        at org.postgresql.core.ConnectionFactory.openConnection(ConnectionFactory.java:54)
+        at org.postgresql.jdbc.PgConnection.<init>(PgConnection.java:273)
+        at org.postgresql.Driver.makeConnection(Driver.java:446)
+        at org.postgresql.Driver.connect(Driver.java:298)      
+        at com.zaxxer.hikari.util.DriverDataSource.getConnection(DriverDataSource.java:137)
+        at com.zaxxer.hikari.pool.PoolBase.newConnection(PoolBase.java:360)
+        at com.zaxxer.hikari.pool.PoolBase.newPoolEntry(PoolBase.java:202)
+        at com.zaxxer.hikari.pool.HikariPool.createPoolEntry(HikariPool.java:461)
+        at com.zaxxer.hikari.pool.HikariPool.checkFailFast(HikariPool.java:550)
+        at com.zaxxer.hikari.pool.HikariPool.<init>(HikariPool.java:98)
+        at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:111)
+        at org.flywaydb.core.internal.jdbc.JdbcUtils.openConnection(JdbcUtils.java:59)
+        ... 99 common frames omitted
+Caused by: java.net.ConnectException: Connection refused       
+        at java.base/sun.nio.ch.Net.pollConnect(Native Method) 
+        at java.base/sun.nio.ch.Net.pollConnectNow(Unknown Source)
+        at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
+        at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
+        at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
+        at java.base/java.net.Socket.connect(Unknown Source)   
+        at org.postgresql.core.PGStream.createSocket(PGStream.java:260)
+        at org.postgresql.core.PGStream.<init>(PGStream.java:121)
+        at org.postgresql.core.v3.ConnectionFactoryImpl.tryConnect(ConnectionFactoryImpl.java:140)
+        at org.postgresql.core.v3.ConnectionFactoryImpl.openConnectionImpl(ConnectionFactoryImpl.java:268)
+        ... 111 common frames omitted
+  _   _               _                     _   ____           
+   _    _
+ | | | | __ _ _ __ __| | ___ _ __   ___  __| | | __ )  __ _ _ __ | | _(_)_ __   __ _
+ | |_| |/ _` | '__/ _` |/ _ \ '_ \ / _ \/ _` | |  _ \ / _` | '_ \| |/ / | '_ \ / _` |
+ |  _  | (_| | | | (_| |  __/ | | |  __/ (_| | | |_) | (_| | | | |   <| | | | | (_| |
+ |_| |_|\__,_|_|  \__,_|\___|_| |_|\___|\__,_| |____/ \__,_|_| |_|_|\_\_|_| |_|\__, |
+                                                               
+                |___/
+ :: Hardened Modular Monolith Backend ::
 
----
+2026-08-27 10:33:01 [background-preinit] INFO  o.h.validator.internal.util.Version [X-Request-Id: ] - HV000001: Hibernate Validator 8.0.1.Final
+2026-08-27 10:33:01 [main] INFO  c.company.banking.BankingApplication [X-Request-Id: ] - Starting BankingApplication v0.1.0 using Java 21.0.12 with PID 1 (/app/app.jar started by spring in /app)
+2026-08-27 10:33:01 [main] DEBUG c.company.banking.BankingApplication [X-Request-Id: ] - Running with Spring Boot v3.4.0, Spring v6.2.0
+2026-08-27 10:33:01 [main] INFO  c.company.banking.BankingApplication [X-Request-Id: ] - The following 1 profile is active: "dev"
+2026-08-27 10:33:03 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [X-Request-Id: ] - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-08-27 10:33:03 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [X-Request-Id: ] - Finished Spring Data repository scanning in 193 ms. Found 47 JPA repository interfaces.        
+2026-08-27 10:33:05 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer [X-Request-Id: ] - Tomcat initialized with port 8080 (http) 
+2026-08-27 10:33:05 [main] INFO  o.a.coyote.http11.Http11NioProtocol [X-Request-Id: ] - Initializing ProtocolHandler ["http-nio-0.0.0.0-8080"]
+2026-08-27 10:33:05 [main] INFO  o.a.catalina.core.StandardService [X-Request-Id: ] - Starting service [Tomcat]
+2026-08-27 10:33:05 [main] INFO  o.a.catalina.core.StandardEngine [X-Request-Id: ] - Starting Servlet engine: [Apache Tomcat/10.1.33]
+2026-08-27 10:33:05 [main] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] [X-Request-Id: ] - Initializing Spring embedded WebApplicationContext
+2026-08-27 10:33:05 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext [X-Request-Id: ] - Root WebApplicationContext: initialization completed in 3707 ms
+2026-08-27 10:33:05 [main] INFO  com.zaxxer.hikari.HikariDataSource [X-Request-Id: ] - HikariPool-1 - Starting...
+2026-08-27 10:33:06 [main] ERROR o.s.b.w.e.tomcat.TomcatStarter [X-Request-Id: ] - Error starting Tomcat context. Exception: org.springframework.beans.factory.UnsatisfiedDependencyException. Message: Error creating bean with name 'apiAuditLoggingFilter' defined in URL [jar:nested:/app/app.jar/!BOOT-INF/classes/!/com/company/banking/apigateway/security/ApiAuditLoggingFilter.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'apiAuditEventJpaRepository' defined in com.company.banking.apigateway.infrastructure.ApiAuditEventJpaRepository defined in @EnableJpaRepositories declared on JpaRepositoriesRegistrar.EnableJpaRepositoriesConfiguration: Cannot resolve reference to bean 'jpaSharedEM_entityManagerFactory' while setting bean property 'entityManager'        
+2026-08-27 10:33:06 [main] INFO  o.a.catalina.core.StandardService [X-Request-Id: ] - Stopping service [Tomcat]
+2026-08-27 10:33:06 [main] WARN  o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext [X-Request-Id: ] - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Unable to start web server
+2026-08-27 10:33:06 [main] INFO  o.s.b.a.l.ConditionEvaluationReportLogger [X-Request-Id: ] -
 
-## Context to Paste Before Every Prompt Section
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.   
+2026-08-27 10:33:06 [main] ERROR o.s.boot.SpringApplication [X-Request-Id: ] - Application run failed
+org.springframework.context.ApplicationContextException: Unable to start web server
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.onRefresh(ServletWebServerApplicationContext.java:165)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:621)        
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
+        at com.company.banking.BankingApplication.main(BankingApplication.java:17)
+        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(Unknown Source)
+        at java.base/java.lang.reflect.Method.invoke(Unknown Source)
+        at org.springframework.boot.loader.launch.Launcher.launch(Launcher.java:102)
+        at org.springframework.boot.loader.launch.Launcher.launch(Launcher.java:64)
+        at org.springframework.boot.loader.launch.JarLauncher.main(JarLauncher.java:40)
+Caused by: org.springframework.boot.web.server.WebServerException: Unable to start embedded Tomcat
+        at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.initialize(TomcatWebServer.java:147)
+        at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.<init>(TomcatWebServer.java:107)
+        at org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory.getTomcatWebServer(TomcatServletWebServerFactory.java:516)
+        at org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory.getWebServer(TomcatServletWebServerFactory.java:222)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.createWebServer(ServletWebServerApplicationContext.java:188)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.onRefresh(ServletWebServerApplicationContext.java:162)
+        ... 13 common frames omitted
+Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'apiAuditLoggingFilter' defined in URL [jar:nested:/app/app.jar/!BOOT-INF/classes/!/com/company/banking/apigateway/security/ApiAuditLoggingFilter.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'apiAuditEventJpaRepository' defined in com.company.banking.apigateway.infrastructure.ApiAuditEventJpaRepository defined in @EnableJpaRepositories declared on JpaRepositoriesRegistrar.EnableJpaRepositoriesConfiguration: Cannot resolve reference to bean 'jpaSharedEM_entityManagerFactory' while setting bean property 'entityManager'     
+        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:804)    
+        at org.springframework.beans.factory.support.ConstructorResolver.autowireConstructor(ConstructorResolver.java:240)    
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.autowireConstructor(AbstractAutowireCapableBeanFactory.java:1371)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1208)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:563)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:336)     
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:288)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:334)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:204)
+        at org.springframework.boot.web.servlet.ServletContextInitializerBeans.getOrderedBeansOfType(ServletContextInitializerBeans.java:211)
+        at org.springframework.boot.web.servlet.ServletContextInitializerBeans.addAsRegistrationBean(ServletContextInitializerBeans.java:174)
+        at org.springframework.boot.web.servlet.ServletContextInitializerBeans.addAsRegistrationBean(ServletContextInitializerBeans.java:169)
+        at org.springframework.boot.web.servlet.ServletContextInitializerBeans.addAdaptableBeans(ServletContextInitializerBeans.java:154)
+        at org.springframework.boot.web.servlet.ServletContextInitializerBeans.<init>(ServletContextInitializerBeans.java:87) 
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.getServletContextInitializerBeans(ServletWebServerApplicationContext.java:266)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.selfInitialize(ServletWebServerApplicationContext.java:240)
+        at org.springframework.boot.web.embedded.tomcat.TomcatStarter.onStartup(TomcatStarter.java:52)
+        at org.apache.catalina.core.StandardContext.startInternal(StandardContext.java:4426)
+        at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
+        at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1203)
+        at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1193)
+        at java.base/java.util.concurrent.FutureTask.run(Unknown Source)
+        at org.apache.tomcat.util.threads.InlineExecutorService.execute(InlineExecutorService.java:75)
+        at java.base/java.util.concurrent.AbstractExecutorService.submit(Unknown Source)
+        at org.apache.catalina.core.ContainerBase.startInternal(ContainerBase.java:749)
+        at org.apache.catalina.core.StandardHost.startInternal(StandardHost.java:772)
+        at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
+        at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1203)
+        at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1193)
+        at java.base/java.util.concurrent.FutureTask.run(Unknown Source)
+        at org.apache.tomcat.util.threads.InlineExecutorService.execute(InlineExecutorService.java:75)
+        at java.base/java.util.concurrent.AbstractExecutorService.submit(Unknown Source)
+        at org.apache.catalina.core.ContainerBase.startInternal(ContainerBase.java:749)
+        at org.apache.catalina.core.StandardEngine.startInternal(StandardEngine.java:203)
+        at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
+        at org.apache.catalina.core.StandardService.startInternal(StandardService.java:415)
+        at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
+        at org.apache.catalina.core.StandardServer.startInternal(StandardServer.java:870)
+        at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
+        at org.apache.catalina.startup.Tomcat.start(Tomcat.java:437)
+        at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.initialize(TomcatWebServer.java:128)
+        ... 18 common frames omitted
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'apiAuditEventJpaRepository' defined in com.company.banking.apigateway.infrastructure.ApiAuditEventJpaRepository defined in @EnableJpaRepositories declared on JpaRepositoriesRegistrar.EnableJpaRepositoriesConfiguration: Cannot resolve reference to bean 'jpaSharedEM_entityManagerFactory' while setting bean property 'entityManager'
+        at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:377)
+        at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:135)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyPropertyValues(AbstractAutowireCapableBeanFactory.java:1701)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1450)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:600)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:336)     
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:288)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:334)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+        at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1568)
+        at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1514)
+        at org.springframework.beans.factory.support.ConstructorResolver.resolveAutowiredArgument(ConstructorResolver.java:913)
+        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:791)    
+        ... 59 common frames omitted
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'jpaSharedEM_entityManagerFactory': Cannot resolve reference to bean 'entityManagerFactory' while setting constructor argument
+        at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:377)
+        at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:135)
+        at org.springframework.beans.factory.support.ConstructorResolver.resolveConstructorArguments(ConstructorResolver.java:691)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:513)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1351)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1181)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:563)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:336)     
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:288)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:334)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+        at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:365)
+        ... 72 common frames omitted
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'flywayInitializer' defined in class path resource [org/springframework/boot/autoconfigure/flyway/FlywayAutoConfiguration$FlywayConfiguration.class]: Unable to obtain connection from database: Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------       
+SQL State  : 08001
+Error Code : 0
+Message    : Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.
 
-```text
-You are working inside an existing production banking monorepo with three components:
-backend/ (Spring Boot, hexagonal architecture, ports/adapters)
-web-app/ (Next.js 16 App Router, TypeScript, Tailwind CSS)
-mobile-app/ (React Native/Expo, TypeScript)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1802)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:601)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:336)     
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:288)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:334)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:312)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+        at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:365)
+        ... 84 common frames omitted
+Caused by: org.flywaydb.core.internal.exception.FlywaySqlException: Unable to obtain connection from database: Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.  
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------       
+SQL State  : 08001
+Error Code : 0
+Message    : Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.
 
-Do NOT invent new architectural patterns or rewrite files from scratch.
-Only modify the specific files named below, preserving existing naming conventions,
-folder structure, and design system tokens (colors.dominant/secondary/accent).
-Every change must be additive or corrective — do not remove working logic
-unless explicitly instructed. Explain each change as a diff-style summary,
-not a full file rewrite, unless the file is short enough to show in full.
-```
+        at org.flywaydb.core.internal.jdbc.JdbcUtils.openConnection(JdbcUtils.java:71)
+        at org.flywaydb.core.internal.jdbc.JdbcConnectionFactory.<init>(JdbcConnectionFactory.java:76)
+        at org.flywaydb.core.FlywayExecutor.execute(FlywayExecutor.java:137)
+        at org.flywaydb.core.Flyway.migrate(Flyway.java:176)   
+        at org.springframework.boot.autoconfigure.flyway.FlywayMigrationInitializer.afterPropertiesSet(FlywayMigrationInitializer.java:66)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1849)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1798)
+        ... 93 common frames omitted
+Caused by: org.postgresql.util.PSQLException: Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.    
+        at org.postgresql.core.v3.ConnectionFactoryImpl.openConnectionImpl(ConnectionFactoryImpl.java:352)
+        at org.postgresql.core.ConnectionFactory.openConnection(ConnectionFactory.java:54)
+        at org.postgresql.jdbc.PgConnection.<init>(PgConnection.java:273)
+        at org.postgresql.Driver.makeConnection(Driver.java:446)
+        at org.postgresql.Driver.connect(Driver.java:298)      
+        at com.zaxxer.hikari.util.DriverDataSource.getConnection(DriverDataSource.java:137)
+        at com.zaxxer.hikari.pool.PoolBase.newConnection(PoolBase.java:360)
+        at com.zaxxer.hikari.pool.PoolBase.newPoolEntry(PoolBase.java:202)
+        at com.zaxxer.hikari.pool.HikariPool.createPoolEntry(HikariPool.java:461)
+        at com.zaxxer.hikari.pool.HikariPool.checkFailFast(HikariPool.java:550)
+        at com.zaxxer.hikari.pool.HikariPool.<init>(HikariPool.java:98)
+        at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:111)
+        at org.flywaydb.core.internal.jdbc.JdbcUtils.openConnection(JdbcUtils.java:59)
+        ... 99 common frames omitted
+Caused by: java.net.ConnectException: Connection refused       
+        at java.base/sun.nio.ch.Net.pollConnect(Native Method) 
+        at java.base/sun.nio.ch.Net.pollConnectNow(Unknown Source)
+        at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
+        at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
+        at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
+        at java.base/java.net.Socket.connect(Unknown Source)   
+        at org.postgresql.core.PGStream.createSocket(PGStream.java:260)
+        at org.postgresql.core.PGStream.<init>(PGStream.java:121)
+        at org.postgresql.core.v3.ConnectionFactoryImpl.tryConnect(ConnectionFactoryImpl.java:140)
+        at org.postgresql.core.v3.ConnectionFactoryImpl.openConnectionImpl(ConnectionFactoryImpl.java:268)
+        ... 111 common frames omitted
+  _   _               _                     _   ____           
+   _    _
+ | | | | __ _ _ __ __| | ___ _ __   ___  __| | | __ )  __ _ _ __ | | _(_)_ __   __ _
+ | |_| |/ _` | '__/ _` |/ _ \ '_ \ / _ \/ _` | |  _ \ / _` | '_ \| |/ / | '_ \ / _` |
+ |  _  | (_| | | | (_| |  __/ | | |  __/ (_| | | |_) | (_| | | | |   <| | | | | (_| |
+ |_| |_|\__,_|_|  \__,_|\___|_| |_|\___|\__,_| |____/ \__,_|_| |_|_|\_\_|_| |_|\__, |
+                                                               
+                |___/
+ :: Hardened Modular Monolith Backend ::
 
----
+2026-08-27 10:33:09 [background-preinit] INFO  o.h.validator.internal.util.Version [X-Request-Id: ] - HV000001: Hibernate Validator 8.0.1.Final
+2026-08-27 10:33:09 [main] INFO  c.company.banking.BankingApplication [X-Request-Id: ] - Starting BankingApplication v0.1.0 using Java 21.0.12 with PID 1 (/app/app.jar started by spring in /app)
+2026-08-27 10:33:09 [main] DEBUG c.company.banking.BankingApplication [X-Request-Id: ] - Running with Spring Boot v3.4.0, Spring v6.2.0
+2026-08-27 10:33:09 [main] INFO  c.company.banking.BankingApplication [X-Request-Id: ] - The following 1 profile is active: "dev"
+2026-08-27 10:33:11 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [X-Request-Id: ] - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-08-27 10:33:11 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate [X-Request-Id: ] - Finished Spring Data repository scanning in 230 ms. Found 47 JPA repository interfaces.        
+2026-08-27 10:33:13 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer [X-Request-Id: ] - Tomcat initialized with port 8080 (http) 
+2026-08-27 10:33:13 [main] INFO  o.a.coyote.http11.Http11NioProtocol [X-Request-Id: ] - Initializing ProtocolHandler ["http-nio-0.0.0.0-8080"]
+2026-08-27 10:33:13 [main] INFO  o.a.catalina.core.StandardService [X-Request-Id: ] - Starting service [Tomcat]
+2026-08-27 10:33:13 [main] INFO  o.a.catalina.core.StandardEngine [X-Request-Id: ] - Starting Servlet engine: [Apache Tomcat/10.1.33]
+2026-08-27 10:33:13 [main] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] [X-Request-Id: ] - Initializing Spring embedded WebApplicationContext
+2026-08-27 10:33:13 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext [X-Request-Id: ] - Root WebApplicationContext: initialization completed in 4578 ms
+2026-08-27 10:33:14 [main] INFO  com.zaxxer.hikari.HikariDataSource [X-Request-Id: ] - HikariPool-1 - Starting...
+2026-08-27 10:33:15 [main] ERROR o.s.b.w.e.tomcat.TomcatStarter [X-Request-Id: ] - Error starting Tomcat context. Exception: org.springframework.beans.factory.UnsatisfiedDependencyException. Message: Error creating bean with name 'apiAuditLoggingFilter' defined in URL [jar:nested:/app/app.jar/!BOOT-INF/classes/!/com/company/banking/apigateway/security/ApiAuditLoggingFilter.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'apiAuditEventJpaRepository' defined in com.company.banking.apigateway.infrastructure.ApiAuditEventJpaRepository defined in @EnableJpaRepositories declared on JpaRepositoriesRegistrar.EnableJpaRepositoriesConfiguration: Cannot resolve reference to bean 'jpaSharedEM_entityManagerFactory' while setting bean property 'entityManager'        
+2026-08-27 10:33:15 [main] INFO  o.a.catalina.core.StandardService [X-Request-Id: ] - Stopping service [Tomcat]
+2026-08-27 10:33:15 [main] WARN  o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext [X-Request-Id: ] - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Unable to start web server
+2026-08-27 10:33:15 [main] INFO  o.s.b.a.l.ConditionEvaluationReportLogger [X-Request-Id: ] -
 
-## Section 1 — Correct the Web/Mobile Parity Gap (Transfer Flow)
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.   
+2026-08-27 10:33:15 [main] ERROR o.s.boot.SpringApplication [X-Request-Id: ] - Application run failed
+org.springframework.context.ApplicationContextException: Unable to start web server
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.onRefresh(ServletWebServerApplicationContext.java:165)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:621)        
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
+        at com.company.banking.BankingApplication.main(BankingApplication.java:17)
+        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(Unknown Source)
+        at java.base/java.lang.reflect.Method.invoke(Unknown Source)
+        at org.springframework.boot.loader.launch.Launcher.launch(Launcher.java:102)
+        at org.springframework.boot.loader.launch.Launcher.launch(Launcher.java:64)
+        at org.springframework.boot.loader.launch.JarLauncher.main(JarLauncher.java:40)
+Caused by: org.springframework.boot.web.server.WebServerException: Unable to start embedded Tomcat
+        at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.initialize(TomcatWebServer.java:147)
+        at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.<init>(TomcatWebServer.java:107)
+        at org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory.getTomcatWebServer(TomcatServletWebServerFactory.java:516)
+        at org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory.getWebServer(TomcatServletWebServerFactory.java:222)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.createWebServer(ServletWebServerApplicationContext.java:188)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.onRefresh(ServletWebServerApplicationContext.java:162)
+        ... 13 common frames omitted
+Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'apiAuditLoggingFilter' defined in URL [jar:nested:/app/app.jar/!BOOT-INF/classes/!/com/company/banking/apigateway/security/ApiAuditLoggingFilter.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'apiAuditEventJpaRepository' defined in com.company.banking.apigateway.infrastructure.ApiAuditEventJpaRepository defined in @EnableJpaRepositories declared on JpaRepositoriesRegistrar.EnableJpaRepositoriesConfiguration: Cannot resolve reference to bean 'jpaSharedEM_entityManagerFactory' while setting bean property 'entityManager'     
+        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:804)    
+        at org.springframework.beans.factory.support.ConstructorResolver.autowireConstructor(ConstructorResolver.java:240)    
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.autowireConstructor(AbstractAutowireCapableBeanFactory.java:1371)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1208)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:563)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:336)     
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:288)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:334)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:204)
+        at org.springframework.boot.web.servlet.ServletContextInitializerBeans.getOrderedBeansOfType(ServletContextInitializerBeans.java:211)
+        at org.springframework.boot.web.servlet.ServletContextInitializerBeans.addAsRegistrationBean(ServletContextInitializerBeans.java:174)
+        at org.springframework.boot.web.servlet.ServletContextInitializerBeans.addAsRegistrationBean(ServletContextInitializerBeans.java:169)
+        at org.springframework.boot.web.servlet.ServletContextInitializerBeans.addAdaptableBeans(ServletContextInitializerBeans.java:154)
+        at org.springframework.boot.web.servlet.ServletContextInitializerBeans.<init>(ServletContextInitializerBeans.java:87) 
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.getServletContextInitializerBeans(ServletWebServerApplicationContext.java:266)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.selfInitialize(ServletWebServerApplicationContext.java:240)
+        at org.springframework.boot.web.embedded.tomcat.TomcatStarter.onStartup(TomcatStarter.java:52)
+        at org.apache.catalina.core.StandardContext.startInternal(StandardContext.java:4426)
+        at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
+        at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1203)
+        at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1193)
+        at java.base/java.util.concurrent.FutureTask.run(Unknown Source)
+        at org.apache.tomcat.util.threads.InlineExecutorService.execute(InlineExecutorService.java:75)
+        at java.base/java.util.concurrent.AbstractExecutorService.submit(Unknown Source)
+        at org.apache.catalina.core.ContainerBase.startInternal(ContainerBase.java:749)
+        at org.apache.catalina.core.StandardHost.startInternal(StandardHost.java:772)
+        at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
+        at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1203)
+        at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1193)
+        at java.base/java.util.concurrent.FutureTask.run(Unknown Source)
+        at org.apache.tomcat.util.threads.InlineExecutorService.execute(InlineExecutorService.java:75)
+        at java.base/java.util.concurrent.AbstractExecutorService.submit(Unknown Source)
+        at org.apache.catalina.core.ContainerBase.startInternal(ContainerBase.java:749)
+        at org.apache.catalina.core.StandardEngine.startInternal(StandardEngine.java:203)
+        at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
+        at org.apache.catalina.core.StandardService.startInternal(StandardService.java:415)
+        at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
+        at org.apache.catalina.core.StandardServer.startInternal(StandardServer.java:870)
+        at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
+        at org.apache.catalina.startup.Tomcat.start(Tomcat.java:437)
+        at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.initialize(TomcatWebServer.java:128)
+        ... 18 common frames omitted
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'apiAuditEventJpaRepository' defined in com.company.banking.apigateway.infrastructure.ApiAuditEventJpaRepository defined in @EnableJpaRepositories declared on JpaRepositoriesRegistrar.EnableJpaRepositoriesConfiguration: Cannot resolve reference to bean 'jpaSharedEM_entityManagerFactory' while setting bean property 'entityManager'
+        at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:377)
+        at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:135)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyPropertyValues(AbstractAutowireCapableBeanFactory.java:1701)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1450)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:600)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:336)     
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:288)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:334)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+        at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1568)
+        at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1514)
+        at org.springframework.beans.factory.support.ConstructorResolver.resolveAutowiredArgument(ConstructorResolver.java:913)
+        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:791)    
+        ... 59 common frames omitted
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'jpaSharedEM_entityManagerFactory': Cannot resolve reference to bean 'entityManagerFactory' while setting constructor argument
+        at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:377)
+        at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:135)
+        at org.springframework.beans.factory.support.ConstructorResolver.resolveConstructorArguments(ConstructorResolver.java:691)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:513)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1351)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1181)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:563)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:336)     
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:288)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:334)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+        at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:365)
+        ... 72 common frames omitted
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'flywayInitializer' defined in class path resource [org/springframework/boot/autoconfigure/flyway/FlywayAutoConfiguration$FlywayConfiguration.class]: Unable to obtain connection from database: Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------       
+SQL State  : 08001
+Error Code : 0
+Message    : Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.
 
-**Target files:** `web-app/src/app/(dashboard)/transfers/page.tsx`, `mobile-app/src/screens/transfers/TransferFormScreen.tsx`, `TransferReviewScreen.tsx`, `TransferConfirmScreen.tsx`
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1802)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:601)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:336)     
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:288)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:334)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:312)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+        at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:365)
+        ... 84 common frames omitted
+Caused by: org.flywaydb.core.internal.exception.FlywaySqlException: Unable to obtain connection from database: Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.  
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------       
+SQL State  : 08001
+Error Code : 0
+Message    : Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.
 
-**Prompt:**
+        at org.flywaydb.core.internal.jdbc.JdbcUtils.openConnection(JdbcUtils.java:71)
+        at org.flywaydb.core.internal.jdbc.JdbcConnectionFactory.<init>(JdbcConnectionFactory.java:76)
+        at org.flywaydb.core.FlywayExecutor.execute(FlywayExecutor.java:137)
+        at org.flywaydb.core.Flyway.migrate(Flyway.java:176)   
+        at org.springframework.boot.autoconfigure.flyway.FlywayMigrationInitializer.afterPropertiesSet(FlywayMigrationInitializer.java:66)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1849)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1798)
+        ... 93 common frames omitted
+Caused by: org.postgresql.util.PSQLException: Connection to localhost:5435 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.    
+        at org.postgresql.core.v3.ConnectionFactoryImpl.openConnectionImpl(ConnectionFactoryImpl.java:352)
+        at org.postgresql.core.ConnectionFactory.openConnection(ConnectionFactory.java:54)
+        at org.postgresql.jdbc.PgConnection.<init>(PgConnection.java:273)
+        at org.postgresql.Driver.makeConnection(Driver.java:446)
+        at org.postgresql.Driver.connect(Driver.java:298)      
+        at com.zaxxer.hikari.util.DriverDataSource.getConnection(DriverDataSource.java:137)
+        at com.zaxxer.hikari.pool.PoolBase.newConnection(PoolBase.java:360)
+        at com.zaxxer.hikari.pool.PoolBase.newPoolEntry(PoolBase.java:202)
+        at com.zaxxer.hikari.pool.HikariPool.createPoolEntry(HikariPool.java:461)
+        at com.zaxxer.hikari.pool.HikariPool.checkFailFast(HikariPool.java:550)
+        at com.zaxxer.hikari.pool.HikariPool.<init>(HikariPool.java:98)
+        at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:111)
+        at org.flywaydb.core.internal.jdbc.JdbcUtils.openConnection(JdbcUtils.java:59)
+        ... 99 common frames omitted
+Caused by: java.net.ConnectException: Connection refused       
+        at java.base/sun.nio.ch.Net.pollConnect(Native Method) 
+        at java.base/sun.nio.ch.Net.pollConnectNow(Unknown Source)
+        at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
+        at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
+        at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
+        at java.base/java.net.Socket.connect(Unknown Source)   
+        at org.postgresql.core.PGStream.createSocket(PGStream.java:260)
+        at org.postgresql.core.PGStream.<init>(PGStream.java:121)
+        at org.postgresql.core.v3.ConnectionFactoryImpl.tryConnect(ConnectionFactoryImpl.java:140)
+        at org.postgresql.core.v3.ConnectionFactoryImpl.openConnectionImpl(ConnectionFactoryImpl.java:268)
+        ... 111 common frames omitted
 
-> The web app currently executes internal transfers as a single-step form (`transfers/page.tsx`) calling `transactionService.transferInternal()` directly on submit, with no review step and no idempotency-key generation visible in the flow. The mobile app uses a hardened 3-step wizard (Form → Review → Confirm) with `idempotencyKeyService.getOrCreateKey()` generated at Step 1 and a biometric step-up gate at Step 3 before calling the same backend endpoint.
->
-> Correct the web transfer flow to match the mobile app's security posture without copying mobile's UI pattern verbatim:
-> 1. Refactor `transfers/page.tsx` into three route segments — `transfers/page.tsx` (form), `transfers/review/page.tsx`, `transfers/confirm/page.tsx` — matching the tree already scaffolded in `web-app-structure-3.md`.
-> 2. In the form step, call the web equivalent of `idempotencyKeyService.getOrCreateKey()` (create `services/transaction/idempotencyKeyService.ts` if it does not yet contain this method) and pass the key forward via router state or a short-lived server session, not a URL query param.
-> 3. In the review step, render the same "Trace Ref" pattern used in `TransferReviewScreen.tsx` (`idempotencyKey.split('-')[0]`) so support staff can cross-reference a transaction across web and mobile using the same convention.
-> 4. In the confirm step, gate the final `transactionService.transferInternal()` call behind a WebAuthn/passkey step-up prompt (per the existing `services/auth/passkeyService.ts` stub), mirroring mobile's `useBiometric().authenticate()` gate — this is the web-appropriate equivalent, not a literal port of BiometricPrompt.
-> 5. Preserve the existing inline alert banner styling (`bg-emerald-500/10` success, `bg-rose-500/10` error) already used in the current single-step form — carry it forward into the new confirm step rather than redesigning it.
-
----
-
-## Section 2 — Add Missing Money-Movement Screens to Web (Feature Parity)
-
-**Target files:** `web-app/src/app/(dashboard)/transactions/deposit/page.tsx`, `withdraw/page.tsx`, `external-payment/page.tsx` (currently scaffolded empty per `web-app-structure-3.md`)
-
-**Prompt:**
-
-> The mobile app has three dedicated money-movement screens with distinct behavior — `DepositScreen.tsx` (wrapped in `SecureScreenWrapper`, generates a fresh UUID per attempt), `WithdrawScreen.tsx` (simple capture + immediate idempotency key), and `ExternalPaymentScreen.tsx` (9-digit routing number validation, recipient name field, structured error extraction from `error?.response?.data?.message`). The web app currently has empty placeholder files for these three flows.
->
-> Implement these three web pages by adapting the *existing mobile logic*, not inventing new validation rules:
-> 1. `transactions/deposit/page.tsx`: reuse the same idempotency-key-per-attempt pattern from `DepositScreen.tsx`, adapted to call the web's `idempotencyKeyService`. Since `SecureScreenWrapper` (screenshot blocking) has no browser equivalent, substitute it with the existing web-only mitigation already documented in the web architecture — masked balance display and a short idle-session timeout — rather than omitting a security control entirely.
-> 2. `transactions/withdraw/page.tsx`: port the same account/amount capture and loading-indicator pattern from `WithdrawScreen.tsx` directly, keeping field names (`sourceAccountNumber`, `amount`) identical to the backend `WithdrawRequest.java` DTO so no request-mapping drift occurs between platforms.
-> 3. `transactions/external-payment/page.tsx`: port the exact validation rule from `ExternalPaymentScreen.tsx` for the 9-digit routing number and recipient name field, and reuse the same structured error-extraction logic (`error?.response?.data?.message`) inside the web's `errorInterceptor.ts` instead of re-implementing it inline in the component.
-
----
-
-## Section 3 — New Feature: Shared Transaction Trace Lookup (Cross-Platform Support Tool)
-
-**Target files (new, additive only):** `backend/src/main/java/com/company/banking/transaction/api/TransactionController.java`, `backend/.../application/port/in/TransactionUseCase.java`, `web-app/src/app/(admin)/audit/page.tsx`
-
-**Prompt:**
-
-> Both platforms already render a truncated idempotency-key "Trace Ref" during transfer review, but there is currently no backend endpoint or admin UI to look up a full transaction record by that trace reference. Add this as a new, additive capability without touching existing transfer/deposit/withdraw logic:
-> 1. Add a new method to the existing `TransactionUseCase.java` port interface: `TransactionResponse getByIdempotencyKey(String idempotencyKeyPrefix)` — do not modify existing methods in this interface.
-> 2. Add a corresponding new endpoint `GET /api/v1/transactions/trace/{keyPrefix}` in the existing `TransactionController.java`, reusing the existing `ApiResponse<T>` envelope and `ResponseSanitizerAdvice` masking already applied to other endpoints in this controller.
-> 3. Restrict this endpoint to `ROLE_ADMIN` and `ROLE_TELLER` via the existing `AccessPolicy.java`, consistent with how `AdminAuditController.java` is already gated.
-> 4. On the web side, extend the existing `(admin)/audit/page.tsx` (already scaffolded) with a search input that calls this new endpoint and displays the matched transaction using the existing `TransactionListItem`-equivalent web component, so support staff can resolve a customer's "Trace Ref abc123" complaint without touching the database directly.
-
----
-
-## Section 4 — New Feature: Transfer Limits & Velocity Checks (Fraud Hardening)
-
-**Target files:** `backend/.../transaction/domain/TransferPolicy.java`, `SufficientFundsPolicy.java`, `backend/.../transaction/application/InternalTransferService.java`
-
-**Prompt:**
-
-> The existing `TransferPolicy.java` and `SufficientFundsPolicy.java` currently validate balance sufficiency but do not enforce per-transaction or daily cumulative transfer limits. Add velocity/limit checks as new policy logic without altering the existing balance-check flow:
-> 1. Add a new method `validateVelocity(Account sourceAccount, Money amount, List<Transaction> todaysTransactions)` to `TransferPolicy.java`, called from `InternalTransferService.java` immediately after the existing `SufficientFundsPolicy` check — do not reorder or remove the existing funds check.
-> 2. Enforce limits already implied by the existing `AccountLimit.java` domain object (confirm its current fields before adding new ones — extend rather than duplicate).
-> 3. On breach, throw the existing `BusinessException` with a new `ErrorCode` entry (e.g., `TRANSFER_VELOCITY_EXCEEDED`) added to the existing `ErrorCode.java` enum, following its current naming convention exactly.
-> 4. Surface this new error code on both frontends through the *existing* error-mapping logic already used for other `BusinessException` cases (web's `errorInterceptor.ts`, mobile's `error?.response?.data?.message` extraction pattern in `ExternalPaymentScreen.tsx`) — do not build a new error-display mechanism.
-
----
-
-## Section 5 — New Feature: Scheduled/Future-Dated Transfers
-
-**Target files (additive):** `backend/.../transaction/domain/Transaction.java`, `TransactionStatus.java`, new `ScheduledTransferService.java`; `web-app` transfers form; `mobile-app` `TransferFormScreen.tsx`
-
-**Prompt:**
-
-> Introduce future-dated internal transfers as a new capability layered on top of the existing transfer pipeline, reusing the existing idempotency and review/confirm pattern rather than creating a parallel flow:
-> 1. Add a new `SCHEDULED` value to the existing `TransactionStatus.java` enum, alongside current statuses — do not rename existing values.
-> 2. Add an optional `scheduledDate` field to the existing `InternalTransferRequest.java` DTO (nullable, defaulting to immediate execution when absent) so the current immediate-transfer contract remains fully backward-compatible for existing frontend calls that don't send this field.
-> 3. Add a new `ScheduledTransferService.java` alongside the existing `InternalTransferService.java` in the same `application` package, following the same use-case/port pattern already established — this service only handles the deferred-execution branch; the existing immediate-transfer logic in `InternalTransferService.java` stays untouched.
-> 4. On both frontends, add an optional date picker to the *existing* transfer form (`TransferFormScreen.tsx` on mobile, the new multi-step web form from Section 1) — when a date is selected, pass `scheduledDate` through the same review/confirm steps already built, showing "Scheduled for {date}" instead of "Submitting..." in the confirm step's pending state.
-
----
-
-## Section 6 — New Feature: In-App Transaction Dispute Flagging
-
-**Target files (additive):** `backend/.../transaction/api/TransactionController.java`, new `DisputeTransactionService.java`; mobile `TransactionDetailScreen.tsx`; web transaction history page
-
-**Prompt:**
-
-> Add a lightweight dispute-flagging capability so customers can flag a completed transaction for review, without building a full case-management system:
-> 1. Add `POST /api/v1/transactions/{id}/dispute` to the existing `TransactionController.java`, accepting a `DisputeReasonRequest` DTO (new, small DTO: `reasonCode`, `notes`) and delegating to a new `DisputeTransactionService.java` that sets a new boolean/enum flag on the existing `Transaction` domain object (add the field, don't restructure the class).
-> 2. Emit an existing-style `AuditEvent` via the current `AuditEventPublisher.java` so disputes are visible in the existing admin audit trail without a separate dispute-audit mechanism.
-> 3. On mobile, add a "Flag this transaction" action to the existing `TransactionDetailScreen.tsx`, using the same button styling already defined in `theme/colors.ts` (`colors.accent` for the action button).
-> 4. On web, add the equivalent action to the transaction history list item component, reusing the existing `ErrorBanner`/success-alert pattern from the transfers page for confirmation feedback.
-
----
-
-## How to Use This Document
-
-Feed one section at a time to your AI coding assistant, always preceded by the context block at the top of this document. Reject any response that rewrites a file wholesale when a targeted diff was requested — the entire point of this prompt structure is traceable, reviewable, additive change against a banking codebase where every modification needs an audit-friendly rationale, consistent with the ADR discipline already established in `docs/decisions/`.
+LOQ@RAYMUND-PC03 MINGW64 /d/Java/Bank (main)
+$
