@@ -93,5 +93,8 @@ target/
 # 7. Other Cache & Logs
 logs/
 *.log
+*.logs
+release_log_*.txt
+*.tsbuildinfo
 .eslintcache
 .stylelintcache
