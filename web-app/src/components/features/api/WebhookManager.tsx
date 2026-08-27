@@ -173,8 +173,9 @@ export const WebhookManager: React.FC = () => {
           <form onSubmit={handleCreateWebhook} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 bg-surface p-6 rounded-xl border border-secondary/30 animate-in slide-in-from-top-4">
             
             <div className="flex flex-col gap-1.5 md:col-span-2">
-              <label className="text-xs font-bold text-accent uppercase tracking-wider">Endpoint URL</label>
+              <label htmlFor="endpointUrlInput" className="text-xs font-bold text-accent uppercase tracking-wider">Endpoint URL</label>
               <input
+                id="endpointUrlInput"
                 type="url"
                 placeholder="https://yourdomain.com/webhooks"
                 value={url}

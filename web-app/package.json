@@ -4,7 +4,7 @@
   "private": true,
   "description": "Hardened Next.js + TypeScript + Tailwind CSS Web Frontend for Banking Platform",
   "scripts": {
-    "dev": "node scripts/clean.mjs && dotenvx run --env-file=../.env -- next dev -p 3000",
+    "dev": "node scripts/clean.mjs && dotenvx run --env-file=../.env.development -- next dev -p 3000",
     "build": "node scripts/clean.mjs && cross-env NODE_ENV=production dotenvx run --env-file=../.env -- next build",
     "start": "dotenvx run --env-file=../.env -- next start -p 3000",
     "lint": "next lint",

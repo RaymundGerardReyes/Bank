@@ -136,31 +136,31 @@ export default function AccountDetailPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <div>
-          <span className="inline-block px-2.5 py-1 text-xs font-semibold tracking-wider text-indigo-400 bg-indigo-500/10 rounded-md border border-indigo-500/20 mb-2">
+          <span className="inline-block px-2.5 py-1 text-xs font-semibold tracking-wider text-indigo-700 bg-indigo-50 rounded-md border border-indigo-200 mb-2">
             ACCOUNT GOVERNANCE
           </span>
-          <h1 className="text-2xl font-black text-slate-100">
+          <h1 className="text-2xl font-black text-slate-900">
             {account.accountName || `Account #${account.accountNumber}`}
           </h1>
-          <p className="text-sm text-slate-400 font-mono mt-1">{account.accountNumber}</p>
+          <p className="text-sm text-slate-500 font-mono mt-1">{account.accountNumber}</p>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-xs text-slate-400 uppercase tracking-wider">Live Balance</p>
-            <p className="text-2xl font-extrabold text-slate-100">
+            <p className="text-xs text-slate-500 uppercase tracking-wider">Live Balance</p>
+            <p className="text-2xl font-extrabold text-slate-900">
               {account.currency} {Number(account.balance).toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </p>
           </div>
           <span
             className={`px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider ${
               account.frozen
-                ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                ? "bg-red-50 text-red-600 border border-red-200"
                 : account.status === "ACTIVE"
-                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                : "bg-amber-50 text-amber-600 border border-amber-200"
             }`}
           >
             {account.frozen ? "FROZEN" : account.status}
@@ -183,29 +183,29 @@ export default function AccountDetailPage() {
       )}
 
       {/* Controller & Governance Settings Section */}
-      <section className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-xl">
-        <div className="px-6 py-5 border-b border-slate-800/80 bg-slate-800/40 flex items-center justify-between">
+      <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-              <ShieldAlert className="w-5 h-5 text-indigo-400" />
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-indigo-600" />
               Governance & Controller Settings
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Manage security controls, liquidity permissions, and transfer policy restrictions.
             </p>
           </div>
           {isUpdating && (
-            <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold">
+            <div className="flex items-center gap-2 text-indigo-600 text-xs font-semibold">
               <Loader2 className="w-4 h-4 animate-spin" /> Saving...
             </div>
           )}
         </div>
 
-        <div className="divide-y divide-slate-800/60">
+        <div className="divide-y divide-slate-100">
           <ToggleRow
             title="Account Freeze State (Lockdown)"
             description="Completely freeze this account. Strictly blocks all inbound and outbound transaction activity."
-            icon={<Lock className="w-5 h-5 text-rose-400" />}
+            icon={<Lock className="w-5 h-5 text-rose-600" />}
             isActive={Boolean(account.frozen)}
             isPending={isUpdating}
             onToggle={() => handleToggle("frozen", Boolean(account.frozen))}
@@ -213,7 +213,7 @@ export default function AccountDetailPage() {
           <ToggleRow
             title="Allow Incoming Transfers"
             description="Permit deposits, internal transfers, and incoming payments to credit this account."
-            icon={<ArrowDownToLine className="w-5 h-5 text-emerald-400" />}
+            icon={<ArrowDownToLine className="w-5 h-5 text-emerald-600" />}
             isActive={account.allowIncoming ?? true}
             isPending={isUpdating}
             onToggle={() => handleToggle("allowIncoming", account.allowIncoming ?? true)}
@@ -221,7 +221,7 @@ export default function AccountDetailPage() {
           <ToggleRow
             title="Allow Outgoing Transfers"
             description="Permit withdrawals, wire payments, and outbound transfers to debit this account."
-            icon={<ArrowUpRight className="w-5 h-5 text-amber-400" />}
+            icon={<ArrowUpRight className="w-5 h-5 text-amber-600" />}
             isActive={account.allowOutgoing ?? true}
             isPending={isUpdating}
             onToggle={() => handleToggle("allowOutgoing", account.allowOutgoing ?? true)}
@@ -229,7 +229,7 @@ export default function AccountDetailPage() {
           <ToggleRow
             title="Require Dual Approval"
             description="Enforce secondary authorization for any high-value transactions originating from this account."
-            icon={<UserCheck className="w-5 h-5 text-indigo-400" />}
+            icon={<UserCheck className="w-5 h-5 text-indigo-600" />}
             isActive={Boolean(account.requireDualApproval)}
             isPending={isUpdating}
             onToggle={() => handleToggle("requireDualApproval", Boolean(account.requireDualApproval))}
@@ -251,25 +251,33 @@ interface ToggleRowProps {
 
 function ToggleRow({ title, description, icon, isActive, isPending, onToggle }: ToggleRowProps) {
   return (
-    <div className="px-6 py-5 flex items-center justify-between hover:bg-slate-800/30 transition-colors">
+    <div 
+      className={`px-6 py-5 flex items-center justify-between hover:bg-slate-50 transition-colors ${isPending ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}`}
+      onClick={() => {
+        if (!isPending) onToggle();
+      }}
+    >
       <div className="flex items-start gap-4 pr-6">
-        <div className="p-2.5 bg-slate-800/80 rounded-xl border border-slate-700/60 shadow-sm mt-0.5">
+        <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-sm mt-0.5">
           {icon}
         </div>
         <div>
-          <p className="font-semibold text-slate-100 text-sm">{title}</p>
-          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{description}</p>
+          <p className="font-semibold text-slate-900 text-sm">{title}</p>
+          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{description}</p>
         </div>
       </div>
 
       <button
         type="button"
         disabled={isPending}
-        onClick={onToggle}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
         className={`
           relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent 
-          transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900
-          ${isActive ? "bg-indigo-600" : "bg-slate-700"}
+          transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white
+          ${isActive ? "bg-indigo-600" : "bg-slate-300"}
           ${isPending ? "opacity-50 cursor-not-allowed" : ""}
         `}
       >

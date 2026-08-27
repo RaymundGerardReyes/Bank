@@ -26,9 +26,11 @@ const resolveBackendOrigin = (url?: string): string => {
   }
 };
 
+const emptyToUndefined = (val: unknown) => (val === "" ? undefined : val);
+
 const serverEnvSchema = z.object({
   BACKEND_API_BASE_URL: z.string().url().transform(resolveBackendOrigin),
-  BACKEND_INTERNAL_URL: z.string().url().optional().transform(resolveBackendOrigin),
+  BACKEND_INTERNAL_URL: z.preprocess(emptyToUndefined, z.string().url().optional()).transform(resolveBackendOrigin),
   NEXT_PUBLIC_APP_URL: z.string().url(),
   SESSION_SECRET: z.string().min(1),
   INTERNAL_BFF_API_KEY: z.string().min(1),
@@ -36,7 +38,7 @@ const serverEnvSchema = z.object({
   OPENAPI_SPEC_URL: z.string().url(),
   ENABLE_PASSKEY_AUTH: z.string().optional(),
   ENABLE_DEV_API_DOCS: z.string().optional(),
-  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 });
 

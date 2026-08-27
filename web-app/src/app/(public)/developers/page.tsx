@@ -85,7 +85,7 @@ export default function DevelopersPage() {
         processedPath = path.replace("{id}", `${idPrefix}a1b2c3d4e5`);
     }
     
-    const baseUrl = `https://api.novabank.com${processedPath}`;
+    const baseUrl = `https://api.${process.env.PLATFORM_DOMAIN}${processedPath}`;
 
     // Dynamically inject the VAM Account ID into the payload string
     let payloadStr = "";

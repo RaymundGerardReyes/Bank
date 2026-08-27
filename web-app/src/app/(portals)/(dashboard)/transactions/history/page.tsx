@@ -2,6 +2,7 @@
 
 import { TransactionListItem } from "@/components/features/transactions/TransactionListItem";
 import { TransactionHistoryRecord } from "@/models/TransactionTypes";
+import { Account } from "@/models/ApiResponse";
 import { accountService } from "@/services/account/accountService";
 import { transactionService } from "@/services/transaction/transactionService";
 import { useEffect, useState } from "react";
@@ -29,21 +30,42 @@ export default function TransactionHistoryPage() {
 
   // <-- ENTERPRISE FIX: Track the currently active account to determine Credit/Debit Direction -->
   const [activeAccount, setActiveAccount] = useState<string>("");
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadAccounts = async () => {
       try {
         const accRes = await accountService.getAccounts();
         if (accRes.data && accRes.data.length > 0) {
-          const primaryAcc = accRes.data[0].accountNumber;
-          setActiveAccount(primaryAcc); // Save state context
-
-          const histRes = await transactionService.getAccountTransactionHistory({ accountNumber: primaryAcc });
-          if (histRes.data && histRes.data.content) {
-            setTransactions(histRes.data.content);
-          }
+          setAccounts(accRes.data);
+          setActiveAccount(accRes.data[0].accountNumber); // Save state context
         } else {
           setError("No active accounts found to fetch history.");
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error("Failed to load accounts", e);
+        setError("Unable to load accounts.");
+        setLoading(false);
+      } finally {
+        setIsLoadingAccounts(false);
+      }
+    };
+    loadAccounts();
+  }, []);
+
+  useEffect(() => {
+    if (!activeAccount) return;
+    const loadHistory = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const histRes = await transactionService.getAccountTransactionHistory({ accountNumber: activeAccount });
+        if (histRes.data && histRes.data.content) {
+          setTransactions(histRes.data.content);
+        } else {
+          setTransactions([]);
         }
       } catch (e) {
         console.error("Failed to load history", e);
@@ -52,8 +74,8 @@ export default function TransactionHistoryPage() {
         setTimeout(() => setLoading(false), 400);
       }
     };
-    loadData();
-  }, []);
+    loadHistory();
+  }, [activeAccount]);
 
   return (
     <div className="max-w-5xl mx-auto flex flex-col gap-8 animate-in fade-in duration-500">
@@ -65,6 +87,19 @@ export default function TransactionHistoryPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {!isLoadingAccounts && accounts.length > 0 && (
+            <select
+              className="px-4 py-2 bg-surface border border-secondary/40 text-accent font-bold text-xs rounded-lg hover:bg-secondary/10 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              value={activeAccount}
+              onChange={(e) => setActiveAccount(e.target.value)}
+            >
+              {accounts.map(acc => (
+                <option key={acc.accountNumber} value={acc.accountNumber}>
+                  {acc.accountName ? `${acc.accountName} (${acc.accountNumber})` : `Account #${acc.accountNumber}`}
+                </option>
+              ))}
+            </select>
+          )}
           <button className="px-4 py-2 bg-surface border border-secondary/40 text-accent font-bold text-xs rounded-lg hover:bg-secondary/10 transition-colors shadow-sm flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />

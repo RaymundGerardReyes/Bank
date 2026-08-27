@@ -187,7 +187,7 @@ export const DomainLibrary: React.FC = () => {
       keyStr = isCopying || isKeyVisible ? providedApiKey.trim() : "sk_...[HIDDEN]... ";
     }
 
-    const baseUrl = `https://api.novabank.com${ep.path}`;
+    const baseUrl = `https://api.${process.env.PLATFORM_DOMAIN}${ep.path}`;
     const safeBody = requestBodyText ? requestBodyText.replace(/\n/g, "") : "";
 
     switch (activeSdk) {

@@ -1,7 +1,9 @@
 import { ApiKeyManager } from "@/components/features/api/ApiKeyManager";
 import { WebhookManager } from "@/components/features/api/WebhookManager";
-import { ApiReferenceViewer } from "@/components/docs/ApiReferenceViewer";
+import ApiReferenceViewer from "@/components/docs/ApiReferenceViewer";
 import { env } from "@/server/config/env";
+
+export const dynamic = "force-dynamic";
 
 export default function ApiGatewayPage() {
   return (
@@ -38,8 +40,11 @@ export default function ApiGatewayPage() {
           Interactive developer gateway reference. Test endpoints directly using your generated API keys.
         </p>
 
-        {/* This single component replaces the entire DomainLibrary! */}
-        <ApiReferenceViewer specUrl={env.openApiSpecUrl || ""} />
+        {/* 
+          Spec is loaded seamlessly via the Nginx reverse proxy.
+          Nginx routes /v3/api-docs directly to the backend.
+        */}
+        <ApiReferenceViewer specUrl={env.openApiSpecUrl} />
       </div>
 
     </div>
