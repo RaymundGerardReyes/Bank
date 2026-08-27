@@ -13,8 +13,8 @@ services:
       - API_PUBLIC_HOST=${API_PUBLIC_HOST}
       - PAYMENT_WEBHOOK_HOST=${PAYMENT_WEBHOOK_HOST}
       - PLATFORM_DOMAIN=${PLATFORM_DOMAIN}
-      - BACKEND_UPSTREAM_HOST=${BACKEND_UPSTREAM_HOST:-backend}
-      - BACKEND_UPSTREAM_PORT=${BACKEND_UPSTREAM_PORT:-8080}
+      - BACKEND_UPSTREAM_HOST=backend
+      - BACKEND_UPSTREAM_PORT=8080
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/templates/nginx.conf.template:ro
     ports:
@@ -62,8 +62,15 @@ services:
       - "8080"
     environment:
       APP_ENV: ${APP_ENV:-production}
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      API_PUBLIC_URL: ${API_PUBLIC_URL}
+      PAYMENT_WEBHOOK_PUBLIC_URL: ${PAYMENT_WEBHOOK_PUBLIC_URL}
+      PAYMENT_WEBHOOK_HOST: ${PAYMENT_WEBHOOK_HOST}
+      # Docker Compose acts as the container-runtime boundary override.
+      # While native bootRun uses DB_HOST=localhost (via .env), the containerized
+      # application MUST use the Docker-internal topology invariant.
+      DB_HOST: database
+      DB_PORT: 5432
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -100,12 +107,9 @@ services:
       context: ../../web-app
       dockerfile: Dockerfile
       args:
-        - BACKEND_API_BASE_URL
         - NEXT_PUBLIC_APP_URL
-        - OPENAPI_SPEC_URL
-        - SESSION_SECRET
-        - ENABLE_PASSKEY_AUTH
-        - ENABLE_DEV_API_DOCS
+        - NEXT_PUBLIC_PLATFORM_DOMAIN
+        - NEXT_PUBLIC_WEBAUTHN_RP_ID
     container_name: banking_frontend
     restart: unless-stopped
     expose:
@@ -113,7 +117,7 @@ services:
     environment:
       NODE_ENV: ${APP_ENV:-production}
       BACKEND_API_BASE_URL: ${BACKEND_API_BASE_URL}
-      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL}
+      BACKEND_INTERNAL_URL: http://backend:8080
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
       OPENAPI_SPEC_URL: ${OPENAPI_SPEC_URL}
       SESSION_SECRET: ${SESSION_SECRET}
