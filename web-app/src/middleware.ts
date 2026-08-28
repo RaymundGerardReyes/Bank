@@ -49,9 +49,10 @@ export async function middleware(request: NextRequest) {
   const isInternalProxyRoute = INTERNAL_PROXY_ROUTES.some((route) => pathname.startsWith(route));
   const isPublicProxyRoute = pathname.startsWith("/api/proxy/auth");
   const isAdminRoute = ADMIN_ROUTES.some((route) => pathname.startsWith(route));
+  const isExternalApiRoute = pathname === "/api/v1" || pathname.startsWith("/api/v1/");
 
   // --- ENTERPRISE FIX: Block unauthorized access to UI AND Internal API Proxies ---
-  if ((isProtectedRoute && !isPublicProxyRoute) || (isInternalProxyRoute && !isPublicProxyRoute)) {
+  if (!isExternalApiRoute && ((isProtectedRoute && !isPublicProxyRoute) || (isInternalProxyRoute && !isPublicProxyRoute))) {
     if (!sessionToken) {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ success: false, message: "Unauthorized: Invalid or missing session token" }, { status: 401 });

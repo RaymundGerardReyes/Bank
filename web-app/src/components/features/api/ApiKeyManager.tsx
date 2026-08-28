@@ -63,7 +63,7 @@ export const ApiKeyManager: React.FC = () => {
   const [newKeyName, setNewKeyName] = useState("");
   const [environment, setEnvironment] = useState<"LIVE" | "SANDBOX">("SANDBOX");
   const [ipWhitelist, setIpWhitelist] = useState("");
-  const [selectedScopes, setSelectedScopes] = useState<string[]>(["treasury:read", "accounts:read"]);
+  const [selectedScopes, setSelectedScopes] = useState<string[]>(["treasury:read", "treasury:write", "accounts:read"]);
   const [linkedAccountId, setLinkedAccountId] = useState("ALL");
   const [showCreateForm, setShowCreateForm] = useState(false);
 
