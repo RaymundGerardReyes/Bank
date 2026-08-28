@@ -1,0 +1,723 @@
+{
+  "info": {
+    "name": "Banking Internal Transfer Comprehensive Suite",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Login (Get Session Token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login Successful (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "    const jsonData = pm.response.json();",
+              "    const token = jsonData.token || (jsonData.data && jsonData.data.token);",
+              "    pm.expect(token).to.be.a('string');",
+              "    pm.environment.set('sessionToken', token);",
+              "    console.log('Session token saved successfully to environment!');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"{{userPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        }
+      }
+    },
+    {
+      "name": "01.5 - Auto-Configure Environment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Accounts Retrieved (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Auto-Configure Account Variables', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const accounts = jsonData.data.content || jsonData.data;",
+              "    pm.expect(accounts).to.be.an('array').that.is.not.empty;",
+              "    ",
+              "    // Automatically set the source account to the logged-in user's first account",
+              "    if (accounts.length > 0 && !pm.environment.get('sourceAccountNumber')) {",
+              "        pm.environment.set('sourceAccountNumber', accounts[0].accountNumber);",
+              "    }",
+              "    ",
+              "    // Set destination account dynamically from second account if available, or fallback to environment",
+              "    if (accounts.length > 1 && !pm.environment.get('destinationAccountNumber')) {",
+              "        pm.environment.set('destinationAccountNumber', accounts[1].accountNumber);",
+              "    }",
+              "    ",
+              "    console.log('Successfully configured account variables dynamically from environment payload!');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts"
+          ]
+        }
+      }
+    },
+    {
+      "name": "02 - Golden Path Immediate Transfer",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('goldenIdemKey', 'idem-int-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Transfer Succeeds (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Status is PENDING or COMPLETED', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.status).to.be.oneOf(['PENDING', 'COMPLETED']);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 50.00,\n    \"description\": \"Standard Transfer\",\n    \"idempotencyKey\": \"{{goldenIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/internal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "internal"
+          ]
+        }
+      }
+    },
+    {
+      "name": "03 - Idempotency Guard (Conflict)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Duplicate Blocked (409 Conflict)', function () {",
+              "    pm.response.to.have.status(409);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 50.00,\n    \"description\": \"Standard Transfer\",\n    \"idempotencyKey\": \"{{goldenIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/internal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "internal"
+          ]
+        }
+      }
+    },
+    {
+      "name": "04 - Scheduled Transfer Path",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('scheduledIdemKey', 'idem-sched-' + Date.now());",
+              "const futureDate = new Date();",
+              "futureDate.setDate(futureDate.getDate() + 5);",
+              "pm.environment.set('futureDate', futureDate.toISOString());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Scheduled Transfer Accepted (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Status is SCHEDULED', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.status).to.eql('SCHEDULED');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 100.00,\n    \"description\": \"Future Payment\",\n    \"idempotencyKey\": \"{{scheduledIdemKey}}\",\n    \"scheduledDate\": \"{{futureDate}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/internal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "internal"
+          ]
+        }
+      }
+    },
+    {
+      "name": "05 - Same-Account Self-Transfer Guard",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('selfIdemKey', 'idem-self-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Self-Transfer Rejected (400 Bad Request)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Contains INVALID_REQUEST code', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.errorCode).to.eql('INVALID_REQUEST');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"amount\": 50.00,\n    \"idempotencyKey\": \"{{selfIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/internal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "internal"
+          ]
+        }
+      }
+    },
+    {
+      "name": "06 - Insufficient Funds Guard",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('nsfIdemKey', 'idem-nsf-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('NSF Rejected (400 Bad Request)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Contains INSUFFICIENT_FUNDS code', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.errorCode).to.eql('INSUFFICIENT_FUNDS');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 9999999.00,\n    \"idempotencyKey\": \"{{nsfIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/internal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "internal"
+          ]
+        }
+      }
+    },
+    {
+      "name": "07 - Velocity Limit Breach (> 50k)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('limitIdemKey', 'idem-limit-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Velocity Limit Rejected (400 Bad Request)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Contains TRANSFER_VELOCITY_EXCEEDED code', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.errorCode).to.eql('TRANSFER_VELOCITY_EXCEEDED');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 50000.01,\n    \"idempotencyKey\": \"{{limitIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/internal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "internal"
+          ]
+        }
+      }
+    },
+    {
+      "name": "08 - Invalid Destination Account",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('invalidDestIdemKey', 'idem-dest-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Invalid Destination (404 Not Found)', function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "",
+              "pm.test('Contains RESOURCE_NOT_FOUND code', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.errorCode).to.eql('RESOURCE_NOT_FOUND');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"INVALID-ACC-999\",\n    \"amount\": 50.00,\n    \"idempotencyKey\": \"{{invalidDestIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/internal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "internal"
+          ]
+        }
+      }
+    },
+    {
+      "name": "09 - Suspended Source Account",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('suspIdemKey', 'idem-susp-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Suspended Account Guard (400 or 403)', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([400, 403]);",
+              "});",
+              "",
+              "pm.test('Contains ACCOUNT_SUSPENDED code', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.errorCode).to.eql('ACCOUNT_SUSPENDED');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{suspendedAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 50.00,\n    \"idempotencyKey\": \"{{suspIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/internal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "internal"
+          ]
+        }
+      }
+    },
+    {
+      "name": "10 - Validation: Negative Amount",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Validation Failed (400 Bad Request)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Contains standard validation error code', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.errorCode).to.include('400');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": -50.00,\n    \"idempotencyKey\": \"idem-neg-amount\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/internal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "internal"
+          ]
+        }
+      }
+    },
+    {
+      "name": "11 - Validation: Missing Idempotency Key",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Validation Failed (400 Bad Request)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 50.00\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/internal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "internal"
+          ]
+        }
+      }
+    },
+    {
+      "name": "12 - FX Cross Currency (Rejected safely)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('fxIdemKey', 'idem-fx-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Cross Currency Rejected (400 Bad Request)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Contains CROSS_CURRENCY_POSTING_NOT_AVAILABLE error code', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.errorCode).to.eql('CROSS_CURRENCY_POSTING_NOT_AVAILABLE');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{usdDestinationAccountNumber}}\",\n    \"amount\": 50.00,\n    \"idempotencyKey\": \"{{fxIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/internal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "internal"
+          ]
+        }
+      }
+    }
+  ]
+}

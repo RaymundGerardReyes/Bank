@@ -1,0 +1,293 @@
+{
+  "info": {
+    "name": "Banking Account Management Suite",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Login (Get Session Token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login Successful (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "    const jsonData = pm.response.json();",
+              "    const token = jsonData.token || (jsonData.data && jsonData.data.token);",
+              "    pm.expect(token).to.be.a('string');",
+              "    pm.environment.set('sessionToken', token);",
+              "    console.log('Session token saved successfully to environment!');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"{{userPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        }
+      }
+    },
+    {
+      "name": "02 - List Customer Accounts",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Accounts Retrieved (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Extract and Save Target Account Number', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const accounts = jsonData.data.content || jsonData.data;",
+              "    pm.expect(accounts).to.be.an('array').that.is.not.empty;",
+              "    ",
+              "    // Automatically capture the first account number for subsequent tests",
+              "    const targetAccount = accounts[0].accountNumber;",
+              "    pm.expect(targetAccount).to.be.a('string');",
+              "    pm.environment.set('targetAccountNumber', targetAccount);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts"
+          ]
+        }
+      }
+    },
+    {
+      "name": "03 - Get Account Details",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Account Details Fetched (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response matches requested account number', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const account = jsonData.data;",
+              "    pm.expect(account.accountNumber).to.eql(pm.environment.get('targetAccountNumber'));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts/{{targetAccountNumber}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts",
+            "{{targetAccountNumber}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "04 - Update Account Settings (Golden Path)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Settings Updated Successfully (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Settings reflect applied changes', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const account = jsonData.data;",
+              "    pm.expect(account.allowOutgoing).to.be.false;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"allowOutgoing\": false,\n    \"allowIncoming\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts/{{targetAccountNumber}}/settings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts",
+            "{{targetAccountNumber}}",
+            "settings"
+          ]
+        }
+      }
+    },
+    {
+      "name": "05 - Update Account Settings (Not Found -> 404)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Update Rejected (404 Not Found)', function () {",
+              "    pm.response.to.have.status(404);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"allowOutgoing\": false,\n    \"allowIncoming\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts/UNKNOWN-ACC-9999/settings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts",
+            "UNKNOWN-ACC-9999",
+            "settings"
+          ]
+        }
+      }
+    },
+    {
+      "name": "06 - Update Account Settings (Validation Error -> 400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Update Rejected (400 Bad Request)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Contains ERR_400 validation code', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.errorCode).to.include('400');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts/{{targetAccountNumber}}/settings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts",
+            "{{targetAccountNumber}}",
+            "settings"
+          ]
+        }
+      }
+    }
+  ]
+}

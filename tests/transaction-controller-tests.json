@@ -1,0 +1,378 @@
+{
+  "info": {
+    "name": "Banking Transaction Controller Suite",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Login (Get Session Token)",
+     "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login Successful (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "    const jsonData = pm.response.json();",
+              "    const token = jsonData.token || (jsonData.data && jsonData.data.token);",
+              "    pm.expect(token).to.be.a('string');",
+              "    pm.environment.set('sessionToken', token);",
+              "    console.log('Session token saved successfully to environment!');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"{{userPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        }
+      }
+    },
+    {
+      "name": "01.5 - Auto-Configure Environment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Accounts Retrieved (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Auto-Configure Account Variables', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const accounts = jsonData.data.content || jsonData.data;",
+              "    pm.expect(accounts).to.be.an('array').that.is.not.empty;",
+              "    ",
+              "    // Automatically set the source account to the logged-in user's first account",
+              "    pm.environment.set('sourceAccountNumber', accounts[0].accountNumber);",
+              "    ",
+              "    console.log('Successfully configured sourceAccountNumber!');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts"
+          ]
+        }
+      }
+    },
+    {
+      "name": "02 - Deposit Golden Path",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('depositIdemKey', 'idem-dep-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Deposit Accepted (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response contains valid transaction reference', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.transactionReference).to.be.a('string');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"accountNumber\": \"{{sourceAccountNumber}}\",\n    \"amount\": 500.00,\n    \"idempotencyKey\": \"{{depositIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transactions/deposit",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transactions",
+            "deposit"
+          ]
+        }
+      }
+    },
+    {
+      "name": "03 - Deposit Idempotency Guard (Conflict)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Duplicate Blocked (409 Conflict)', function () {",
+              "    pm.response.to.have.status(409);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"accountNumber\": \"{{sourceAccountNumber}}\",\n    \"amount\": 500.00,\n    \"idempotencyKey\": \"{{depositIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transactions/deposit",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transactions",
+            "deposit"
+          ]
+        }
+      }
+    },
+    {
+      "name": "04 - Withdrawal Golden Path",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('withdrawIdemKey', 'idem-wth-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Withdrawal Accepted (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"accountNumber\": \"{{sourceAccountNumber}}\",\n    \"amount\": 100.00,\n    \"idempotencyKey\": \"{{withdrawIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transactions/withdraw",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transactions",
+            "withdraw"
+          ]
+        }
+      }
+    },
+    {
+      "name": "05 - Withdrawal NSF Guard (Insufficient Funds)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('nsfIdemKey', 'idem-nsf-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Transaction Rejected (400 Bad Request)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Contains INSUFFICIENT_FUNDS error code', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.errorCode).to.eql('INSUFFICIENT_FUNDS');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"accountNumber\": \"{{sourceAccountNumber}}\",\n    \"amount\": 99999999.00,\n    \"idempotencyKey\": \"{{nsfIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transactions/withdraw",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transactions",
+            "withdraw"
+          ]
+        }
+      }
+    },
+    {
+      "name": "06 - Fetch Transaction History",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('History Fetched Successfully (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Payload contains content array', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.content).to.be.an('array');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transactions/history?accountNumber={{sourceAccountNumber}}&direction=ALL&page=0&size=10",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transactions",
+            "history"
+          ],
+          "query": [
+            {
+              "key": "accountNumber",
+              "value": "{{sourceAccountNumber}}"
+            },
+            {
+              "key": "direction",
+              "value": "ALL"
+            },
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "10"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

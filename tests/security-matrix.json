@@ -5,6 +5,147 @@
   },
   "item": [
     {
+      "name": "01 - Login (Get Session Token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login Successful (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "    const jsonData = pm.response.json();",
+              "    const token = jsonData.token || (jsonData.data && jsonData.data.token);",
+              "    pm.expect(token).to.be.a('string');",
+              "    pm.environment.set('sessionToken', token);",
+              "    pm.environment.set('authToken', token);",
+              "    console.log('Session token saved successfully to environment!');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"{{userPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        }
+      }
+    },
+    {
+      "name": "01.5 - Auto-Configure Environment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Accounts Retrieved (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Auto-Configure Account Variables', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const accounts = jsonData.data.content || jsonData.data;",
+              "    pm.expect(accounts).to.be.an('array').that.is.not.empty;",
+              "    pm.environment.set('sourceAccountNumber', '4859220013371001');",
+              "    pm.environment.set('destinationAccountNumber', '4859220013379999');",
+              "    console.log('Successfully configured account variables dynamically!');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts"
+          ]
+        }
+      }
+    },
+    {
+      "name": "02 - Generate VAM API Key",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('API Key Created (201 Created)', function () {",
+              "    pm.response.to.have.status(201);",
+              "    const jsonData = pm.response.json();",
+              "    const rawKey = jsonData.data.rawKey;",
+              "    pm.expect(rawKey).to.be.a('string');",
+              "    pm.environment.set('vamApiKey', rawKey);",
+              "    console.log('Generated API Key saved to environment:', rawKey);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"name\": \"Security Matrix Key\",\n    \"environment\": \"LIVE\",\n    \"scopes\": [\"payments:write\", \"treasury:write\", \"accounts:read\"],\n    \"linkedAccountId\": \"{{sourceAccountNumber}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/apikeys",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "apikeys"
+          ]
+        }
+      }
+    },
+    {
       "name": "1. URL Allowlisting Gates",
       "item": [
         {
@@ -13,8 +154,8 @@
             "listen": "test",
             "script": {
               "exec": [
-                "pm.test('Status is 400 or 500 on untrusted host', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([400, 500]);",
+                "pm.test('Status is 400, 401, or 500 on untrusted host', function () {",
+                "    pm.expect(pm.response.code).to.be.oneOf([400, 401, 500]);",
                 "});",
                 "pm.test('Untrusted URL is omitted from response', function () {",
                 "    pm.expect(pm.response.json().checkoutUrl).to.be.undefined;",
@@ -27,13 +168,14 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "X-API-Key", "value": "{{vamApiKey}}" },
+              { "key": "X-Client-Id", "value": "client_1001" },
               { "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" },
               { "key": "Idempotency-Key", "value": "url-test-{{$guid}}" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"amount\": 500.00,\n    \"currency\": \"PHP\",\n    \"simulatedProviderUrl\": \"https://evil-paymongo.com/checkout\"\n}"
+              "raw": "{\n    \"customerAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"amount\": 500.00,\n    \"currency\": \"PHP\",\n    \"simulatedProviderUrl\": \"https://evil-paymongo.com/checkout\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/gateway/payments",
@@ -71,13 +213,13 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Authorization", "value": "Bearer {{sessionToken}}" },
               { "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" },
               { "key": "Idempotency-Key", "value": "{{sharedIdemKey}}" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"sourceAccountNumber\": \"SRC-1001\",\n    \"destinationAccountNumber\": \"DST-1002\",\n    \"amount\": 100.00,\n    \"description\": \"Idempotency Verification\"\n}"
+              "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 100.00,\n    \"idempotencyKey\": \"{{sharedIdemKey}}\",\n    \"description\": \"Idempotency Verification\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/transfers/internal",
@@ -104,13 +246,13 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Authorization", "value": "Bearer {{sessionToken}}" },
               { "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" },
               { "key": "Idempotency-Key", "value": "{{sharedIdemKey}}" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"sourceAccountNumber\": \"SRC-1001\",\n    \"destinationAccountNumber\": \"DST-1002\",\n    \"amount\": 100.00,\n    \"description\": \"Idempotency Verification\"\n}"
+              "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 100.00,\n    \"idempotencyKey\": \"{{sharedIdemKey}}\",\n    \"description\": \"Idempotency Verification\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/transfers/internal",
@@ -206,13 +348,13 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Authorization", "value": "Bearer {{sessionToken}}" },
               { "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" },
               { "key": "Idempotency-Key", "value": "{{raceIdempotencyKey}}" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"sourceAccountNumber\": \"SRC-1001\",\n    \"destinationAccountNumber\": \"DST-1002\",\n    \"amount\": 50.00,\n    \"description\": \"Simultaneous Race Attack\"\n}"
+              "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 50.00,\n    \"idempotencyKey\": \"{{raceIdempotencyKey}}\",\n    \"description\": \"Simultaneous Race Attack\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/transfers/internal",

@@ -1,0 +1,496 @@
+{
+  "info": {
+    "name": "Banking External Payment Gateway Suite (Complete)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Login (Get Session Token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login Successful (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "    const jsonData = pm.response.json();",
+              "    const token = jsonData.token || (jsonData.data && jsonData.data.token);",
+              "    pm.expect(token).to.be.a('string');",
+              "    pm.environment.set('sessionToken', token);",
+              "    console.log('Session token saved successfully to environment!');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"{{userPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        }
+      }
+    },
+    {
+      "name": "01.5 - Auto-Configure Environment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Accounts Retrieved (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Auto-Configure Account Variables', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const accounts = jsonData.data.content || jsonData.data;",
+              "    pm.expect(accounts).to.be.an('array').that.is.not.empty;",
+              "    ",
+              "    // Automatically set the source account to the logged-in user's first account",
+              "    pm.environment.set('sourceAccountNumber', accounts[0].accountNumber);",
+              "    ",
+              "    console.log('Successfully configured sourceAccountNumber!');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts"
+          ]
+        }
+      }
+    },
+    {
+      "name": "02 - External Wire Golden Path (SWIFT)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('externalIdemKey', 'idem-ext-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('External Wire Accepted (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Status is PENDING for Outbox Processing', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const status = jsonData.status || (jsonData.data && jsonData.data.status);",
+              "    pm.expect(status).to.eql('PENDING');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"EXT-999-555\",\n    \"routingNumber\": \"SWIFT123\",\n    \"recipientName\": \"Global Corp\",\n    \"amount\": 1000.00,\n    \"railName\": \"SWIFT\",\n    \"idempotencyKey\": \"{{externalIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/external",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "external"
+          ]
+        }
+      }
+    },
+    {
+      "name": "03 - Unsupported Payment Rail Rejection",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('invalidRailIdemKey', 'idem-ext-fail-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Transaction Rejected (400 Bad Request)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Contains INVALID_REQUEST error code', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.errorCode).to.be.oneOf(['INVALID_REQUEST', 'ERR_400']);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"EXT-999-555\",\n    \"routingNumber\": \"SWIFT123\",\n    \"recipientName\": \"Global Corp\",\n    \"amount\": 1000.00,\n    \"railName\": \"INVALID_RAIL\",\n    \"idempotencyKey\": \"{{invalidRailIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/external",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "external"
+          ]
+        }
+      }
+    },
+    {
+      "name": "04 - Duplicate Idempotency Guard (Conflict)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Duplicate Blocked (409 Conflict)', function () {",
+              "    pm.response.to.have.status(409);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"EXT-999-555\",\n    \"routingNumber\": \"SWIFT123\",\n    \"recipientName\": \"Global Corp\",\n    \"amount\": 1000.00,\n    \"railName\": \"SWIFT\",\n    \"idempotencyKey\": \"{{externalIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/external",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "external"
+          ]
+        }
+      }
+    },
+    {
+      "name": "05 - Insufficient Funds Post-Sweep",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('insufficientIdemKey', 'idem-ext-nsf-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Transaction Rejected (400 Bad Request)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Contains INSUFFICIENT_FUNDS or LIMIT_EXCEEDED error code', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.errorCode).to.be.oneOf(['INSUFFICIENT_FUNDS', 'LIMIT_EXCEEDED', 'ERR_BANK_001', 'ERR_BANK_008']);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"EXT-999-555\",\n    \"routingNumber\": \"SWIFT123\",\n    \"recipientName\": \"Global Corp\",\n    \"amount\": 99999999.00,\n    \"railName\": \"SWIFT\",\n    \"idempotencyKey\": \"{{insufficientIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/external",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "external"
+          ]
+        }
+      }
+    },
+    {
+      "name": "06 - Transfer Policy Limit Breach",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('limitIdemKey', 'idem-ext-limit-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Transaction Rejected (400 Bad Request)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Contains LIMIT_EXCEEDED error code', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.errorCode).to.be.oneOf(['LIMIT_EXCEEDED', 'TRANSFER_VELOCITY_EXCEEDED', 'ERR_BANK_008', 'ERR_BANK_006']);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"EXT-999-555\",\n    \"routingNumber\": \"SWIFT123\",\n    \"recipientName\": \"Global Corp\",\n    \"amount\": 150000.00,\n    \"railName\": \"SWIFT\",\n    \"idempotencyKey\": \"{{limitIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/external",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "external"
+          ]
+        }
+      }
+    },
+    {
+      "name": "07 - Source Account Not Found Failure",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('notFoundIdemKey', 'idem-ext-404-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Transaction Rejected (404 Not Found)', function () {",
+              "    pm.response.to.have.status(404);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"UNKNOWN-ACC-9999\",\n    \"destinationAccountNumber\": \"EXT-999-555\",\n    \"routingNumber\": \"SWIFT123\",\n    \"recipientName\": \"Global Corp\",\n    \"amount\": 1000.00,\n    \"railName\": \"SWIFT\",\n    \"idempotencyKey\": \"{{notFoundIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/external",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "external"
+          ]
+        }
+      }
+    },
+    {
+      "name": "08 - Fraud Screening Block",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('fraudIdemKey', 'idem-ext-fraud-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Transaction Rejected (400 or 403)', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([400, 403]);",
+              "});",
+              "",
+              "pm.test('Contains FRAUD_DETECTED error code', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.errorCode).to.be.oneOf(['ERR_BANK_004', 'FRAUD_DETECTED']);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"EXT-SUSPICIOUS-999\",\n    \"routingNumber\": \"SWIFT123\",\n    \"recipientName\": \"Sanctioned Entity\",\n    \"amount\": 1000.00,\n    \"railName\": \"SWIFT\",\n    \"idempotencyKey\": \"{{fraudIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/external",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "external"
+          ]
+        }
+      }
+    }
+  ]
+}

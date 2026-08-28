@@ -1,0 +1,414 @@
+{
+  "info": {
+    "name": "Banking Intents & Statements Suite",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Login (Get Session Token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login Successful (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "    const jsonData = pm.response.json();",
+              "    const token = jsonData.token || (jsonData.data && jsonData.data.token);",
+              "    pm.expect(token).to.be.a('string');",
+              "    pm.environment.set('sessionToken', token);",
+              "    console.log('Session token saved successfully to environment!');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"{{userPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        }
+      }
+    },
+    {
+      "name": "01.5 - Auto-Configure Environment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Accounts Retrieved (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Auto-Configure Account Variables', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const accounts = jsonData.data.content || jsonData.data;",
+              "    pm.expect(accounts).to.be.an('array').that.is.not.empty;",
+              "    ",
+              "    // Automatically set the source account to the logged-in user's first account",
+              "    if (accounts.length > 0 && !pm.environment.get('sourceAccountNumber')) {",
+              "        pm.environment.set('sourceAccountNumber', accounts[0].accountNumber);",
+              "    }",
+              "    ",
+              "    // Set destination account dynamically from second account if available, or fallback to environment",
+              "    if (accounts.length > 1 && !pm.environment.get('destinationAccountNumber')) {",
+              "        pm.environment.set('destinationAccountNumber', accounts[1].accountNumber);",
+              "    }",
+              "    ",
+              "    console.log('Successfully configured account variables dynamically from environment payload!');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts"
+          ]
+        }
+      }
+    },
+    {
+      "name": "02 - Create Transaction Intent (MFA Start)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('intentIdemKey', 'idem-intent-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Intent Created (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Extract and Save Intent ID', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const intentId = jsonData.data.id;",
+              "    pm.expect(intentId).to.be.a('number');",
+              "    pm.environment.set('intentId', intentId);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"rail\": \"INTERNAL\",\n    \"sourceAccountId\": \"{{sourceAccountNumber}}\",\n    \"recipient\": \"{{destinationAccountNumber}}\",\n    \"amount\": 1500.00,\n    \"currency\": \"PHP\",\n    \"fee\": 0.00,\n    \"total\": 1500.00,\n    \"idempotencyKey\": \"{{intentIdemKey}}\",\n    \"status\": \"DRAFT\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transactions/intents",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transactions",
+            "intents"
+          ]
+        }
+      }
+    },
+    {
+      "name": "03 - Request Push Authorization",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Push Request Accepted (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Contains Challenge', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.challenge).to.be.a('string');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"amount\": 1500.00,\n    \"sourceAccount\": \"{{sourceAccountNumber}}\",\n    \"destinationAccount\": \"{{destinationAccountNumber}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transactions/intents/{{intentId}}/authorization/push-request",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transactions",
+            "intents",
+            "{{intentId}}",
+            "authorization",
+            "push-request"
+          ]
+        }
+      }
+    },
+    {
+      "name": "04 - Check Authorization Status",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status Fetched (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transactions/intents/{{intentId}}/authorization/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transactions",
+            "intents",
+            "{{intentId}}",
+            "authorization",
+            "status"
+          ]
+        }
+      }
+    },
+    {
+      "name": "05 - Execute Intent",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Execution Validated', function () {",
+              "    // Pure API tests without out-of-band approval will return 403 Forbidden per P03 tests",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transactions/intents/{{intentId}}/execute",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transactions",
+            "intents",
+            "{{intentId}}",
+            "execute"
+          ]
+        }
+      }
+    },
+    {
+      "name": "06 - Generate Statement",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const today = new Date();",
+              "const thirtyDaysAgo = new Date(today);",
+              "thirtyDaysAgo.setDate(today.getDate() - 30);",
+              "pm.environment.set('startDate', thirtyDaysAgo.toISOString().split('T')[0]);",
+              "pm.environment.set('endDate', today.toISOString().split('T')[0]);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Statement Generated (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Contains Statement ID', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.id).to.be.a('number');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/statements/generate?accountNumber={{sourceAccountNumber}}&startDate={{startDate}}&endDate={{endDate}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "statements",
+            "generate"
+          ],
+          "query": [
+            {
+              "key": "accountNumber",
+              "value": "{{sourceAccountNumber}}"
+            },
+            {
+              "key": "startDate",
+              "value": "{{startDate}}"
+            },
+            {
+              "key": "endDate",
+              "value": "{{endDate}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "07 - Get Account Statements",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Statements Retrieved (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Payload is an array of statements', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data).to.be.an('array');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/statements/account/{{sourceAccountNumber}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "statements",
+            "account",
+            "{{sourceAccountNumber}}"
+          ]
+        }
+      }
+    }
+  ]
+}

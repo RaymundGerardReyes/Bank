@@ -35,9 +35,13 @@ function executeNewman(folderName, extraEnvVars = [], isParallel = false) {
             environment: {
                 values: [
                     { key: 'baseUrl', value: BASE_URL },
+                    { key: 'userEmail', value: process.env.USER_EMAIL || 'user@example.com' },
+                    { key: 'userPassword', value: process.env.USER_PASSWORD || 'Password123!' },
                     { key: 'bffKey', value: BFF_KEY },
                     { key: 'authToken', value: AUTH_TOKEN },
                     { key: 'webhookSecret', value: WEBHOOK_SECRET },
+                    { key: 'sourceAccountNumber', value: '4859220013371001' },
+                    { key: 'destinationAccountNumber', value: '4859220013379999' },
                     ...extraEnvVars
                 ]
             },
@@ -71,17 +75,8 @@ async function runFullSecurityMatrix() {
         // --- PHASE 1: SEQUENTIAL FUNCTIONAL & SECURITY GATES ---
         console.log('📋 [Phase 1/2] Running Sequential Security Gates...\n');
         
-        console.log('👉 Gate 1: URL Allowlisting & Redirect Safety');
-        await executeNewman('1. URL Allowlisting Gates');
-
-        console.log('👉 Gate 2: Sequential Idempotency & Replay Verification');
-        await executeNewman('2. Idempotency & Replay Gates');
-
-        console.log('👉 Gate 3: Webhook Signatures & Boundary Validation');
-        await executeNewman('3. Webhook Pipeline Gates');
-
-        console.log('👉 Gate 4: Internal BFF Identity Validation');
-        await executeNewman('4. BFF Boundary Gates');
+        console.log('👉 Executing Sequential Security Gates Matrix...');
+        await executeNewman(null);
 
         // --- PHASE 2: SIMULTANEOUS CONCURRENCY & RACE-CONDITION GATES ---
         console.log('\n⚡ [Phase 2/2] Running Simultaneous Race-Condition Gates with Newman...\n');

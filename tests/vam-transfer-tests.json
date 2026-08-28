@@ -1,0 +1,286 @@
+{
+  "info": {
+    "name": "Banking VAM Internal Transfer Suite",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Login (Get Session Token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login Successful (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "    const jsonData = pm.response.json();",
+              "    const token = jsonData.token || (jsonData.data && jsonData.data.token);",
+              "    pm.expect(token).to.be.a('string');",
+              "    pm.environment.set('sessionToken', token);",
+              "    console.log('Session token saved successfully to environment!');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"{{userPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        }
+      }
+    },
+    {
+      "name": "01.5 - Auto-Configure Environment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Accounts Retrieved (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Auto-Configure Account Variables', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const accounts = jsonData.data.content || jsonData.data;",
+              "    pm.expect(accounts).to.be.an('array').that.is.not.empty;",
+              "    ",
+              "    // Automatically set the source account to the logged-in user's first account",
+              "    if (accounts.length > 0 && !pm.environment.get('sourceAccountNumber')) {",
+              "        pm.environment.set('sourceAccountNumber', accounts[0].accountNumber);",
+              "    }",
+              "    ",
+              "    // Set destination account dynamically from second account if available, or fallback to environment",
+              "    if (accounts.length > 1 && !pm.environment.get('destinationAccountNumber')) {",
+              "        pm.environment.set('destinationAccountNumber', accounts[1].accountNumber);",
+              "    }",
+              "    ",
+              "    console.log('Successfully configured account variables dynamically from environment payload!');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts"
+          ]
+        }
+      }
+    },
+    {
+      "name": "02 - Generate VAM API Key",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('API Key Created (201 Created)', function () {",
+              "    pm.response.to.have.status(201);",
+              "    const jsonData = pm.response.json();",
+              "    const rawKey = jsonData.data.rawKey;",
+              "    pm.expect(rawKey).to.be.a('string');",
+              "    pm.environment.set('vamApiKey', rawKey);",
+              "    console.log('Generated API Key saved to environment:', rawKey);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"name\": \"VAM Test Key\",\n    \"environment\": \"LIVE\",\n    \"scopes\": [\"treasury:write\"],\n    \"linkedAccountId\": \"{{sourceAccountNumber}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/apikeys",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "apikeys"
+          ]
+        }
+      }
+    },
+    {
+      "name": "03 - Valid Transfer (Matching VAM Key)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('sharedIdemKey', 'idem-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Transfer Succeeds (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-API-Key",
+            "value": "{{vamApiKey}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{sharedIdemKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 10.00,\n    \"description\": \"Internal VAM Transfer Test\",\n    \"idempotencyKey\": \"{{sharedIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/internal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "internal"
+          ]
+        }
+      }
+    },
+    {
+      "name": "04 - Blocked Transfer (Mismatched Account -> 403)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('sharedIdemKey', 'idem-fail-' + Date.now());"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Transfer Blocked by Policy (403 Forbidden)', function () {",
+              "    pm.response.to.have.status(403);",
+              "});",
+              "",
+              "pm.test('Contains VAM Policy Message', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.message).to.include('API Key Policy: This key is strictly bound to VAM Sub-Account');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-API-Key",
+            "value": "{{vamApiKey}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{sharedIdemKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"sourceAccountNumber\": \"{{invalidSourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 10.00,\n    \"description\": \"Attempted Lateral Transfer\",\n    \"idempotencyKey\": \"{{sharedIdemKey}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transfers/internal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transfers",
+            "internal"
+          ]
+        }
+      }
+    }
+  ]
+}
