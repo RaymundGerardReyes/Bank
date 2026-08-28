@@ -113,7 +113,7 @@ public class GatewayAuditIntegrityIT {
                 .header("X-Request-Id", correlationId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
 
         List<ApiAuditEvent> audits = auditRepository.findByRequestId(correlationId);
         assertEquals(1, audits.size());
@@ -123,7 +123,7 @@ public class GatewayAuditIntegrityIT {
         assertEquals("API_KEY_INVALID", event.getAuthFailureReason());
         assertEquals("FAILED", event.getAuthenticationStatus());
         assertEquals("NOT_EVALUATED", event.getAuthorizationStatus());
-        assertEquals(403, event.getResponseCode());
+        assertEquals(401, event.getResponseCode());
         assertEquals("4xx", event.getStatusFamily());
         assertEquals("AUTH_FAILED", event.getRiskDecision());
     }
@@ -179,5 +179,8 @@ public class GatewayAuditIntegrityIT {
         assertEquals("PASSED", event.getAuthenticationStatus());
         assertEquals("FAILED", event.getAuthorizationStatus());
         assertEquals(403, event.getResponseCode());
+        assertEquals(validApiKey.getId(), event.getApiKeyId());
+        assertEquals(101L, event.getMerchantId());
+        assertEquals("VA-001-SL-002", event.getLinkedAccountId());
     }
 }

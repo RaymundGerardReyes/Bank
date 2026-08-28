@@ -18,7 +18,7 @@ import java.util.Map;
 @Configuration
 public class OpenApiConfig {
 
-    @Value("${API_PUBLIC_URL}")
+    @Value("${API_PUBLIC_URL:https://novabank.ph.dev}")
     private String apiPublicUrl;
 
     @Value("${spring.profiles.active:prod}")
@@ -71,7 +71,7 @@ public class OpenApiConfig {
                                         .name(securitySchemeName)
                                         .type(SecurityScheme.Type.HTTP)
                                         .scheme("bearer")
-                                        .bearerFormat("JWT")));
+                                        .bearerFormat("API Key")));
     }
 
     @Bean

@@ -141,7 +141,7 @@ public class MerchantGatewayAPIIntegrityIT {
                 .header("Idempotency-Key", "idem_123")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

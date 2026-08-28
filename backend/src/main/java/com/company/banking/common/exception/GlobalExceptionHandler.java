@@ -11,6 +11,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotFoundException(NotFoundException ex) {
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        // This log will immediately reveal if the Source or Destination account is missing
+        logger.warn("404 Business Exception Triggered: {}", ex.getMessage());
+        
+        ApiResponse<Void> response = ApiResponse.error(ex.getMessage(), "RESOURCE_NOT_FOUND", correlationId);
+        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException ex) {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
@@ -49,6 +61,14 @@ public class GlobalExceptionHandler {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
         ApiResponse<Void> response = ApiResponse.error("HTTP method not supported", "ERR_405", correlationId);
         return new ResponseEntity<>(response, HttpStatus.METHOD_NOT_ALLOWED);
+    }
+
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        logger.warn("404 Endpoint/Resource Not Found: {}", ex.getResourcePath());
+        ApiResponse<Void> response = ApiResponse.error("Resource or endpoint not found: /" + ex.getResourcePath(), "RESOURCE_NOT_FOUND", correlationId);
+        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)

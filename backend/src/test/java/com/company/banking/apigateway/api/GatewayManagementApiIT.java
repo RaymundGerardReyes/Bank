@@ -25,7 +25,7 @@ public class GatewayManagementApiIT {
     private MockMvc mockMvc;
 
     @Test
-    @WithUserDetails("user@example.com")
+    @org.springframework.security.test.context.support.WithMockUser(username="user@example.com", roles="MERCHANT")
     public void createApiKey_ShouldReturn201Created() throws Exception {
         String payload = """
             {
@@ -43,7 +43,7 @@ public class GatewayManagementApiIT {
     }
 
     @Test
-    @WithUserDetails("user@example.com")
+    @org.springframework.security.test.context.support.WithMockUser(username="user@example.com", roles="MERCHANT")
     public void createWebhook_ShouldReturn200OkAndLogAudit() throws Exception {
         String payload = """
             {
@@ -62,7 +62,7 @@ public class GatewayManagementApiIT {
     }
 
     @Test
-    @WithUserDetails("user@example.com")
+    @org.springframework.security.test.context.support.WithMockUser(username="user@example.com", roles="MERCHANT")
     public void deleteWebhook_ShouldReturn200OkAndLogAudit() throws Exception {
         // 1. Create the webhook first to ensure it exists in the test database
         String payload = """

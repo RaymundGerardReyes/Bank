@@ -56,6 +56,13 @@ public class Transaction {
     @Column(name = "scheduled_vam_restriction")
     private String scheduledVamRestriction;
 
+    // --- PHASE 3/4: FX Domain Expansion (Transient until Schema Migration) ---
+    @Transient
+    private BigDecimal destinationAmount;
+
+    @Transient
+    private String fxQuoteId;
+
     // --- PHASE 5: Settlement Batch Membership ---
     @Column(name = "settlement_batch_id")
     private Long settlementBatchId;

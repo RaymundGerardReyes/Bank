@@ -13,6 +13,10 @@ import com.company.banking.statement.application.port.out.StatementPersistencePo
 import com.company.banking.statement.domain.Statement;
 import com.company.banking.admin.application.port.out.AuditLogPersistencePort;
 import com.company.banking.common.audit.AuditLogRecord;
+import com.company.banking.orchestration.domain.PaymentRailConfiguration;
+import com.company.banking.orchestration.infrastructure.PaymentRailConfigurationJpaRepository;
+import com.company.banking.merchant.infrastructure.MerchantJpaRepository;
+import com.company.banking.merchant.domain.Merchant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -21,6 +25,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -34,6 +39,8 @@ public class DataInitializer implements CommandLineRunner {
     private final LedgerPersistencePort ledgerPersistencePort;
     private final StatementPersistencePort statementPersistencePort;
     private final AuditLogPersistencePort auditLogPersistencePort;
+    private final PaymentRailConfigurationJpaRepository paymentRailConfigurationJpaRepository;
+    private final MerchantJpaRepository merchantJpaRepository;
 
     // Defined standard ISO PANs for seeding
     private final String MOCK_SOURCE_PAN = "4859220013371001";
@@ -41,6 +48,26 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        // Seed Merchants for Payment Gateway Tests
+        if (!merchantJpaRepository.existsById(1001L)) {
+            log.info("Seeding test Merchants (999 and 1001)");
+            if (!merchantJpaRepository.existsById(999L)) {
+                merchantJpaRepository.save(Merchant.builder().id(999L).merchantCode("M-DEFAULT").legalName("Fallback Default Merchant").businessRegistrationNumber("BRN-999999").status("ACTIVE").build());
+            }
+            merchantJpaRepository.save(Merchant.builder().id(1001L).merchantCode("M-1001").legalName("Test Client Merchant").businessRegistrationNumber("BRN-100100").status("ACTIVE").build());
+        }
+
+        // Seed payment rails if not present
+        if (paymentRailConfigurationJpaRepository.count() == 0) {
+            log.info("Seeding Payment Rail Configurations (SWIFT, INSTAPAY, PESONET, FEDWIRE, ACH)");
+            paymentRailConfigurationJpaRepository.saveAll(List.of(
+                PaymentRailConfiguration.builder().railName("SWIFT").processingType("REAL_TIME").maxAmountPerTx(new BigDecimal("1000000.00")).active(true).build(),
+                PaymentRailConfiguration.builder().railName("INSTAPAY").processingType("REAL_TIME").maxAmountPerTx(new BigDecimal("50000.00")).active(true).build(),
+                PaymentRailConfiguration.builder().railName("PESONET").processingType("BATCH").maxAmountPerTx(new BigDecimal("500000.00")).active(true).build(),
+                PaymentRailConfiguration.builder().railName("FEDWIRE").processingType("REAL_TIME").maxAmountPerTx(new BigDecimal("1000000.00")).active(true).build(),
+                PaymentRailConfiguration.builder().railName("ACH").processingType("BATCH").maxAmountPerTx(new BigDecimal("100000.00")).active(true).build()
+            ));
+        }
         // DEV NOTE: This is the primary seeded test account.
         // To test forgot-password, register or use this exact email in the form.
         String sourceEmail = "user@example.com";

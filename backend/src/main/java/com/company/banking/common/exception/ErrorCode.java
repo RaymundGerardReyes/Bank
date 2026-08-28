@@ -26,6 +26,13 @@ public enum ErrorCode {
     CONFLICT("ERR_409", "Resource already exists or is in a conflicting state", HttpStatus.CONFLICT),
     SERVICE_UNAVAILABLE("ERR_503", "Downstream service or participant is temporarily unavailable", HttpStatus.SERVICE_UNAVAILABLE),
     LIMIT_EXCEEDED("ERR_BANK_008", "Transaction amount exceeds the effective hierarchical policy limit", HttpStatus.BAD_REQUEST),
+    CROSS_CURRENCY_NOT_SUPPORTED("ERR_BANK_009", "Cross-currency transfers are currently disabled pending FX module activation", HttpStatus.BAD_REQUEST),
+    CROSS_CURRENCY_POSTING_NOT_AVAILABLE("ERR_BANK_010", "Ledger posting for cross-currency is disabled pending accounting model approval", HttpStatus.BAD_REQUEST),
+    FX_PROVIDER_UNAVAILABLE("ERR_BANK_011", "The FX rate provider is temporarily unavailable", HttpStatus.SERVICE_UNAVAILABLE),
+    FX_QUOTE_EXPIRED("ERR_BANK_012", "The provided FX quote has expired", HttpStatus.BAD_REQUEST),
+    FX_UNSUPPORTED_PAIR("ERR_BANK_013", "The requested currency pair is not supported for FX", HttpStatus.BAD_REQUEST),
+    FX_PROVIDER_INVALID_RESPONSE("ERR_BANK_014", "External FX provider returned an invalid or missing rate", HttpStatus.BAD_GATEWAY),
+    FX_QUOTE_INVALID("ERR_BANK_015", "Invalid or non-positive FX rate received", HttpStatus.BAD_REQUEST),
     SYSTEM_ERROR("ERR_SYS_001", "System configuration or administrative error", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;

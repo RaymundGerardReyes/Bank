@@ -21,6 +21,11 @@ public class FraudScreeningAdapter implements FraudScreeningPort {
             log.warn("Transaction flagged as fraudulent by threshold rule!");
             return true;
         }
+        if (destinationAccount != null && destinationAccount.startsWith("EXT-SUSPICIOUS-")) {
+            log.warn("Transaction flagged as fraudulent by suspicious destination rule!");
+            return true;
+        }
+        
         return false;
     }
 }

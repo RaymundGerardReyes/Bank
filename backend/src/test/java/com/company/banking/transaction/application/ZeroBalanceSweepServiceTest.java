@@ -72,11 +72,13 @@ public class ZeroBalanceSweepServiceTest {
         Account subAccount = new Account();
         subAccount.setAccountNumber("SUB-123");
         subAccount.setBalance(new BigDecimal("10.00"));
+        subAccount.setCurrency("PHP");
         subAccount.setParentAccountId("PARENT-999"); // Shortfall will be 40.00
 
         Account parentAccount = new Account();
         parentAccount.setAccountNumber("PARENT-999");
         parentAccount.setBalance(new BigDecimal("20.00")); // Parent only has 20.00, not enough for the 40.00 shortfall
+        parentAccount.setCurrency("PHP");
 
         BigDecimal requiredAmount = new BigDecimal("50.00");
 

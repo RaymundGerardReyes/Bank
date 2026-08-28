@@ -9,6 +9,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
+import com.company.banking.payment.gateway.ExternalPaymentGateway;
+import com.company.banking.common.exception.BusinessException;
+import com.company.banking.common.exception.ErrorCode;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -16,6 +20,7 @@ public class PaymentWebhookService {
 
     private final InboundWebhookEventJpaRepository webhookEventRepository;
     private final PaymentStateMachineService stateMachineService;
+    private final ExternalPaymentGateway externalPaymentGateway;
 
     // CRITICAL FIX: Removed @Transactional. Catching a DB constraint exception inside 
     // a transactional boundary causes an UnexpectedRollbackException (500 Error).
@@ -53,6 +58,11 @@ public class PaymentWebhookService {
     
     public void handle(String provider, byte[] rawPayload, String signature) {
         String payloadStr = new String(rawPayload);
+        
+        if (!externalPaymentGateway.verifyWebhookSignature(payloadStr, signature)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "Invalid webhook signature");
+        }
+        
         String extractedEventId = extractEventIdFromJson(payloadStr);
         processWebhook(extractedEventId, provider, payloadStr);
     }

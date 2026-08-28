@@ -1,6 +1,8 @@
 package com.company.banking.transaction.api;
 
 import com.company.banking.common.response.ApiResponse;
+import com.company.banking.transaction.api.dto.ExternalPaymentRequest;
+import com.company.banking.transaction.application.port.in.ExternalPaymentUseCase;
 import com.company.banking.transaction.api.dto.InternalTransferRequest;
 import com.company.banking.transaction.api.dto.TransactionResponse;
 import com.company.banking.transaction.application.port.in.TransactionUseCase;
@@ -20,11 +22,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class TransferController {
 
     private final TransactionUseCase transactionUseCase;
+    private final ExternalPaymentUseCase externalPaymentUseCase;
 
     @PostMapping({"/internal", "/internal/"})
     public ResponseEntity<ApiResponse<TransactionResponse>> transferInternal(@Valid @RequestBody InternalTransferRequest request) {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
         TransactionResponse response = transactionUseCase.processInternalTransfer(request);
         return ResponseEntity.ok(ApiResponse.success(response, "Transfer completed successfully", correlationId));
+    }
+
+    @PostMapping({"/external", "/external/"})
+    public ResponseEntity<ApiResponse<TransactionResponse>> transferExternal(@Valid @RequestBody ExternalPaymentRequest request) {
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        TransactionResponse response = externalPaymentUseCase.processPayment(request);
+        return ResponseEntity.ok(ApiResponse.success(response, "External transfer completed successfully", correlationId));
     }
 }

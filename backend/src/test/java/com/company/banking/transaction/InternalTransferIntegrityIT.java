@@ -146,4 +146,36 @@ public class InternalTransferIntegrityIT extends TransferSpyIntegrationTest {
             ledgerEntryRepository.saveAndFlush(orphan);
         });
     }
+
+    @Test
+    @DisplayName("Phase 3: Cross Currency Transfer Obtains Fake Quote but Blocks Ledger Posting")
+    public void crossCurrencyTransfer_ShouldObtainQuoteAndBlockPosting() {
+        // 1. Arrange: Change destination account to USD to trigger the CROSS_CURRENCY flow
+        Account source = accountPersistencePort.findByAccountNumber(sourceAccount.getAccountNumber()).orElseThrow();
+        Account dest = accountPersistencePort.findByAccountNumber(destAccount.getAccountNumber()).orElseThrow();
+        
+        // Source is PHP (default), we change destination to USD
+        dest.setCurrency("USD");
+        accountPersistencePort.save(dest);
+
+        InternalTransferRequest request = InternalTransferRequest.builder()
+                .sourceAccountNumber(source.getAccountNumber())
+                .destinationAccountNumber(dest.getAccountNumber())
+                .amount(new BigDecimal("100.00")) // Transferring 100.00 PHP
+                .idempotencyKey(UUID.randomUUID().toString())
+                .description("Phase 3 FX Safety Gate Test")
+                .build();
+
+        // Act & Assert: The hard gate MUST catch it
+        com.company.banking.common.exception.BusinessException ex = assertThrows(com.company.banking.common.exception.BusinessException.class, () -> {
+            internalTransferService.processInternalTransfer(request);
+        });
+
+        // Verify the exact safety gate error is thrown
+        assertEquals(com.company.banking.common.exception.ErrorCode.CROSS_CURRENCY_POSTING_NOT_AVAILABLE, ex.getErrorCode());
+        
+        // ULTIMATE VERIFICATION: The ledger must remain totally untouched
+        assertEquals(0, transactionRepository.count(), "No transaction should be saved to the database");
+        assertEquals(0, ledgerEntryRepository.count(), "No ledger entries should be saved to the database");
+    }
 }

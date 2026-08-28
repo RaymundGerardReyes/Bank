@@ -29,8 +29,17 @@ public class BffIdentityFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Allow actuator, OpenAPI specs, status endpoints, and public gateway routes to bypass BFF key validation
-        if (path.startsWith("/actuator") || path.startsWith("/v3/api-docs") || path.equals("/status") || path.equals("/error") || path.startsWith("/api/v1/gateway/")) {
+        // Allow operational routes, OpenAPI specs, and API-key authenticated public API requests.
+        if (path.startsWith("/actuator")
+                || path.startsWith("/v3/api-docs")
+                || path.startsWith("/api/v1/auth/")
+                || path.startsWith("/api/v1/webhooks/payment/")
+                || path.startsWith("/api/v1/checkout/sessions/")
+                || path.startsWith("/ws/")
+                || path.equals("/status")
+                || path.equals("/error")
+                || path.startsWith("/api/v1/gateway/")
+                || hasApiKeyCredential(request)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -56,5 +65,26 @@ public class BffIdentityFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean hasApiKeyCredential(HttpServletRequest request) {
+        String apiKey = request.getHeader("X-API-Key");
+        if (apiKey != null && apiKey.trim().startsWith("sk_")) {
+            return true;
+        }
+
+        String authHeader = request.getHeader("Authorization");
+        if (!StringUtils.hasText(authHeader)) {
+            return false;
+        }
+
+        String trimmed = authHeader.trim();
+        if (trimmed.startsWith("Bearer ")) {
+            return trimmed.substring(7).trim().startsWith("sk_");
+        }
+        if (trimmed.startsWith("ApiKey ")) {
+            return trimmed.substring(7).trim().startsWith("sk_");
+        }
+        return trimmed.startsWith("sk_");
     }
 }

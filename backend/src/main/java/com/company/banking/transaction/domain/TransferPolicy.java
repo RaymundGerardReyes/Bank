@@ -35,6 +35,10 @@ public class TransferPolicy {
 
     // VULN 4: Destination Checking to stop Exfiltration
     public void validateDestinationWithinVamHierarchy(Account sourceAccount, Account destinationAccount) {
+        if (sourceAccount == null || destinationAccount == null) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, 
+                "Source and destination accounts must be fully resolved.");
+        }
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth instanceof ApiKeyAuthenticationToken) {
             boolean isSameHierarchy = sourceAccount.getCustomerId().equals(destinationAccount.getCustomerId());
@@ -84,7 +88,7 @@ public class TransferPolicy {
         }
         if (config.getMaxAmountPerTx() != null && amount.compareTo(config.getMaxAmountPerTx()) > 0) {
             throw new BusinessException(
-                    ErrorCode.INVALID_REQUEST,
+                    ErrorCode.LIMIT_EXCEEDED,
                     // Updated to use the Philippine Peso (₱) symbol
                     String.format("Transfer amount of ₱%.2f exceeds the maximum allowed limit (₱%.2f) for rail: %s", 
                             amount, config.getMaxAmountPerTx(), config.getRailName())

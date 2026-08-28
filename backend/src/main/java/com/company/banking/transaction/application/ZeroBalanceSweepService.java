@@ -40,35 +40,39 @@ public class ZeroBalanceSweepService {
                 "Account has insufficient funds and no Master Account to sweep liquidity from.");
         }
 
-        // 3. Calculate Exact Shortfall
-        BigDecimal shortfall = requiredAmount.subtract(subAccount.getBalance());
-        log.info("[VAM SWEEP] Account {} requires {}. Sweeping shortfall of {} from Master Account {}", 
-                 subAccount.getAccountNumber(), requiredAmount, shortfall, subAccount.getParentAccountId());
-
         // 4. Retrieve the Master Account (VULN 1 FIX)
         Account parentAccount = accountResolver.resolveAndAuthorizeSource(subAccount.getParentAccountId());
 
-        if (parentAccount.getBalance().compareTo(shortfall) < 0) {
-            log.error("[VAM SWEEP] Master Account {} has insufficient liquidity to cover the {} sweep.", parentAccount.getAccountNumber(), shortfall);
+        com.company.banking.transaction.domain.CurrencyCode parentCurrencyCode = com.company.banking.transaction.domain.CurrencyCode.fromString(parentAccount.getCurrency());
+        com.company.banking.transaction.domain.CurrencyCode subCurrencyCode = com.company.banking.transaction.domain.CurrencyCode.fromString(subAccount.getCurrency());
+
+        com.company.banking.transaction.domain.Money requiredMoney = com.company.banking.transaction.domain.Money.of(requiredAmount, subCurrencyCode);
+        com.company.banking.transaction.domain.Money subBalance = com.company.banking.transaction.domain.Money.of(subAccount.getBalance(), subCurrencyCode);
+
+        // 3. Calculate Exact Shortfall using Money
+        com.company.banking.transaction.domain.Money shortfallMoney = requiredMoney.subtract(subBalance);
+        log.info("[VAM SWEEP] Account {} requires {}. Sweeping shortfall of {} from Master Account {}", 
+                 subAccount.getAccountNumber(), requiredAmount, shortfallMoney.getAmount(), subAccount.getParentAccountId());
+
+        com.company.banking.transaction.domain.Money parentBalance = com.company.banking.transaction.domain.Money.of(parentAccount.getBalance(), parentCurrencyCode);
+
+        // Ensure currencies match before sweep
+        com.company.banking.transaction.domain.TransferType.from(parentCurrencyCode, subCurrencyCode);
+
+        if (parentBalance.isLessThan(shortfallMoney)) {
+            log.error("[VAM SWEEP] Master Account {} has insufficient liquidity to cover the {} sweep.", parentAccount.getAccountNumber(), shortfallMoney.getAmount());
             throw new BusinessException(ErrorCode.INSUFFICIENT_FUNDS, 
                 "Master Account has insufficient liquidity to automatically fund the VAM sub-account sweep.");
         }
 
-        // 5. Execute JIT Sweep Money Movement
-        parentAccount.setBalance(parentAccount.getBalance().subtract(shortfall));
-        subAccount.setBalance(subAccount.getBalance().add(shortfall));
-
-        accountPersistencePort.save(parentAccount);
-        accountPersistencePort.save(subAccount);
-
-        // 6. Record the Sweep in the Immutable Ledger
+        // 5. Record the Sweep in the Immutable Ledger FIRST
         String sweepTxRef = "SWP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
         LedgerEntry debitEntry = LedgerEntry.builder()
                 .transactionReference(sweepTxRef)
                 .accountNumber(parentAccount.getAccountNumber())
                 .entryType(EntryType.DEBIT)
-                .amount(shortfall)
+                .amount(shortfallMoney.getAmount())
                 .currency(parentAccount.getCurrency())
                 .build();
 
@@ -76,25 +80,33 @@ public class ZeroBalanceSweepService {
                 .transactionReference(sweepTxRef)
                 .accountNumber(subAccount.getAccountNumber())
                 .entryType(EntryType.CREDIT)
-                .amount(shortfall)
+                .amount(shortfallMoney.getAmount())
                 .currency(subAccount.getCurrency())
                 .build();
 
         ledgerPersistencePort.saveLedgerEntries(java.util.Arrays.asList(debitEntry, creditEntry));
 
-        // 7. Store Overarching Sweep Transaction Context
+        // 6. Store Overarching Sweep Transaction Context
         Transaction sweepTx = Transaction.builder()
                 .transactionReference(sweepTxRef)
                 .idempotencyKey(UUID.randomUUID().toString()) // Internal sweep gets its own unique trace
                 .sourceAccountNumber(parentAccount.getAccountNumber())
                 .destinationAccountNumber(subAccount.getAccountNumber())
-                .amount(shortfall)
+                .amount(shortfallMoney.getAmount())
                 .currency(parentAccount.getCurrency())
                 .status(TransactionStatus.COMPLETED)
                 .description("Automated JIT Liquidity Sweep for " + traceRefContext)
                 .build();
 
         ledgerPersistencePort.save(sweepTx);
+
+        // 7. Execute JIT Sweep Money Movement (Balance Mutation) safely isolated AFTER ledger
+        parentAccount.setBalance(parentBalance.subtract(shortfallMoney).getAmount());
+        subAccount.setBalance(subBalance.add(shortfallMoney).getAmount());
+
+        accountPersistencePort.save(parentAccount);
+        accountPersistencePort.save(subAccount);
+
         log.info("[VAM SWEEP] Sweep completed successfully. Sub-account {} is now sufficiently funded.", subAccount.getAccountNumber());
     }
 }

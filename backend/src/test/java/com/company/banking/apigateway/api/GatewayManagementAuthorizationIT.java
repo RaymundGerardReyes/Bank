@@ -30,6 +30,40 @@ public class GatewayManagementAuthorizationIT {
     @Autowired
     private UserDetailsService userDetailsService;
 
+    @Autowired
+    private com.company.banking.customer.infrastructure.CustomerJpaRepository customerJpaRepository;
+
+    @Autowired
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
+    @org.junit.jupiter.api.BeforeEach
+    public void setup() {
+        if (customerJpaRepository.findByEmailIgnoreCase("user@example.com").isEmpty()) {
+            customerJpaRepository.save(com.company.banking.customer.domain.Customer.builder()
+                .email("user@example.com")
+                .password(passwordEncoder.encode("Password123!"))
+                .firstName("Merchant")
+                .lastName("A")
+                .role(com.company.banking.common.enums.RoleType.CUSTOMER)
+                .kycStatus("ACTIVE")
+                .riskProfile("LOW")
+                .locked(false)
+                .build());
+        }
+        if (customerJpaRepository.findByEmailIgnoreCase("recipient@example.com").isEmpty()) {
+            customerJpaRepository.save(com.company.banking.customer.domain.Customer.builder()
+                .email("recipient@example.com")
+                .password(passwordEncoder.encode("Password123!"))
+                .firstName("Merchant")
+                .lastName("B")
+                .role(com.company.banking.common.enums.RoleType.CUSTOMER)
+                .kycStatus("ACTIVE")
+                .riskProfile("LOW")
+                .locked(false)
+                .build());
+        }
+    }
+
     @Test
     public void merchantCannotDeleteAnotherMerchantsWebhook() throws Exception {
         // 1. Merchant A (user@example.com) creates a webhook

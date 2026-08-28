@@ -39,6 +39,13 @@ server:
 platform:
   domain: ${PLATFORM_DOMAIN:}
 
+fx:
+  provider:
+    type: ${FX_PROVIDER_TYPE:fake}
+    url: ${FX_PROVIDER_URL:https://api.frankfurter.app}
+    timeout-ms: 3000
+    ttl-minutes: 15
+
 management:
   health:
     mail:

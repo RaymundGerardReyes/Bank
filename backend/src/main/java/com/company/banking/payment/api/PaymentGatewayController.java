@@ -25,8 +25,8 @@ public class PaymentGatewayController {
     // Legacy endpoint
     @PostMapping
     public ResponseEntity<ApiResponse<PaymentIntent>> createPayment(
-            @RequestHeader("X-Client-Id") String clientId,
-            @RequestHeader("Idempotency-Key") String idempotencyKey, // Forces 400 Bad Request if missing!
+            @RequestHeader(value = "X-Client-Id", required = false) String clientId,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @RequestBody PaymentRequest request) {
         
         Long merchantId = extractMerchantId(clientId); 
@@ -39,7 +39,7 @@ public class PaymentGatewayController {
     @PostMapping("/{intentId}/capture")
     public ResponseEntity<ApiResponse<PaymentIntent>> capturePayment(
             @PathVariable String intentId,
-            @RequestHeader("X-Client-Id") String clientId) {
+            @RequestHeader(value = "X-Client-Id", required = false) String clientId) {
         
         Long merchantId = extractMerchantId(clientId);
         PaymentIntent intent = paymentIntentService.captureIntent(intentId, merchantId);
@@ -63,7 +63,7 @@ public class PaymentGatewayController {
     @GetMapping("/intents/{intentId}")
     public ResponseEntity<ApiResponse<PaymentIntent>> getPaymentIntent(
             @PathVariable String intentId,
-            @RequestHeader("X-Client-Id") String clientId) {
+            @RequestHeader(value = "X-Client-Id", required = false) String clientId) {
         
         Long merchantId = extractMerchantId(clientId);
         PaymentIntent intent = orchestrationService.getPaymentIntent(intentId, merchantId);

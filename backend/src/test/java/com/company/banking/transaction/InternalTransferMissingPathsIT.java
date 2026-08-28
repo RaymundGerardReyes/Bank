@@ -42,13 +42,19 @@ public class InternalTransferMissingPathsIT {
 
     @BeforeEach
     void setUp() {
-        // Setup default active accounts for testing
+        // Clear all previous transactions to ensure deterministic test states
+        transactionRepository.deleteAll();
+        accountRepository.deleteAll();
+        
+        // Setup default active accounts for testing with VAM permissions explicitly granted
         sourceAccount = Account.builder()
                 .accountNumber("ACC-SRC-100")
                 .customerId(1L)
                 .balance(new BigDecimal("1000.00"))
                 .currency("PHP")
                 .status(AccountStatus.ACTIVE)
+                .allowIncoming(true)
+                .allowOutgoing(true)
                 .build();
         
         destAccount = Account.builder()
@@ -57,6 +63,8 @@ public class InternalTransferMissingPathsIT {
                 .balance(new BigDecimal("500.00"))
                 .currency("PHP")
                 .status(AccountStatus.ACTIVE)
+                .allowIncoming(true)
+                .allowOutgoing(true)
                 .build();
                 
         accountRepository.save(sourceAccount);
@@ -138,32 +146,50 @@ public class InternalTransferMissingPathsIT {
     @Test
     @DisplayName("P09: Velocity Limit Breach - Ensures daily limits are enforced")
     void testVelocityLimitBreach() {
-        // Arrange - Assuming the limit is 3 transfers per day (adjust based on your actual policy)
-        BigDecimal smallAmount = new BigDecimal("10.00");
+        // Arrange - The default global limit is 50,000.00 per transfer if todaysTransactions is empty.
+        // We set the source account balance high enough so it doesn't fail on INSUFFICIENT_FUNDS.
+        sourceAccount.setBalance(new BigDecimal("100000.00"));
+        accountRepository.save(sourceAccount);
         
-        // Act - Exhaust the limit
-        for(int i = 0; i < 3; i++) {
-            InternalTransferRequest request = InternalTransferRequest.builder()
-                .sourceAccountNumber(sourceAccount.getAccountNumber())
-                .destinationAccountNumber(destAccount.getAccountNumber())
-                .amount(smallAmount)
-                .idempotencyKey(UUID.randomUUID().toString())
-                .build();
-            internalTransferService.processInternalTransfer(request);
-        }
-
-        // Act & Assert - The 4th transfer should breach the velocity limit
+        BigDecimal largeAmount = new BigDecimal("50000.01"); // Breaches the 50,000.00 limit
+        
         InternalTransferRequest breachRequest = InternalTransferRequest.builder()
                 .sourceAccountNumber(sourceAccount.getAccountNumber())
                 .destinationAccountNumber(destAccount.getAccountNumber())
-                .amount(smallAmount)
+                .amount(largeAmount)
                 .idempotencyKey(UUID.randomUUID().toString())
                 .build();
 
+        // Act & Assert
         BusinessException exception = assertThrows(BusinessException.class, () -> {
             internalTransferService.processInternalTransfer(breachRequest);
         });
 
-        assertTrue(exception.getErrorCode().name().contains("LIMIT_EXCEEDED") || exception.getMessage().contains("velocity"));
+        assertEquals("TRANSFER_VELOCITY_EXCEEDED", exception.getErrorCode().name());
+        assertTrue(exception.getMessage().contains("exceeds the daily operational limit"));
+    }
+
+    @Test
+    @DisplayName("P10: Invalid Destination Account Guard - Rejects transfers to non-existent accounts")
+    void testInvalidDestinationAccountGuard() {
+        // Arrange
+        String invalidDestination = "INVALID-ACC-999";
+        InternalTransferRequest request = InternalTransferRequest.builder()
+                .sourceAccountNumber(sourceAccount.getAccountNumber())
+                .destinationAccountNumber(invalidDestination)
+                .amount(new BigDecimal("50.00"))
+                .idempotencyKey(UUID.randomUUID().toString())
+                .build();
+
+        // Act & Assert
+        com.company.banking.common.exception.NotFoundException exception = assertThrows(com.company.banking.common.exception.NotFoundException.class, () -> {
+            internalTransferService.processInternalTransfer(request);
+        });
+
+        // Verify the exact message we set in the Resolver
+        assertEquals("Transfer failed: Destination account '" + invalidDestination + "' does not exist.", exception.getMessage());
+        
+        // Verify no ledger entries were created
+        assertEquals(0, transactionRepository.count(), "No transaction should be saved on 404 failure");
     }
 }

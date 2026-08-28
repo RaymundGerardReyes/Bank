@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "payment_event_outbox")
@@ -45,6 +47,7 @@ public class PaymentEventOutbox {
     @Column(name = "api_version", nullable = false, updatable = false)
     private String apiVersion;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")
     private String payload; // Canonical JSON data
 

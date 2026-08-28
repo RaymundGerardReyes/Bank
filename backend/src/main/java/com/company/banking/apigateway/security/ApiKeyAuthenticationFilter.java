@@ -37,19 +37,15 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
         String path = request.getRequestURI();
-        if (path.contains("/gateway")) {
-            log.info("[API KEY FILTER DEBUG] Incoming request to {}", path);
-            java.util.Enumeration<String> headerNames = request.getHeaderNames();
-            while (headerNames.hasMoreElements()) {
-                String headerName = headerNames.nextElement();
-                log.info("[API KEY FILTER DEBUG] Header: {} = {}", headerName, request.getHeader(headerName));
-            }
+        if (path.startsWith("/api/v1/gateway/")) {
+            log.debug("[API KEY FILTER] {} {} x_api_key_present={} authorization_present={}",
+                    request.getMethod(),
+                    path,
+                    request.getHeader("X-API-Key") != null,
+                    request.getHeader("Authorization") != null);
         }
 
         String apiKeyHeader = extractApiKey(request);
-        if (path.contains("/gateway")) {
-            log.info("[API KEY FILTER DEBUG] Extracted API Key: {}", apiKeyHeader);
-        }
 
         if (apiKeyHeader != null && !apiKeyHeader.trim().isEmpty()) {
             String keyHash = CreateApiKeyService.hashKey(apiKeyHeader.trim());
@@ -58,11 +54,14 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             if (apiKeyOpt.isEmpty() || !apiKeyOpt.get().isActive()) {
                 request.setAttribute("GATEWAY_AUTH_STAGE", "API_KEY_REJECTED");
                 request.setAttribute("GATEWAY_AUTH_FAILURE_REASON", "API_KEY_INVALID");
-                sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN, ErrorCode.UNAUTHORIZED.getCode(), "Invalid or revoked API key");
+                sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, ErrorCode.UNAUTHORIZED.getCode(), "Invalid or revoked API key");
                 return;
             }
 
             ApiKey apiKey = apiKeyOpt.get();
+            request.setAttribute("GATEWAY_API_KEY_ID", apiKey.getId());
+            request.setAttribute("GATEWAY_LINKED_ACCOUNT_ID", apiKey.getLinkedAccountId());
+            request.setAttribute("GATEWAY_MERCHANT_ID", apiKey.getMerchantId());
 
             // 1. Validate CIDR Whitelist
             String clientIp = resolveClientIp(request);
@@ -103,10 +102,6 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                     Collections.singletonList(new SimpleGrantedAuthority("ROLE_MERCHANT_API"))
             );
             SecurityContextHolder.getContext().setAuthentication(auth);
-            
-            request.setAttribute("GATEWAY_API_KEY_ID", apiKey.getId());
-            request.setAttribute("GATEWAY_LINKED_ACCOUNT_ID", apiKey.getLinkedAccountId());
-            request.setAttribute("GATEWAY_MERCHANT_ID", apiKey.getMerchantId());
             request.setAttribute("GATEWAY_AUTH_STAGE", "API_KEY_AUTHENTICATED");
         }
 
@@ -118,10 +113,10 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         String authHeader = request.getHeader("Authorization");
         
         if (request.getRequestURI().startsWith("/api/v1/gateway/")) {
-            log.debug("[GATEWAY DEBUG] Path: {}, X-API-Key present: {}, Authorization present: {}", 
+            log.debug("[GATEWAY DEBUG] Path: {}, X-API-Key present: {}, Authorization present: {}",
                 request.getRequestURI(), 
-                apiKey != null ? "YES (length " + apiKey.length() + ")" : "NO",
-                authHeader != null ? (authHeader.length() > 15 ? authHeader.substring(0, 15) + "..." : authHeader) : "NO");
+                apiKey != null ? "YES" : "NO",
+                authHeader != null ? "YES" : "NO");
         }
 
         // 1. Check for standard X-API-Key header
@@ -183,10 +178,10 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         if (path.startsWith("/api/v1/routing") && "GET".equalsIgnoreCase(method)) return "routing:read";
 
         // 5. Treasury & Transfers
-        if (path.startsWith("/api/v1/transfers") && "POST".equalsIgnoreCase(method)) return "treasury:write";
-        if (path.startsWith("/api/v1/treasury") && "GET".equalsIgnoreCase(method)) return "treasury:read";
-        if (path.startsWith("/api/v1/transactions") && "POST".equalsIgnoreCase(method)) return "treasury:write";
-        if (path.startsWith("/api/v1/transactions") && "GET".equalsIgnoreCase(method)) return "treasury:read";
+        if ((path.startsWith("/api/v1/transfers") || path.startsWith("/api/v1/gateway/transfers")) && "POST".equalsIgnoreCase(method)) return "treasury:write";
+        if ((path.startsWith("/api/v1/treasury") || path.startsWith("/api/v1/gateway/treasury")) && "GET".equalsIgnoreCase(method)) return "treasury:read";
+        if ((path.startsWith("/api/v1/transactions") || path.startsWith("/api/v1/gateway/transactions")) && "POST".equalsIgnoreCase(method)) return "treasury:write";
+        if ((path.startsWith("/api/v1/transactions") || path.startsWith("/api/v1/gateway/transactions")) && "GET".equalsIgnoreCase(method)) return "treasury:read";
 
         // 6. Immutable Ledger
         if (path.startsWith("/api/v1/ledger") && "POST".equalsIgnoreCase(method)) return "ledger:write";

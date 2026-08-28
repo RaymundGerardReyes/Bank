@@ -13,6 +13,8 @@ import com.company.banking.transaction.api.dto.InternalTransferRequest;
 import com.company.banking.transaction.api.dto.TransactionResponse;
 import com.company.banking.transaction.application.port.in.TransactionUseCase;
 import com.company.banking.transaction.application.port.out.LedgerPersistencePort;
+import com.company.banking.transaction.application.port.out.FxRateProviderPort;
+import com.company.banking.transaction.domain.FxCalculationService;
 import com.company.banking.transaction.domain.EntryType;
 import com.company.banking.transaction.domain.LedgerEntry;
 import com.company.banking.transaction.domain.Transaction;
@@ -26,6 +28,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -48,11 +51,14 @@ public class InternalTransferService implements TransactionUseCase {
     private final PushNotificationPort pushNotificationPort;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final com.company.banking.transaction.infrastructure.TransactionJpaRepository transactionRepository;
+    private final FxRateProviderPort fxRateProviderPort;
+    private final FxCalculationService fxCalculationService;
 
     private final com.company.banking.account.application.GlobalAccountLockGuard globalAccountLockGuard;
+    private final TransactionAccountResolver transactionAccountResolver;
+    private final TransactionTemplate transactionTemplate;
 
     @Override
-    @Transactional
     public TransactionResponse processInternalTransfer(InternalTransferRequest request) {
         log.info("[INTERNAL TRANSFER] Initiating transfer from {} to {}", 
                  request.getSourceAccountNumber(), request.getDestinationAccountNumber());
@@ -75,24 +81,65 @@ public class InternalTransferService implements TransactionUseCase {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Transfer amount must be strictly positive.");
         }
 
-        // 3. Deterministic Lock Ordering (Prevents Deadlocks)
-        List<Account> lockedAccounts = globalAccountLockGuard.acquireDeterministicLocks(
-                request.getSourceAccountNumber(), request.getDestinationAccountNumber());
-        Account source = lockedAccounts.get(0);
-        Account destination = lockedAccounts.get(1);
+        // Validate accounts exist before locking to throw specific 404s
+        Account sourceAccount = transactionAccountResolver.resolveAndAuthorizeSource(request.getSourceAccountNumber());
+        Account destinationAccount = transactionAccountResolver.resolveAndAuthorizeDestination(request.getDestinationAccountNumber(), sourceAccount);
 
-        if (source.getStatus() != AccountStatus.ACTIVE || destination.getStatus() != AccountStatus.ACTIVE) {
-            throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "One or both accounts are not active");
+        // Phase 2: Domain Abstraction and Classification (PRE-LOCK)
+        com.company.banking.transaction.domain.CurrencyCode sourceCurrencyCode = com.company.banking.transaction.domain.CurrencyCode.fromString(sourceAccount.getCurrency());
+        com.company.banking.transaction.domain.CurrencyCode destCurrencyCode = com.company.banking.transaction.domain.CurrencyCode.fromString(destinationAccount.getCurrency());
+        
+        com.company.banking.transaction.domain.TransferType transferType = com.company.banking.transaction.domain.TransferType.from(sourceCurrencyCode, destCurrencyCode);
+        com.company.banking.transaction.domain.TransferIntent transferIntent;
+
+        if (transferType == com.company.banking.transaction.domain.TransferType.SAME_CURRENCY) {
+            com.company.banking.transaction.domain.Money money = com.company.banking.transaction.domain.Money.of(request.getAmount(), sourceCurrencyCode);
+            transferIntent = com.company.banking.transaction.domain.TransferIntent.sameCurrency(money);
+        } else {
+            com.company.banking.transaction.domain.Money sourceMoney = com.company.banking.transaction.domain.Money.of(request.getAmount(), sourceCurrencyCode);
+            
+            // 1. Obtain Quote (NETWORK CALL HAPPENS HERE, OUTSIDE LOCK AND TX)
+            com.company.banking.transaction.domain.FxQuote quote = fxRateProviderPort.getQuote(sourceCurrencyCode, destCurrencyCode, sourceMoney);
+            
+            // 2. Validate Expiration
+            quote.validateNotExpired(java.time.Instant.now());
+            
+            // 3. Calculate Target Amount in memory
+            com.company.banking.transaction.domain.Money destinationMoney = fxCalculationService.calculateDestinationAmount(sourceMoney, quote);
+            
+            // SECURITY CHECK: Log the math and the reference, but DO NOT log the account numbers or the full request payload here.
+            log.info("FX Quote applied safely in memory. Reference: [{}]. {} converts to {} at rate {}", 
+                quote.getProviderReference(), sourceMoney, destinationMoney, quote.getRate());
+            
+            // 4. THE ACCOUNTING GATE
+            // We intentionally crash the flow here because Phase 4 (Accounting Model) is not yet approved.
+            throw new BusinessException(
+                ErrorCode.CROSS_CURRENCY_POSTING_NOT_AVAILABLE, 
+                "Valid FX quote obtained, but cross-currency ledger posting is disabled pending accounting model approval."
+            );
         }
 
-        // 4. Validate Business Rules & VAM Hierarchy
-        transferPolicy.validateApiKeyVamBinding(source);
-        transferPolicy.validateDestinationWithinVamHierarchy(source, destination);
-        transferPolicy.validateVamPermissions(source, destination);
+        // --- TRANSACTION BOUNDARY START ---
+        return transactionTemplate.execute(status -> {
+            // 3. Deterministic Lock Ordering (Prevents Deadlocks)
+            List<Account> lockedAccounts = globalAccountLockGuard.acquireDeterministicLocks(
+                    request.getSourceAccountNumber(), request.getDestinationAccountNumber());
+            Account source = lockedAccounts.get(0);
+            Account destination = lockedAccounts.get(1);
+
+            if (source.getStatus() != AccountStatus.ACTIVE || destination.getStatus() != AccountStatus.ACTIVE) {
+                throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "One or both accounts are not active");
+            }
+
+            // 4. Validate Business Rules & VAM Hierarchy (Post-lock to ensure state hasn't changed)
+            transferPolicy.validateApiKeyVamBinding(source);
+            transferPolicy.validateDestinationWithinVamHierarchy(source, destination);
+            transferPolicy.validateVamPermissions(source, destination);
 
         zeroBalanceSweepService.executeSweepIfNecessary(source, request.getAmount(), "Internal Transfer");
 
-        if (source.getBalance().compareTo(request.getAmount()) < 0) {
+        com.company.banking.transaction.domain.Money sourceBalance = com.company.banking.transaction.domain.Money.of(source.getBalance(), sourceCurrencyCode);
+        if (sourceBalance.isLessThan(transferIntent.getSourceMoney())) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_FUNDS, "Insufficient funds for internal transfer.");
         }
 
@@ -108,8 +155,10 @@ public class InternalTransferService implements TransactionUseCase {
                 .idempotencyKey(request.getIdempotencyKey())
                 .sourceAccountNumber(source.getAccountNumber())
                 .destinationAccountNumber(destination.getAccountNumber())
-                .amount(request.getAmount())
-                .currency(source.getCurrency())
+                .amount(transferIntent.getSourceMoney().getAmount())
+                .currency(transferIntent.getSourceMoney().getCurrency().name())
+                .destinationAmount(transferIntent.getDestinationMoney().getAmount())
+                .fxQuoteId(transferIntent.getFxQuote().map(com.company.banking.transaction.domain.FxQuote::getProviderReference).orElse(null))
                 .status(TransactionStatus.PENDING)
                 .description(request.getDescription())
                 .build();
@@ -124,27 +173,31 @@ public class InternalTransferService implements TransactionUseCase {
         }
 
         // 6. Double-Entry Ledger (anchored to the Transaction reference that now exists in DB)
+        // Phase 2: Decoupled ledger posting from generic transaction amount using TransferIntent
         LedgerEntry debitEntry = LedgerEntry.builder()
                 .transactionReference(txRef)
                 .accountNumber(source.getAccountNumber())
                 .entryType(EntryType.DEBIT)
-                .amount(request.getAmount())
-                .currency(source.getCurrency())
+                .amount(transferIntent.getSourceMoney().getAmount())
+                .currency(transferIntent.getSourceMoney().getCurrency().name())
                 .build();
 
         LedgerEntry creditEntry = LedgerEntry.builder()
                 .transactionReference(txRef)
                 .accountNumber(destination.getAccountNumber())
                 .entryType(EntryType.CREDIT)
-                .amount(request.getAmount())
-                .currency(destination.getCurrency())
+                .amount(transferIntent.getDestinationMoney().getAmount())
+                .currency(transferIntent.getDestinationMoney().getCurrency().name())
                 .build();
 
         ledgerPersistencePort.saveLedgerEntries(Arrays.asList(debitEntry, creditEntry));
 
-        // 7. Balance mutations — occur AFTER the full accounting record exists
-        source.setBalance(source.getBalance().subtract(request.getAmount()));
-        destination.setBalance(destination.getBalance().add(request.getAmount()));
+        // 7. Balance mutations — occur AFTER the full accounting record exists, calculated through safe domain Money logic
+        com.company.banking.transaction.domain.Money updatedSourceBalance = sourceBalance.subtract(transferIntent.getSourceMoney());
+        com.company.banking.transaction.domain.Money updatedDestBalance = com.company.banking.transaction.domain.Money.of(destination.getBalance(), destCurrencyCode).add(transferIntent.getDestinationMoney());
+        
+        source.setBalance(updatedSourceBalance.getAmount());
+        destination.setBalance(updatedDestBalance.getAmount());
         accountPersistencePort.save(source);
         accountPersistencePort.save(destination);
 
@@ -173,7 +226,8 @@ public class InternalTransferService implements TransactionUseCase {
                 savedTx.getCurrency()
         ));
 
-        return TransactionResponse.fromEntity(savedTx);
+            return TransactionResponse.fromEntity(savedTx);
+        });
     }
 
     @Override
