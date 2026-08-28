@@ -167,7 +167,6 @@
 |   `-- tsconfig.json
 |-- PORT_REGISTRY.md
 |-- api-gateway-hardening-prompt.md
-|-- architecture_review.md
 |-- backend
 |   |-- Backend.logs
 |   |-- CHANGELOG.md
@@ -191,28 +190,6 @@
 |   |-- settings.gradle
 |   |-- src
 |   |   |-- build.md
-|   |   |-- e2eTest
-|   |   |   `-- java
-|   |   |       `-- com
-|   |   |           `-- company
-|   |   |               `-- banking
-|   |   |                   |-- apigateway
-|   |   |                   |-- integration
-|   |   |                   `-- payment
-|   |   |-- integrationTest
-|   |   |   `-- java
-|   |   |       `-- com
-|   |   |           `-- company
-|   |   |               `-- banking
-|   |   |                   |-- apigateway
-|   |   |                   |   |-- api
-|   |   |                   |   `-- security
-|   |   |                   |-- integration
-|   |   |                   |-- payment
-|   |   |                   |-- security
-|   |   |                   |   `-- auth
-|   |   |                   |-- settlement
-|   |   |                   `-- transaction
 |   |   |-- main
 |   |   |   |-- backend-app-structure.md
 |   |   |   |-- java
@@ -722,6 +699,7 @@
 |   |   |   |   |           |   |   |-- DepositService.java
 |   |   |   |   |           |   |   |-- DisputeTransactionService.java
 |   |   |   |   |           |   |   |-- ExternalPaymentService.java
+|   |   |   |   |           |   |   |-- FxCalculationService.java
 |   |   |   |   |           |   |   |-- GetTransactionHistoryService.java
 |   |   |   |   |           |   |   |-- IdempotencyGuardService.java
 |   |   |   |   |           |   |   |-- InternalTransferService.java
@@ -742,29 +720,40 @@
 |   |   |   |   |           |   |       |   `-- WithdrawUseCase.java
 |   |   |   |   |           |   |       `-- out
 |   |   |   |   |           |   |           |-- FraudScreeningPort.java
+|   |   |   |   |           |   |           |-- FxRateProviderPort.java
 |   |   |   |   |           |   |           |-- LedgerPersistencePort.java
 |   |   |   |   |           |   |           `-- PaymentGatewayPort.java
 |   |   |   |   |           |   |-- domain
 |   |   |   |   |           |   |   |-- AuthorizationAttempt.java
+|   |   |   |   |           |   |   |-- CurrencyCode.java
 |   |   |   |   |           |   |   |-- DisputeCase.java
 |   |   |   |   |           |   |   |-- EntryType.java
+|   |   |   |   |           |   |   |-- FxCalculationService.java
+|   |   |   |   |           |   |   |-- FxQuote.java
 |   |   |   |   |           |   |   |-- LedgerEntry.java
+|   |   |   |   |           |   |   |-- Money.java
 |   |   |   |   |           |   |   |-- SufficientFundsPolicy.java
 |   |   |   |   |           |   |   |-- Transaction.java
 |   |   |   |   |           |   |   |-- TransactionIntent.java
 |   |   |   |   |           |   |   |-- TransactionIntentStatus.java
 |   |   |   |   |           |   |   |-- TransactionStatus.java
-|   |   |   |   |           |   |   `-- TransferPolicy.java
+|   |   |   |   |           |   |   |-- TransferIntent.java
+|   |   |   |   |           |   |   |-- TransferPolicy.java
+|   |   |   |   |           |   |   `-- TransferType.java
 |   |   |   |   |           |   `-- infrastructure
 |   |   |   |   |           |       |-- AuthorizationAttemptJpaRepository.java
 |   |   |   |   |           |       |-- DisputeCaseJpaRepository.java
+|   |   |   |   |           |       |-- FakeFxRateProviderAdapter.java
 |   |   |   |   |           |       |-- FraudScreeningAdapter.java
 |   |   |   |   |           |       |-- LedgerEntryJpaRepository.java
 |   |   |   |   |           |       |-- LedgerJpaAdapter.java
 |   |   |   |   |           |       |-- LedgerJpaRepository.java
 |   |   |   |   |           |       |-- PaymentGatewayAdapter.java
 |   |   |   |   |           |       |-- TransactionIntentJpaRepository.java
-|   |   |   |   |           |       `-- TransactionJpaRepository.java
+|   |   |   |   |           |       |-- TransactionJpaRepository.java
+|   |   |   |   |           |       `-- fx
+|   |   |   |   |           |           |-- FrankfurterFxRateProviderAdapter.java
+|   |   |   |   |           |           `-- FrankfurterRateResponse.java
 |   |   |   |   |           `-- web
 |   |   |   |   |               |-- advice
 |   |   |   |   |               |   `-- ResponseSanitizerAdvice.java
@@ -859,6 +848,7 @@
 |   |       |               |   |   |-- GatewayManagementApiIT.java
 |   |       |               |   |   `-- GatewayManagementAuthorizationIT.java
 |   |       |               |   `-- security
+|   |       |               |       |-- ApiKeyAuthenticationFilterTest.java
 |   |       |               |       |-- ApiKeyAuthenticationIT.java
 |   |       |               |       |-- ApiKeyAuthenticationPathIT.java
 |   |       |               |       |-- ApiSecurityTestSuite.java
@@ -926,25 +916,40 @@
 |   |       |               |   `-- SettlementReconciliationIT.java
 |   |       |               |-- statement
 |   |       |               |   `-- StatementGenerationPathIT.java
-|   |       |               `-- transaction
-|   |       |                   |-- DepositWithdrawWorkflowPathIT.java
-|   |       |                   |-- ExternalPaymentWorkflowPathIT.java
-|   |       |                   |-- InternalTransferIntegrityIT.java
-|   |       |                   |-- InternalTransferMissingPathsIT.java
-|   |       |                   |-- InternalTransferRaceConditionIT.java
-|   |       |                   |-- InternalTransferWorkflowPathIT.java
-|   |       |                   |-- TransactionAuthorizationIT.java
-|   |       |                   |-- TransactionAuthorizationPathIT.java
-|   |       |                   |-- TransactionIdempotencyIT.java
-|   |       |                   |-- ZeroBalanceSweepPathIT.java
-|   |       |                   `-- application
-|   |       |                       |-- ExternalPaymentServiceFraudAndAmlPathTest.java
-|   |       |                       |-- ExternalPaymentServiceResiliencePathTest.java
-|   |       |                       |-- IdempotencyGuardServiceTest.java
-|   |       |                       `-- ZeroBalanceSweepServiceTest.java
+|   |       |               |-- transaction
+|   |       |               |   |-- DepositWithdrawWorkflowPathIT.java
+|   |       |               |   |-- ExternalPaymentWorkflowPathIT.java
+|   |       |               |   |-- InternalTransferIntegrityIT.java
+|   |       |               |   |-- InternalTransferMissingPathsIT.java
+|   |       |               |   |-- InternalTransferRaceConditionIT.java
+|   |       |               |   |-- InternalTransferWorkflowPathIT.java
+|   |       |               |   |-- TransactionAuthorizationIT.java
+|   |       |               |   |-- TransactionAuthorizationPathIT.java
+|   |       |               |   |-- TransactionIdempotencyIT.java
+|   |       |               |   |-- ZeroBalanceSweepPathIT.java
+|   |       |               |   |-- application
+|   |       |               |   |   |-- ExternalPaymentServiceFraudAndAmlPathTest.java
+|   |       |               |   |   |-- ExternalPaymentServiceResiliencePathTest.java
+|   |       |               |   |   |-- IdempotencyGuardServiceTest.java
+|   |       |               |   |   `-- ZeroBalanceSweepServiceTest.java
+|   |       |               |   |-- domain
+|   |       |               |   |   |-- CurrencyCodeTest.java
+|   |       |               |   |   |-- FxCalculationServiceTest.java
+|   |       |               |   |   |-- FxQuoteTest.java
+|   |       |               |   |   |-- MoneyTest.java
+|   |       |               |   |   |-- TransferIntentTest.java
+|   |       |               |   |   |-- TransferPolicyTest.java
+|   |       |               |   |   `-- TransferTypeTest.java
+|   |       |               |   `-- infrastructure
+|   |       |               |       `-- fx
+|   |       |               |           `-- FrankfurterFxRateProviderAdapterTest.java
+|   |       |               `-- web
+|   |       |                   `-- filter
+|   |       |                       `-- BffIdentityFilterTest.java
 |   |       `-- resources
 |   |           `-- application-test.yml
 |   |-- structure.md
+|   |-- test.log
 |   |-- test.logs
 |   `-- tests.log
 |-- backendstructure.md
@@ -996,15 +1001,6 @@
 |-- package-lock.json
 |-- package.json
 |-- principal-devops-repo-branching-prompt.md
-|-- release_log_20260824_235252.txt
-|-- release_log_20260825_235656.txt
-|-- release_log_20260825_235927.txt
-|-- release_log_20260826_234509.txt
-|-- release_log_20260826_234653.txt
-|-- release_log_20260826_234841.txt
-|-- release_log_20260826_235636.txt
-|-- release_log_20260827_022520.txt
-|-- release_log_20260827_022647.txt
 |-- remove_dirties_context.js
 |-- revert_directories.js
 |-- scaffold-mobile.sh
@@ -1019,10 +1015,17 @@
 |   `-- run-local.sh
 |-- structure.md
 |-- tests
+|   |-- 04-fx-tests.json
+|   |-- account-management-tests.json
+|   |-- external-payment-tests.json
+|   |-- intents-and-statements-tests.json
+|   |-- internal-transfer-tests.json
 |   |-- reports
 |   |   `-- security_audit_1__url_allowlisting_gates_2026-08-21T13-37-52-069Z.html
 |   |-- run-security-matrix.js
-|   `-- security-matrix.json
+|   |-- security-matrix.json
+|   |-- transaction-controller-tests.json
+|   `-- vam-transfer-tests.json
 |-- web-app
 |   |-- Dockerfile
 |   |-- README.md
@@ -1033,6 +1036,32 @@
 |   |-- organize-frontend.ps1
 |   |-- package-lock.json
 |   |-- package.json
+|   |-- playwright-report
+|   |   |-- data
+|   |   |   |-- 5984a314006f23f02cf7063815388c56ed90e3ec.zip
+|   |   |   |-- 76afc3978bf43016f325fbcdc684aa4a09048027.md
+|   |   |   `-- c1ae90f4d39102260bb1c7bbc21871d4bbb8c4de.zip
+|   |   |-- index.html
+|   |   `-- trace
+|   |       |-- assets
+|   |       |   |-- codeMirrorModule-rXmQmLUY.js
+|   |       |   |-- defaultSettingsView-B-dXF5JN.js
+|   |       |   `-- urlMatch-L3liM589.js
+|   |       |-- codeMirrorModule.-QdMvsKi.css
+|   |       |-- codicon.DCmgc-ay.ttf
+|   |       |-- defaultSettingsView.BLFoOugd.css
+|   |       |-- index.B_TqY17P.css
+|   |       |-- index.KZ4wOW1K.js
+|   |       |-- index.html
+|   |       |-- manifest.webmanifest
+|   |       |-- playwright-logo.svg
+|   |       |-- snapshot.B_Jk1wbt.js
+|   |       |-- snapshot.html
+|   |       |-- sw.bundle.js
+|   |       |-- uiMode.C7UW1sC9.css
+|   |       |-- uiMode.Dzuouizj.js
+|   |       |-- uiMode.html
+|   |       `-- xtermModule.kHJ-D0s7.css
 |   |-- playwright.config.ts
 |   |-- postcss.config.mjs
 |   |-- runtimetest.log
@@ -1192,7 +1221,10 @@
 |   |   |   |   |       `-- route.ts
 |   |   |   |   |-- health
 |   |   |   |   |   `-- route.ts
-|   |   |   |   `-- proxy
+|   |   |   |   |-- proxy
+|   |   |   |   |   `-- [...endpoint]
+|   |   |   |   |       `-- route.ts
+|   |   |   |   `-- v1
 |   |   |   |       `-- [...endpoint]
 |   |   |   |           `-- route.ts
 |   |   |   |-- error.tsx
@@ -1328,6 +1360,28 @@
 |   |   `-- web-app-structure.md
 |   |-- structure.md
 |   |-- tailwind.config.ts
+|   |-- test-results
+|   |   |-- api-management-API-Managem-0f650--Management-Revocation-Flow-chromium
+|   |   |   |-- error-context.md
+|   |   |   `-- trace.zip
+|   |   |-- api-management-API-Managem-43bfd-rectly-in-Documentation-Tab-chromium
+|   |   |   |-- error-context.md
+|   |   |   `-- trace.zip
+|   |   |-- api-management-API-Managem-91d3b-ion---Blocks-localhost-HTTP-chromium
+|   |   |   |-- error-context.md
+|   |   |   `-- trace.zip
+|   |   |-- api-management-API-Managem-9f150-tion-Webhook-Ping-Test-Flow-chromium
+|   |   |   |-- error-context.md
+|   |   |   `-- trace.zip
+|   |   |-- api-management-API-Managem-ebbaf-ate-Key-Flow-Clipboard-Copy-chromium
+|   |   |   `-- trace.zip
+|   |   |-- login-Login-Flow-E2E-should-render-the-sign-in-form-chromium
+|   |   |   `-- trace.zip
+|   |   |-- transfer-Transfer-Payments-4d95f-ully-executes-and-redirects-chromium
+|   |   |   `-- trace.zip
+|   |   `-- transfer-Transfer-Payments-cd8a0-404-validation-from-backend-chromium
+|   |       |-- error-context.md
+|   |       `-- trace.zip
 |   |-- test.logs
 |   |-- tests
 |   |   |-- e2e
@@ -1360,4 +1414,4 @@
 |   `-- web-app-structure.md
 `-- web-frontend-nextjs-architecture.md
 
-390 directories, 970 files
+389 directories, 1025 files
