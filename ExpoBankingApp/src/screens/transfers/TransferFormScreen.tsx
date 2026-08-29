@@ -3,6 +3,7 @@ import * as React from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
+import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
 import { idempotencyKeyService } from '../../services/transaction/idempotencyKeyService';
 import { colors } from '../../theme/colors';
@@ -53,11 +54,7 @@ export const TransferFormScreen = () => {
             <Text style={styles.subtitle}>Instant internal transfer</Text>
           </View>
 
-          {error ? (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
+          <ErrorBanner message={error} onDismiss={() => setError('')} />
 
           {/* Hero Amount Input */}
           <View style={styles.amountContainer}>
