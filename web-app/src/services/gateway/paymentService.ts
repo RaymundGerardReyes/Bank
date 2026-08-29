@@ -27,11 +27,13 @@ export const paymentService = {
   // Triggers the ExternalPaymentGateway logic on the backend
   createCheckoutSession: async (
     intentId: string,
-    payload: CheckoutSessionRequest
+    payload: CheckoutSessionRequest,
+    idempotencyKey?: string
   ): Promise<ApiResponse<PaymentSessionResponse>> => {
     return httpClient.post<ApiResponse<PaymentSessionResponse>>(
       `/gateway/payments/${intentId}/checkout`,
-      payload
+      payload,
+      { idempotencyKey }
     );
   },
 
@@ -44,11 +46,18 @@ export const paymentService = {
   },
 
   createPaymentIntent: async (req: CreatePaymentIntentRequest): Promise<ApiResponse<PaymentSessionResponse>> => {
-    const response = await fetch('/api/proxy/payment-intents', {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (req.idempotencyKey) {
+      headers['Idempotency-Key'] = req.idempotencyKey;
+    } else {
+      console.warn('[PaymentService] Missing Idempotency-Key in request payload! This may cause backend rejection.');
+    }
+
+    const response = await fetch('/api/proxy/gateway/payments/intents', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(req),
     });
 

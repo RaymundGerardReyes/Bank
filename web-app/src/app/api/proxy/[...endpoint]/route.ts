@@ -73,10 +73,14 @@ function buildForwardHeaders(request: NextRequest, targetUrl: string): Headers {
   // ── BFF Identity — required by Spring Boot's BffIdentityFilter ───────────
   headers.set("X-Internal-BFF-Key", env.internalBffApiKey);
 
-  // ── Distributed Tracing ──────────────────────────────────────────────────
-  const requestId =
-    request.headers.get("x-request-id") ?? crypto.randomUUID();
+  // ── Distributed Tracing & Idempotency ────────────────────────────────────
+  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   headers.set("x-request-id", requestId);
+
+  const idempotencyKey = request.headers.get("idempotency-key");
+  if (idempotencyKey) {
+    headers.set("idempotency-key", idempotencyKey);
+  }
 
   // ── Infrastructure / Reverse Proxy Headers ───────────────────────────────
   const forwardedFor = request.headers.get("x-forwarded-for");

@@ -18,6 +18,7 @@ export default function PaymentCheckoutPage({ params }: PageProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [intentData, setIntentData] = useState<any>(null); // Replace 'any' with your PaymentIntent model
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
     setIntentData({
@@ -45,8 +46,8 @@ export default function PaymentCheckoutPage({ params }: PageProps) {
         merchantOrderId: `ORD-${Math.floor(Math.random() * 10000)}`
       };
 
-      // 2. Call our generic gateway service
-      const response = await paymentService.createCheckoutSession(intentId, requestPayload);
+      // 2. Call our generic gateway service with the persisted idempotency key
+      const response = await paymentService.createCheckoutSession(intentId, requestPayload, idempotencyKey);
 
       // 3. Redirect seamlessly to the provider's hosted checkout (e.g., Paynamics)
       if (response.success && response.data?.checkoutUrl) {

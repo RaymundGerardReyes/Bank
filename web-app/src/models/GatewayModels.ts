@@ -221,6 +221,7 @@ export interface CreatePaymentIntentRequest {
   amount: number;
   description: string;
   merchantReference: string;
+  idempotencyKey?: string;
 }
 
 // Preserve existing models below...

@@ -52,7 +52,11 @@ export default function ExternalPaymentInitiationPage() {
   // 3. Step 1 -> Step 2: Form submission safely transitions to Review
   const onProceedToReview = (data: ExternalPaymentFormData) => {
     setServerError(null);
-    sessionStorage.setItem('draft_external_payment', JSON.stringify(data));
+    const draftData = {
+      ...data,
+      idempotencyKey: crypto.randomUUID()
+    };
+    sessionStorage.setItem('draft_external_payment', JSON.stringify(draftData));
     setStep('REVIEW');
   };
 
@@ -62,12 +66,15 @@ export default function ExternalPaymentInitiationPage() {
     setServerError(null);
 
     try {
+      const savedDraft = JSON.parse(sessionStorage.getItem('draft_external_payment') || '{}');
       const payload = getValues();
+      
       const response = await paymentService.createPaymentIntent({
         sourceAccountId: payload.sourceAccountId,
         merchantReference: payload.merchantReference,
         amount: payload.amount,
         description: payload.description,
+        idempotencyKey: savedDraft.idempotencyKey // Reuses the same key across retries
       });
 
       if (response.success && response.data) {
@@ -79,7 +86,6 @@ export default function ExternalPaymentInitiationPage() {
         setStep('REDIRECT');
       } else {
         setServerError(response.message || 'Failed to initiate payment.');
-        setStep('FORM');
       }
     } catch (err: any) {
       setServerError(err.message || 'An unexpected network error occurred.');
