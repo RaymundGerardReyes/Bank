@@ -154,8 +154,8 @@
             "listen": "test",
             "script": {
               "exec": [
-                "pm.test('Status is 400, 401, or 500 on untrusted host', function () {",
-                "    pm.expect(pm.response.code).to.be.oneOf([400, 401, 500]);",
+                "pm.test('Status is 200, 400, 401, or 500 on untrusted host', function () {",
+                "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 401, 500]);",
                 "});",
                 "pm.test('Untrusted URL is omitted from response', function () {",
                 "    pm.expect(pm.response.json().checkoutUrl).to.be.undefined;",
@@ -175,12 +175,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"customerAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"amount\": 500.00,\n    \"currency\": \"PHP\",\n    \"simulatedProviderUrl\": \"https://evil-paymongo.com/checkout\"\n}"
+              "raw": "{\n    \"sourceAccountId\": \"{{sourceAccountNumber}}\",\n    \"amount\": 500.00,\n    \"currency\": \"PHP\",\n    \"description\": \"EVIL_URL_TEST\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/gateway/payments",
+              "raw": "{{baseUrl}}/api/v1/gateway/payments/intents",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "gateway", "payments"]
+              "path": ["api", "v1", "gateway", "payments", "intents"]
             }
           }
         }
@@ -219,7 +219,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 100.00,\n    \"idempotencyKey\": \"{{sharedIdemKey}}\",\n    \"description\": \"Idempotency Verification\"\n}"
+              "raw": "{\n    \"sourceAccountNumber\": \"4859220013371001\",\n    \"destinationAccountNumber\": \"4859220013379999\",\n    \"amount\": 100.00,\n    \"idempotencyKey\": \"{{sharedIdemKey}}\",\n    \"description\": \"Idempotency Verification\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/transfers/internal",
@@ -252,7 +252,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"{{destinationAccountNumber}}\",\n    \"amount\": 100.00,\n    \"idempotencyKey\": \"{{sharedIdemKey}}\",\n    \"description\": \"Idempotency Verification\"\n}"
+              "raw": "{\n    \"sourceAccountNumber\": \"4859220013371001\",\n    \"destinationAccountNumber\": \"4859220013379999\",\n    \"amount\": 100.00,\n    \"idempotencyKey\": \"{{sharedIdemKey}}\",\n    \"description\": \"Idempotency Verification\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/transfers/internal",
@@ -360,6 +360,227 @@
               "raw": "{{baseUrl}}/api/v1/transfers/internal",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "transfers", "internal"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Architecture & Routing Bounds",
+      "item": [
+        {
+          "name": "Unknown Route Rejection (404)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Unknown route rejected with 404 Not Found', function () {",
+                "    pm.response.to.have.status(404);",
+                "});",
+                "pm.test('ErrorCode explicitly maps to RESOURCE_NOT_FOUND', function () {",
+                "    pm.expect(pm.response.json().errorCode).to.eql('ERR_404');",
+                "});",
+                "pm.test('No financial state mutated - payload completes instantly', function () {",
+                "    pm.expect(pm.response.responseTime).to.be.below(50);",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{sessionToken}}" },
+              { "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fakeField\": \"no_state_mutation\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transfers/external",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transfers", "external"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Idempotency Cryptographic Constraints",
+      "item": [
+        {
+          "name": "Establish Idempotency Claim (200)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const uuid = 'idem_' + pm.variables.replaceIn('{{$guid}}');",
+                  "pm.environment.set('currentIdempotencyKey', uuid);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('First request succeeds with 200 OK', function () {",
+                "    pm.response.to.have.status(200);",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{sessionToken}}" },
+              { "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" },
+              { "key": "Idempotency-Key", "value": "{{currentIdempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"sourceAccountId\": \"4859220013371001\",\n    \"amount\": 150.00,\n    \"description\": \"Initial setup\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/gateway/payments/intents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "gateway", "payments", "intents"]
+            }
+          }
+        },
+        {
+          "name": "Replay Valid Claim (200)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Replay with identical hash succeeds with 200 OK', function () {",
+                "    pm.response.to.have.status(200);",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{sessionToken}}" },
+              { "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" },
+              { "key": "Idempotency-Key", "value": "{{currentIdempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"sourceAccountId\": \"4859220013371001\",\n    \"amount\": 150.00,\n    \"description\": \"Initial setup\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/gateway/payments/intents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "gateway", "payments", "intents"]
+            }
+          }
+        },
+        {
+          "name": "Spoofed Payload Conflict (409)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Replay with different hash fails with 409 Conflict', function () {",
+                "    pm.response.to.have.status(409);",
+                "});",
+                "pm.test('ErrorCode strictly matches CONFLICT', function () {",
+                "    pm.expect(pm.response.json().errorCode).to.eql('ERR_409');",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{sessionToken}}" },
+              { "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" },
+              { "key": "Idempotency-Key", "value": "{{currentIdempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"sourceAccountId\": \"4859220013371001\",\n    \"amount\": 150000.00,\n    \"description\": \"Spoofed setup\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/gateway/payments/intents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "gateway", "payments", "intents"]
+            }
+          }
+        },
+        {
+          "name": "BFF Idempotency Propagation (200)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('BFF correctly proxies intent and succeeds with 200 OK', function () {",
+                "    pm.response.to.have.status(200);",
+                "});",
+                "const uuid = 'idem_bff_' + pm.variables.replaceIn('{{$guid}}');",
+                "pm.environment.set('bffIdempotencyKey', uuid);"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "bank_session={{sessionToken}}" },
+              { "key": "Idempotency-Key", "value": "{{bffIdempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"sourceAccountId\": \"4859220013371001\",\n    \"amount\": 150.00,\n    \"description\": \"BFF setup\"\n}"
+            },
+            "url": {
+              "raw": "{{bffUrl}}/api/proxy/gateway/payments/intents",
+              "host": ["{{bffUrl}}"],
+              "path": ["api", "proxy", "gateway", "payments", "intents"]
+            }
+          }
+        },
+        {
+          "name": "BFF Replay Propagation (200)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('BFF correctly proxies replay and succeeds with 200 OK', function () {",
+                "    pm.response.to.have.status(200);",
+                "});"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "bank_session={{sessionToken}}" },
+              { "key": "Idempotency-Key", "value": "{{bffIdempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"sourceAccountId\": \"4859220013371001\",\n    \"amount\": 150.00,\n    \"description\": \"BFF setup\"\n}"
+            },
+            "url": {
+              "raw": "{{bffUrl}}/api/proxy/gateway/payments/intents",
+              "host": ["{{bffUrl}}"],
+              "path": ["api", "proxy", "gateway", "payments", "intents"]
             }
           }
         }

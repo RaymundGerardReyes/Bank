@@ -6,6 +6,7 @@ const fs = require('fs');
 const COLLECTION_PATH = path.join(__dirname, 'security-matrix.json');
 const REPORT_DIR = path.join(__dirname, 'reports');
 const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
+const BFF_URL = process.env.BFF_URL || 'http://localhost:3000';
 const BFF_KEY = process.env.INTERNAL_BFF_API_KEY || 'secret-bff-key';
 const AUTH_TOKEN = process.env.AUTH_TOKEN || 'test-jwt-token';
 const WEBHOOK_SECRET = process.env.PAYMENT_GATEWAY_WEBHOOK_SECRET || 'whsec_test_secret_123456789';
@@ -35,6 +36,7 @@ function executeNewman(folderName, extraEnvVars = [], isParallel = false) {
             environment: {
                 values: [
                     { key: 'baseUrl', value: BASE_URL },
+                    { key: 'bffUrl', value: BFF_URL },
                     { key: 'userEmail', value: process.env.USER_EMAIL || 'user@example.com' },
                     { key: 'userPassword', value: process.env.USER_PASSWORD || 'Password123!' },
                     { key: 'bffKey', value: BFF_KEY },
