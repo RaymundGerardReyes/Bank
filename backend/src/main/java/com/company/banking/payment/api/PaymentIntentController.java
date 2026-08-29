@@ -18,8 +18,8 @@ public class PaymentIntentController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<PaymentSessionResponse>> createPaymentIntent(@RequestBody CreatePaymentIntentRequest request) {
-        PaymentSessionResponse response = orchestrationService.createIntent(request);
-        return ResponseEntity.ok(ApiResponse.success(response, "Payment intent created successfully", null));
+        return ResponseEntity.status(org.springframework.http.HttpStatus.METHOD_NOT_ALLOWED)
+                .body(ApiResponse.error("This endpoint is deprecated. Use /api/v1/gateway/payments/intents instead."));
     }
 
     @GetMapping("/{id}")

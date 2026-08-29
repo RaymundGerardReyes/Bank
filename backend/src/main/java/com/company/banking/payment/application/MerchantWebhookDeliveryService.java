@@ -6,128 +6,84 @@ import com.company.banking.payment.domain.PaymentEventOutbox;
 import com.company.banking.payment.domain.PaymentEventOutboxStatus;
 import com.company.banking.payment.infrastructure.PaymentEventOutboxJpaRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestTemplate;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Optional;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class MerchantWebhookDeliveryService {
 
-    private final WebhookEndpointJpaRepository endpointRepository;
     private final PaymentEventOutboxJpaRepository outboxRepository;
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
+    private final WebhookEndpointJpaRepository endpointRepository;
+    private final RestTemplate restTemplate = new RestTemplate();
 
-    private static final int MAX_ATTEMPTS = 6; // Dead-letter after 6 total attempts
-    private final Random random = new Random();
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void deliverEvent(PaymentEventOutbox event) {
-        log.info("[WEBHOOK] Attempting delivery for Event: {}", event.getEventId());
-
         try {
-            List<WebhookEndpoint> endpoints = endpointRepository
-                    .findByMerchantIdAndEnvironmentAndStatus(event.getMerchantId(), "LIVE", "ACTIVE");
-
-            if (endpoints.isEmpty()) {
-                handleFailure(event, 500, "No active webhook endpoint found");
-                return;
+            List<WebhookEndpoint> endpoints = endpointRepository.findByMerchantIdAndStatus(event.getMerchantId(), "ACTIVE");
+            if (endpoints == null || endpoints.isEmpty()) {
+                throw new RuntimeException("No active webhook endpoint found");
             }
-
-            WebhookEndpoint endpoint = endpoints.get(0); 
-            String timestamp = String.valueOf(Instant.now().getEpochSecond());
-            String signature = generateHmacSignature(endpoint.getSecretHash(), timestamp, event.getPayload());
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint.getUrl()))
-                    .timeout(Duration.ofSeconds(15))
-                    .header("Content-Type", "application/json")
-                    .header("X-Bank-Event-Id", event.getEventId())
-                    .header("X-Bank-Event-Type", event.getEventType().name())
-                    .header("X-Bank-Timestamp", timestamp)
-                    .header("X-Bank-Signature", "v1=" + signature)
-                    .header("X-Bank-Api-Version", event.getApiVersion())
-                    .POST(HttpRequest.BodyPublishers.ofString(event.getPayload()))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             
-            int statusCode = response.statusCode();
-            if (statusCode >= 200 && statusCode < 300) {
-                event.setStatus(PaymentEventOutboxStatus.DELIVERED);
-                event.setDeliveredAt(LocalDateTime.now());
-                event.setLastHttpStatus(statusCode);
-                event.setLastError(null);
-                log.info("[WEBHOOK] Event {} DELIVERED.", event.getEventId());
-            } else {
-                handleFailure(event, statusCode, response.body());
-            }
+            WebhookEndpoint endpoint = endpoints.get(0);
+            String timestamp = String.valueOf(Instant.now().getEpochSecond());
+            String signedContent = timestamp + "." + event.getPayload();
+            
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(endpoint.getSecretHash().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            String signature = "v1=" + HexFormat.of().formatHex(mac.doFinal(signedContent.getBytes(StandardCharsets.UTF_8)));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Bank-Timestamp", timestamp);
+            headers.set("X-Bank-Signature", signature);
+            headers.set("X-Bank-Event-Id", event.getEventId());
+            headers.set("Content-Type", "application/json");
+
+            HttpEntity<String> request = new HttpEntity<>(event.getPayload(), headers);
+            
+            ResponseEntity<String> response = restTemplate.exchange(endpoint.getUrl(), HttpMethod.POST, request, String.class);
+            
+            event.setStatus(PaymentEventOutboxStatus.DELIVERED);
+            event.setDeliveredAt(LocalDateTime.now());
+            event.setLastHttpStatus(response.getStatusCode().value());
+            event.setLastError(null);
+
+        } catch (HttpStatusCodeException e) {
+            handleFailure(event, e.getStatusCode().value(), e.getMessage());
         } catch (Exception e) {
             handleFailure(event, 500, e.getMessage());
-        } finally {
-            event.setLockedAt(null);
-            event.setLockedBy(null);
-            outboxRepository.save(event);
         }
+        outboxRepository.save(event);
     }
 
-    private void handleFailure(PaymentEventOutbox event, int statusCode, String errorMsg) {
-        int attempts = event.getAttemptCount() + 1;
-        event.setAttemptCount(attempts);
+    private void handleFailure(PaymentEventOutbox event, int statusCode, String errorMessage) {
+        event.setAttemptCount(event.getAttemptCount() + 1);
         event.setLastHttpStatus(statusCode);
-        event.setLastError(errorMsg);
+        event.setLastError(errorMessage);
         
-        if (attempts >= MAX_ATTEMPTS) {
+        if (event.getAttemptCount() >= 6) {
             event.setStatus(PaymentEventOutboxStatus.DEAD_LETTER);
-            log.error("[WEBHOOK] Event {} exhausted {} retries -> DEAD_LETTER.", event.getEventId(), MAX_ATTEMPTS);
+            event.setNextAttemptAt(null);
         } else {
             event.setStatus(PaymentEventOutboxStatus.RETRY);
-            event.setNextAttemptAt(calculateNextAttempt(attempts));
-            log.warn("[WEBHOOK] Event {} failed. Retry #{} at {}", event.getEventId(), attempts, event.getNextAttemptAt());
+            long backoffMinutes = (long) Math.pow(2, event.getAttemptCount());
+            event.setNextAttemptAt(LocalDateTime.now().plusMinutes(backoffMinutes));
         }
-    }
-
-    private LocalDateTime calculateNextAttempt(int attempt) {
-        long baseDelaySeconds = switch (attempt) {
-            case 1 -> 0;     // immediate
-            case 2 -> 30;    // +30 sec
-            case 3 -> 120;   // +2 min
-            case 4 -> 600;   // +10 min
-            case 5 -> 1800;  // +30 min
-            case 6 -> 7200;  // +2 hr
-            default -> 14400;// +4 hr max
-        };
-        return LocalDateTime.now().plusSeconds(baseDelaySeconds + random.nextInt(15));
-    }
-
-    private String generateHmacSignature(String secret, String timestamp, String payload) {
-        try {
-            String signedContent = timestamp + "." + payload;
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            byte[] hash = mac.doFinal(signedContent.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to generate webhook signature", e);
-        }
+        
+        event.setLockedAt(null);
+        event.setLockedBy(null);
     }
 }

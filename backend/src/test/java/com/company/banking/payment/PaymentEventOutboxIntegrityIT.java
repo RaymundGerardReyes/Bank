@@ -47,10 +47,13 @@ public class PaymentEventOutboxIntegrityIT extends LedgerSpyIntegrationTest {
     private Account customerAccount;
     private Account merchantAccount;
     private PaymentIntent testIntent;
+    private long initialTxCount;
+    private long initialOutboxCount;
 
     @BeforeEach
     public void setup() {
-
+        initialTxCount = transactionRepository.count();
+        initialOutboxCount = outboxRepository.count();
 
         customerAccount = accountPersistencePort.save(Account.builder()
                 .accountNumber("INT-OB-1001-" + UUID.randomUUID().toString().substring(0, 5))
@@ -89,10 +92,11 @@ public class PaymentEventOutboxIntegrityIT extends LedgerSpyIntegrationTest {
         executionService.capturePayment(testIntent.getIntentId(), 99L, "cap_" + UUID.randomUUID());
 
         // Assert
-        assertEquals(1, transactionRepository.count(), "Transaction created");
-        assertEquals(1, outboxRepository.count(), "Exactly 1 outbox event created");
+        assertEquals(initialTxCount + 1, transactionRepository.count(), "Transaction created");
+        assertEquals(initialOutboxCount + 1, outboxRepository.count(), "Exactly 1 outbox event created");
         
-        var event = outboxRepository.findAll().get(0);
+        var events = outboxRepository.findAll();
+        var event = events.get(events.size() - 1);
         assertEquals(PaymentEventType.CHECKOUT_PAYMENT_SUCCEEDED, event.getEventType());
         assertEquals("PENDING", event.getStatus().name());
     }
@@ -110,7 +114,7 @@ public class PaymentEventOutboxIntegrityIT extends LedgerSpyIntegrationTest {
 
         // Assert: Everything must roll back
         assertEquals("AUTHORIZED", intentRepository.findByIntentId(testIntent.getIntentId()).get().getStatus().name());
-        assertEquals(0, transactionRepository.count(), "Transactions must be rolled back");
-        assertEquals(0, outboxRepository.count(), "CRITICAL: Outbox events MUST be rolled back");
+        assertEquals(initialTxCount, transactionRepository.count(), "Transactions must be rolled back");
+        assertEquals(initialOutboxCount, outboxRepository.count(), "CRITICAL: Outbox events MUST be rolled back");
     }
 }

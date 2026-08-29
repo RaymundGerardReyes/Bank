@@ -90,7 +90,7 @@ public class PaymentIntentOrchestrationPathIT extends BaseIntegrationTest {
 
         when(externalPaymentGateway.createCheckout(any())).thenReturn(mockSession);
 
-        PaymentSessionResponse response = orchestrationService.createIntent(createRequest(new BigDecimal("500.00"), IDEMPOTENCY_KEY));
+        PaymentSessionResponse response = orchestrationService.createIntent(909L, sourceAccount.getAccountNumber(), createRequest(new BigDecimal("500.00"), IDEMPOTENCY_KEY));
 
         assertNotNull(response.getPaymentIntentId());
         assertEquals("INTERNAL", response.getProvider());
@@ -114,8 +114,8 @@ public class PaymentIntentOrchestrationPathIT extends BaseIntegrationTest {
         when(externalPaymentGateway.createCheckout(any())).thenReturn(mockSession);
 
         CreatePaymentIntentRequest req = createRequest(new BigDecimal("200.00"), IDEMPOTENCY_KEY);
-        PaymentSessionResponse firstCall = orchestrationService.createIntent(req);
-        PaymentSessionResponse secondCall = orchestrationService.createIntent(req);
+        PaymentSessionResponse firstCall = orchestrationService.createIntent(909L, sourceAccount.getAccountNumber(), req);
+        PaymentSessionResponse secondCall = orchestrationService.createIntent(909L, sourceAccount.getAccountNumber(), req);
 
         assertEquals(firstCall.getPaymentIntentId(), secondCall.getPaymentIntentId(), "Idempotent calls MUST return the same Payment Intent ID");
         assertEquals(1, paymentIntentRepository.count(), "Only one intent must exist in the database");
@@ -135,7 +135,7 @@ public class PaymentIntentOrchestrationPathIT extends BaseIntegrationTest {
         when(externalPaymentGateway.createCheckout(any())).thenReturn(mockSession);
 
         BusinessException exception = assertThrows(BusinessException.class, () -> {
-            orchestrationService.createIntent(createRequest(new BigDecimal("100.00"), IDEMPOTENCY_KEY));
+            orchestrationService.createIntent(909L, sourceAccount.getAccountNumber(), createRequest(new BigDecimal("100.00"), IDEMPOTENCY_KEY));
         });
 
         assertEquals(ErrorCode.INTERNAL_SERVER_ERROR, exception.getErrorCode());

@@ -65,7 +65,7 @@ public class WebhookManagementService {
                 .orElseThrow(() -> new NotFoundException("Webhook endpoint not found"));
                 
         if (!endpoint.getMerchantId().equals(merchantId)) {
-            throw new NotFoundException("Webhook endpoint not found");
+            throw new com.company.banking.common.exception.ForbiddenException("Not authorized to access this webhook");
         }
         
         endpointRepository.delete(endpoint);

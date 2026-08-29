@@ -1,62 +1,38 @@
 package com.company.banking.apigateway.api;
 
-import com.company.banking.apigateway.api.dto.ApiKeyResponse;
-import com.company.banking.apigateway.api.dto.CreateApiKeyRequest;
-import com.company.banking.apigateway.application.port.in.CreateApiKeyUseCase;
-import com.company.banking.common.response.ApiResponse;
-import com.company.banking.web.filter.CorrelationIdFilter;
-import jakarta.validation.Valid;
+import com.company.banking.apigateway.infrastructure.ApiKeyJpaEntity;
+import com.company.banking.apigateway.infrastructure.ApiKeyJpaRepository;
+import com.company.banking.common.exception.ForbiddenException;
+import com.company.banking.common.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.MDC;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
-import org.springframework.security.core.context.SecurityContextHolder;
-import com.company.banking.customer.domain.Customer;
-
 @RestController
-@RequestMapping("/api/v1/apikeys")
+@RequestMapping("/api/v1/gateway/keys")
 @RequiredArgsConstructor
 public class ApiKeyController {
 
-    private final CreateApiKeyUseCase apiKeyUseCase;
+    private final ApiKeyJpaRepository apiKeyRepository;
 
-    private Long extractMerchantIdFromContext() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof Customer customer) {
-            return customer.getId();
+    @DeleteMapping("/{keyId}")
+    public ResponseEntity<Void> deleteApiKey(@PathVariable Long keyId, Authentication authentication) {
+        Long merchantId;
+        try {
+            merchantId = Long.parseLong(authentication.getName());
+        } catch (Exception e) {
+            merchantId = (Long) authentication.getPrincipal();
         }
-        return 1L; // Fallback
-    }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<ApiKeyResponse>> createApiKey(@Valid @RequestBody CreateApiKeyRequest request) {
-        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        ApiKeyResponse response = apiKeyUseCase.createApiKey(extractMerchantIdFromContext(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "API key created successfully", correlationId));
-    }
+        ApiKeyJpaEntity key = apiKeyRepository.findById(keyId)
+                .orElseThrow(() -> new NotFoundException("API Key not found"));
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<ApiKeyResponse>>> listApiKeys() {
-        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        List<ApiKeyResponse> list = apiKeyUseCase.listApiKeys(extractMerchantIdFromContext());
-        return ResponseEntity.ok(ApiResponse.success(list, "API keys retrieved successfully", correlationId));
-    }
-
-    @PostMapping("/{id}/revoke")
-    public ResponseEntity<ApiResponse<Void>> revokeApiKey(@PathVariable Long id) {
-        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        apiKeyUseCase.revokeApiKey(extractMerchantIdFromContext(), id);
-        return ResponseEntity.ok(ApiResponse.success(null, "API key revoked successfully", correlationId));
-    }
-
-    @PostMapping("/{id}/rotate")
-    public ResponseEntity<ApiResponse<ApiKeyResponse>> rotateApiKey(@PathVariable Long id) {
-        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        ApiKeyResponse rotated = apiKeyUseCase.rotateApiKey(extractMerchantIdFromContext(), id);
-        return ResponseEntity.ok(ApiResponse.success(rotated, "API key rotated successfully", correlationId));
+        if (!key.getMerchantId().equals(merchantId)) {
+            throw new ForbiddenException("Not authorized to access this API Key");
+        }
+        
+        apiKeyRepository.delete(key);
+        return ResponseEntity.noContent().build();
     }
 }

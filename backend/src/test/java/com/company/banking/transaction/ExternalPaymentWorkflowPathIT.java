@@ -47,9 +47,11 @@ public class ExternalPaymentWorkflowPathIT extends BaseIntegrationTest {
     private FraudScreeningPort fraudScreeningPort;
 
     private Account sourceAccount;
+    private long initialTxCount;
 
     @BeforeEach
     void setUp() {
+        initialTxCount = transactionRepository.count();
         sourceAccount = accountPersistencePort.save(Account.builder()
                 .accountNumber("ACC-EXT-" + UUID.randomUUID().toString().substring(0, 8))
                 .customerId(301L)
@@ -109,7 +111,7 @@ public class ExternalPaymentWorkflowPathIT extends BaseIntegrationTest {
         });
 
         assertEquals(ErrorCode.INVALID_REQUEST, exception.getErrorCode());
-        assertEquals(0, transactionRepository.count());
+        assertEquals(initialTxCount, transactionRepository.count());
     }
 
     @Test
@@ -131,7 +133,7 @@ public class ExternalPaymentWorkflowPathIT extends BaseIntegrationTest {
         });
 
         assertEquals(ErrorCode.FRAUD_DETECTED, exception.getErrorCode());
-        assertEquals(0, transactionRepository.count(), "Fraud blocks must prevent ledger writes");
+        assertEquals(initialTxCount, transactionRepository.count(), "Fraud blocks must prevent ledger writes");
     }
 
     @Test
@@ -154,6 +156,6 @@ public class ExternalPaymentWorkflowPathIT extends BaseIntegrationTest {
             externalPaymentService.processPayment(request);
         });
 
-        assertEquals(1, transactionRepository.count(), "Only one wire transaction should be processed");
+        assertEquals(initialTxCount + 1, transactionRepository.count(), "Only one wire transaction should be processed");
     }
 }

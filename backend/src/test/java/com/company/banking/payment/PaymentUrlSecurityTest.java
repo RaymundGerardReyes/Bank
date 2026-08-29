@@ -23,6 +23,8 @@ public class PaymentUrlSecurityTest {
         // Use reflection to test the private validation method
         Method validateMethod = PaymentIntentOrchestrationService.class.getDeclaredMethod("isSafeCheckoutUrl", String.class);
         validateMethod.setAccessible(true);
+        
+        org.springframework.test.util.ReflectionTestUtils.setField(orchestrationService, "allowedDomains", java.util.List.of("paymongo.com", "developerph.dev", "localhost"));
 
         // 1. Evil Subdomain Takeover (Should Fail)
         boolean isEvilSubdomainSafe = (boolean) validateMethod.invoke(orchestrationService, "https://paymongo.com.evil.com/checkout");

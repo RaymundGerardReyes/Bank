@@ -5,11 +5,11 @@ spring:
     password:
     driver-class-name: org.h2.Driver
   jpa:
-    # Switch back to H2Dialect to stop Hibernate from using table aliases in DELETEs
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: create-drop
-    show-sql: true
+    show-sql: false
+    open-in-view: false
     properties:
       hibernate:
         globally_quoted_identifiers: true

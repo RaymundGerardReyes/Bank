@@ -26,11 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
 
-    @Override
-    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        String path = request.getRequestURI();
-        return path.startsWith("/api/v1/gateway/");
-    }
+    // Removed shouldNotFilter to allow BFF frontend to access gateway endpoints using JWT
 
     @Override
     protected void doFilterInternal(

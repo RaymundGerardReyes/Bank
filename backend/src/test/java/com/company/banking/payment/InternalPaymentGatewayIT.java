@@ -50,9 +50,11 @@ public class InternalPaymentGatewayIT extends LedgerSpyIntegrationTest {
 
     private Account testAccount;
     private PaymentIntent testIntent;
+    private long initialTxCount;
 
     @BeforeEach
     public void setup() {
+        initialTxCount = transactionJpaRepository.count();
         // Clear state to avoid data contamination between tests (handled by TestDatabaseCleaner)
 
         accountPersistencePort.findByAccountNumber("MERCHANT-SETTLEMENT-99")
@@ -98,7 +100,7 @@ public class InternalPaymentGatewayIT extends LedgerSpyIntegrationTest {
         assertEquals(PaymentIntentStatus.CAPTURED, intent.getStatus());
         
         long txCount = transactionJpaRepository.count();
-        assertEquals(1, txCount);
+        assertEquals(initialTxCount + 1, txCount);
     }
 
     @Test
@@ -142,7 +144,7 @@ public class InternalPaymentGatewayIT extends LedgerSpyIntegrationTest {
         PaymentIntent unchangedIntent = intentRepository.findByIntentId(testIntent.getIntentId()).orElseThrow();
         assertEquals(PaymentIntentStatus.AUTHORIZED, unchangedIntent.getStatus());
         
-        assertEquals(0, transactionJpaRepository.count(), "No transaction should be saved");
+        assertEquals(initialTxCount, transactionJpaRepository.count(), "No transaction should be saved");
     }
 
     @Test
@@ -252,7 +254,7 @@ public class InternalPaymentGatewayIT extends LedgerSpyIntegrationTest {
         // Verify NO financial effects occurred
         Account account = accountPersistencePort.findByAccountNumber(testAccount.getAccountNumber()).orElseThrow();
         assertEquals(0, new BigDecimal("10000.00").compareTo(account.getBalance()), "Balance must remain unchanged");
-        assertEquals(0, transactionJpaRepository.count(), "No transactions should be created");
+        assertEquals(initialTxCount, transactionJpaRepository.count(), "No transactions should be created");
     }
 
     @Test
@@ -334,7 +336,7 @@ public class InternalPaymentGatewayIT extends LedgerSpyIntegrationTest {
         // Verify NO financial effects occurred
         Account account = accountPersistencePort.findByAccountNumber(testAccount.getAccountNumber()).orElseThrow();
         assertEquals(0, new BigDecimal("10000.00").compareTo(account.getBalance()), "Balance must remain unchanged");
-        assertEquals(0, transactionJpaRepository.count(), "No transactions should be created");
+        assertEquals(initialTxCount, transactionJpaRepository.count(), "No transactions should be created");
 
         // Idempotency: Running it again should not fail
         PaymentIntent expiredAgain = executionService.expirePayment(testIntent.getIntentId(), "exp_" + UUID.randomUUID());
@@ -413,7 +415,7 @@ public class InternalPaymentGatewayIT extends LedgerSpyIntegrationTest {
             // OUTCOME A: CAPTURE won the race.
             assertEquals(PaymentIntentStatus.CAPTURED, finalizedIntent.getStatus(), "Payment must be captured");
             assertEquals(0, new BigDecimal("8500.00").compareTo(updatedAccount.getBalance()), "Balance must be deducted");
-            assertEquals(1, txCount, "One transaction must be created");
+            assertEquals(initialTxCount + 1, txCount, "One transaction must be created");
             
             // 4 captures failed (state changed), 5 expires failed (cannot expire captured payment)
             assertEquals(9, expectedFailures.get(), "9 operations must be rejected");
@@ -422,7 +424,7 @@ public class InternalPaymentGatewayIT extends LedgerSpyIntegrationTest {
             // OUTCOME B: EXPIRE won the race.
             assertEquals(PaymentIntentStatus.EXPIRED, finalizedIntent.getStatus(), "Payment must be expired");
             assertEquals(0, new BigDecimal("10000.00").compareTo(updatedAccount.getBalance()), "Balance must remain untouched");
-            assertEquals(0, txCount, "No transactions should be created");
+            assertEquals(initialTxCount, txCount, "No transactions should be created");
             
             // 5 captures failed (cannot capture an expired payment). 
             assertEquals(5, expectedFailures.get(), "5 capture operations must be rejected");
@@ -452,7 +454,7 @@ public class InternalPaymentGatewayIT extends LedgerSpyIntegrationTest {
 
         // 5. Verify Ledger and Transactions (1 for capture, 1 for refund)
         long txCount = transactionJpaRepository.count();
-        assertEquals(2, txCount);
+        assertEquals(initialTxCount + 2, txCount);
     }
 
     @Test

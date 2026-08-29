@@ -122,11 +122,11 @@ public class PaymentExecutionIntegrityIT {
         request.setIdempotencyKey(idempotencyKey);
 
         // 1. Send first request
-        var response1 = orchestrationService.createIntent(request);
+        var response1 = orchestrationService.createIntent(909L, "4859220013371001", request);
         assertNotNull(response1.getPaymentIntentId());
 
         // 2. Send duplicate request
-        var response2 = orchestrationService.createIntent(request);
+        var response2 = orchestrationService.createIntent(909L, "4859220013371001", request);
         
         // Assertions: 
         // We expect the SAME intent to be returned, NOT a new one.
@@ -155,7 +155,7 @@ public class PaymentExecutionIntegrityIT {
         request.setDescription("Concurrency Test");
         request.setMerchantReference("MERCH-002");
         request.setIdempotencyKey("idemp_" + UUID.randomUUID().toString());
-        var response = orchestrationService.createIntent(request);
+        var response = orchestrationService.createIntent(909L, "4859220013371001", request);
         
         PaymentIntent intent = intentRepository.findByIntentId(response.getPaymentIntentId()).orElseThrow();
         PaymentAttempt attempt = attemptRepository.findByPaymentIntentId(intent.getId()).get(0);

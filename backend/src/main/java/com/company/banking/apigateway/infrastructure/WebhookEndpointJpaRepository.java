@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface WebhookEndpointJpaRepository extends JpaRepository<WebhookEndpoint, Long> {
     List<WebhookEndpoint> findByMerchantId(Long merchantId);
+    List<WebhookEndpoint> findByMerchantIdAndStatus(Long merchantId, String status);
     List<WebhookEndpoint> findByMerchantIdAndEnvironmentAndStatus(Long merchantId, String environment, String status);
 }

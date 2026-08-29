@@ -6,245 +6,175 @@ import com.company.banking.common.exception.BusinessException;
 import com.company.banking.common.exception.ErrorCode;
 import com.company.banking.payment.api.dto.CreatePaymentIntentRequest;
 import com.company.banking.payment.api.dto.PaymentSessionResponse;
-import com.company.banking.payment.domain.PaymentAttempt;
 import com.company.banking.payment.domain.PaymentIntent;
+import com.company.banking.payment.domain.PaymentIntentStatus;
 import com.company.banking.payment.gateway.ExternalPaymentGateway;
 import com.company.banking.payment.gateway.dto.ExternalCheckoutRequest;
 import com.company.banking.payment.gateway.dto.PaymentSession;
-import com.company.banking.payment.infrastructure.PaymentAttemptJpaRepository;
 import com.company.banking.payment.infrastructure.PaymentIntentJpaRepository;
-import com.company.banking.transaction.application.TransactionAuthorizationService;
-
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.List;
 import java.util.UUID;
 
-import com.company.banking.payment.domain.PaymentIntentStatus;
-
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class PaymentIntentOrchestrationService {
 
-    @Value("${PAYMENT_WEBHOOK_HOST:http://localhost:8080}")
-    private String allowedInternalHost;
-
     private final PaymentIntentJpaRepository paymentIntentRepository;
-    private final PaymentAttemptJpaRepository paymentAttemptRepository;
-    private final ExternalPaymentGateway externalPaymentGateway;
     private final AccountPersistencePort accountPersistencePort;
-    private final TransactionAuthorizationService transactionAuthorizationService; 
+    private final ExternalPaymentGateway externalPaymentGateway;
+    private final TransactionTemplate transactionTemplate;
 
-    @Value("${payment.frontend.base-url:http://localhost:3000}")
-    private String frontendBaseUrl;
+    @Value("${payment.allowed-domains:paymongo.com,developerph.dev,localhost}")
+    private List<String> allowedDomains;
 
-    @Transactional
-    public PaymentSessionResponse createAndInitiatePayment(Long merchantId, CreatePaymentIntentRequest request) {
-        return createIntent(request);
-    }
-
-    @Transactional
-    public PaymentSessionResponse createIntent(CreatePaymentIntentRequest request) {
-        log.info("Orchestrating new Payment Intent for account: {}", request.getSourceAccountId());
-
+    public PaymentSessionResponse createIntent(Long merchantId, String sourceAccountId, CreatePaymentIntentRequest request) {
         if (request.getIdempotencyKey() != null) {
-            java.util.Optional<PaymentIntent> existingIntent = paymentIntentRepository.findByIdempotencyKey(request.getIdempotencyKey());
-            if (existingIntent.isPresent()) {
-                PaymentIntent intent = existingIntent.get();
-                log.info("Idempotency hit for key: {}, returning existing intent {}", request.getIdempotencyKey(), intent.getIntentId());
-                List<PaymentAttempt> attempts = paymentAttemptRepository.findByPaymentIntentId(intent.getId());
-                PaymentAttempt attempt = attempts.isEmpty() ? null : attempts.get(0);
-                
-                return PaymentSessionResponse.builder()
-                        .paymentIntentId(intent.getIntentId())
-                        .provider(attempt != null ? attempt.getProvider() : "INTERNAL")
-                        .checkoutType("HOSTED_CHECKOUT")
-                        .checkoutUrl(attempt != null ? attempt.getCheckoutUrl() : "")
-                        .expiresAt(attempt != null ? attempt.getExpiresAt() : java.time.LocalDateTime.now().plusHours(1))
-                        .transactionReference(intent.getIntentId())
+            List<PaymentIntent> existing = paymentIntentRepository.findByIdempotencyKey(request.getIdempotencyKey());
+            if (!existing.isEmpty()) {
+                PaymentIntent intent = existing.get(0);
+                if (intent.getAmount().compareTo(request.getAmount()) != 0 || !intent.getCustomerAccountNumber().equals(sourceAccountId)) {
+                    throw new BusinessException(ErrorCode.CONFLICT, "Idempotency key reused with different payload");
+                }
+                return mapToResponse(intent);
+            }
+        }
+
+        String intentId = "pi_" + UUID.randomUUID().toString().replace("-", "");
+        PaymentIntent intent;
+        try {
+            intent = transactionTemplate.execute(status -> {
+                Account account = accountPersistencePort.findByAccountNumber(sourceAccountId)
+                        .orElseThrow(() -> new com.company.banking.common.exception.NotFoundException("Account not found"));
+
+                if (account.getBalance().compareTo(request.getAmount()) < 0) {
+                    throw new BusinessException(ErrorCode.INSUFFICIENT_FUNDS, "Insufficient funds");
+                }
+                account.setBalance(account.getBalance().subtract(request.getAmount()));
+                accountPersistencePort.save(account);
+
+                PaymentIntent newIntent = PaymentIntent.builder()
+                        .intentId(intentId)
+                        .merchantId(merchantId)
+                        .customerAccountNumber(sourceAccountId)
+                        .amount(request.getAmount())
+                        .currency(request.getCurrency() != null ? request.getCurrency() : "PHP")
+                        .description(request.getDescription())
+                        .idempotencyKey(request.getIdempotencyKey())
+                        .status(PaymentIntentStatus.CREATED)
                         .build();
+
+                return paymentIntentRepository.saveAndFlush(newIntent);
+            });
+        } catch (DataIntegrityViolationException e) {
+            // MVCC Race Condition Guard: Wait for the concurrent winning thread to commit to the database
+            for (int i = 0; i < 5; i++) {
+                try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+                
+                List<PaymentIntent> concurrentIntents = paymentIntentRepository.findByIdempotencyKey(request.getIdempotencyKey());
+                if (!concurrentIntents.isEmpty()) {
+                    PaymentIntent concurrentIntent = concurrentIntents.get(0);
+                    if (concurrentIntent.getAmount().compareTo(request.getAmount()) != 0 || !concurrentIntent.getCustomerAccountNumber().equals(sourceAccountId)) {
+                        throw new BusinessException(ErrorCode.CONFLICT, "Idempotency key reused with different payload");
+                    }
+                    return mapToResponse(concurrentIntent);
+                }
             }
+            throw new BusinessException(ErrorCode.CONFLICT, "Failed to resolve idempotency conflict");
         }
 
-        Account sourceAccount = accountPersistencePort.findByAccountNumber(request.getSourceAccountId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Source account not found"));
-
-        if (sourceAccount.getBalance().compareTo(request.getAmount()) < 0) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_FUNDS, "Insufficient funds for payment hold");
-        }
-        sourceAccount.setBalance(sourceAccount.getBalance().subtract(request.getAmount()));
-        accountPersistencePort.save(sourceAccount);
-
-        String generatedIntentId = "PI-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        PaymentIntent intent = PaymentIntent.builder()
-                .intentId(generatedIntentId)
-                .merchantId(1L)
-                .customerAccountNumber(sourceAccount.getAccountNumber())
-                .amount(request.getAmount())
-                .currency(sourceAccount.getCurrency())
-                .status(PaymentIntentStatus.AUTHORIZED) 
-                .description(request.getDescription())
-                .idempotencyKey(request.getIdempotencyKey())
-                .build();
+        ExternalCheckoutRequest extReq = new ExternalCheckoutRequest();
+        extReq.setPaymentIntentId(intent.getIntentId());
+        extReq.setAmount(intent.getAmount());
+        extReq.setCurrency(intent.getCurrency());
+        extReq.setDescription(intent.getDescription());
         
-        try {
-            intent = paymentIntentRepository.save(intent);
-            paymentIntentRepository.flush();
-        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
-            log.info("Concurrent creation for idempotency key: {}", request.getIdempotencyKey());
-            PaymentIntent existing = paymentIntentRepository.findByIdempotencyKey(request.getIdempotencyKey())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.CONFLICT, "Concurrent creation conflict"));
-                    
-            List<PaymentAttempt> attempts = paymentAttemptRepository.findByPaymentIntentId(existing.getId());
-            PaymentAttempt attempt = attempts.isEmpty() ? null : attempts.get(0);
+        PaymentSession session = externalPaymentGateway.createCheckout(extReq);
+        
+        if (session.getProvider() != com.company.banking.payment.domain.PaymentProvider.INTERNAL && !isSafeCheckoutUrl(session.getCheckoutUrl())) {
+            // Revert hold if malicious
+            transactionTemplate.execute(status -> {
+                Account account = accountPersistencePort.findByAccountNumber(sourceAccountId).orElseThrow();
+                account.setBalance(account.getBalance().add(request.getAmount()));
+                accountPersistencePort.save(account);
+                return null;
+            });
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "Security validation failed: payment gateway checkout URL is not on the security allowlist");
+        }
+        
+        // Finalize transaction
+        PaymentSessionResponse response = transactionTemplate.execute(status -> {
+            PaymentIntent updatedIntent = paymentIntentRepository.findByIntentId(intent.getIntentId()).orElseThrow();
+            updatedIntent.setStatus(PaymentIntentStatus.CHECKOUT_CREATED);
+            paymentIntentRepository.save(updatedIntent);
             
-            return PaymentSessionResponse.builder()
-                    .paymentIntentId(existing.getIntentId())
-                    .provider(attempt != null ? attempt.getProvider() : "INTERNAL")
-                    .checkoutType("HOSTED_CHECKOUT")
-                    .checkoutUrl(attempt != null ? attempt.getCheckoutUrl() : "")
-                    .expiresAt(attempt != null ? attempt.getExpiresAt() : java.time.LocalDateTime.now().plusHours(1))
-                    .transactionReference(existing.getIntentId())
-                    .build();
-        }
+            PaymentSessionResponse res = mapToResponse(updatedIntent);
+            res.setCheckoutUrl(session.getCheckoutUrl());
+            res.setProvider(session.getProvider().name());
+            return res;
+        });
 
-        ExternalCheckoutRequest checkoutReq = ExternalCheckoutRequest.builder()
-                .paymentIntentId(intent.getIntentId())
-                .amount(intent.getAmount())
-                .currency(intent.getCurrency())
-                .description(intent.getDescription())
-                .merchantOrderId(request.getMerchantReference())
-                .successUrl(frontendBaseUrl + "/transactions/external-payment/status?intentId=" + intent.getIntentId()) 
-                .failUrl(frontendBaseUrl + "/transactions/external-payment/status?intentId=" + intent.getIntentId())
-                .cancelUrl(frontendBaseUrl + "/transactions/external-payment/status?intentId=" + intent.getIntentId())
-                .build();
-
-        PaymentSession session = externalPaymentGateway.createCheckout(checkoutReq);
-
-        if (!isSafeCheckoutUrl(session.getCheckoutUrl())) {
-            log.error("SECURITY VIOLATION: Provider returned an untrusted checkout URL: {}", session.getCheckoutUrl());
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "Invalid or untrusted payment gateway checkout URL");
-        }
-        validateCheckoutUrl(session.getCheckoutUrl(), session.getProvider().name());
-
-        PaymentAttempt attempt = PaymentAttempt.builder()
-                .attemptId(UUID.randomUUID().toString())
-                .paymentIntentId(intent.getId())
-                .provider(session.getProvider().name())
-                .providerReference(session.getProviderReference())
-                .checkoutUrl(session.getCheckoutUrl())
-                .status("PENDING")
-                .expiresAt(session.getExpiresAt())
-                .build();
-        paymentAttemptRepository.save(attempt);
-
-        intent.setStatus(PaymentIntentStatus.CHECKOUT_CREATED);
-        paymentIntentRepository.save(intent);
-
-        log.info("Successfully orchestrated payment intent {}. Returning checkout URL.", intent.getIntentId());
-
-        return PaymentSessionResponse.builder()
-                .paymentIntentId(intent.getIntentId())
-                .provider(session.getProvider().name())
-                .checkoutType(session.getChannel().name())
-                .checkoutUrl(session.getCheckoutUrl())
-                .expiresAt(session.getExpiresAt())
-                .transactionReference(intent.getIntentId()) 
-                .build();
+        return response;
     }
 
-    /**
-     * Validates the generated checkout URL against a strict allowlist.
-     */
-    public void validateCheckoutUrl(String checkoutUrl, String providerCode) {
+    private boolean isSafeCheckoutUrl(String url) {
+        if (allowedDomains == null || allowedDomains.isEmpty()) return false;
         try {
-            URI uri = new URI(checkoutUrl);
-
-            // 1. Enforce HTTPS
-            if (!"https".equalsIgnoreCase(uri.getScheme()) && !"localhost".equals(uri.getHost()) && !uri.getHost().contains("localhost")) {
-                log.error("Security Alert: Provider {} returned a non-HTTPS URL: {}", providerCode, checkoutUrl);
-                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "Secure checkout generation failed.");
+            URI uri = new URI(url);
+            if (!"https".equalsIgnoreCase(uri.getScheme()) && !"localhost".equals(uri.getHost())) {
+                // strict HTTPS enforcement except for localhost
+                if (!"http".equalsIgnoreCase(uri.getScheme()) || !"localhost".equals(uri.getHost())) {
+                    return false;
+                }
             }
-
             String host = uri.getHost();
-            if (host == null) {
-                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "Invalid checkout URL structure.");
-            }
-
-            // 2. Strict Host Allowlist matching
-            boolean isValidHost = switch (providerCode.toUpperCase()) {
-                case "PAYMONGO" -> host.equals("paymongo.com") || host.endsWith(".paymongo.com");
-                case "PAYNAMICS" -> host.equals("paynamics.net") || host.endsWith(".paynamics.net");
-                case "MAYA" -> host.equals("maya.ph") || host.endsWith(".maya.ph");
-                case "INTERNAL" -> host.contains("localhost") || host.equals("developerph.dev") || host.endsWith(".developerph.dev") || allowedInternalHost.contains(host);
-                default -> host.contains("localhost") || host.equals("developerph.dev") || host.endsWith(".developerph.dev") || allowedInternalHost.contains(host);
-            };
-
-            if (!isValidHost) {
-                log.error("Security Alert: Untrusted checkout domain {} for provider {}", host, providerCode);
-                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "Checkout URL failed security allowlist check.");
-            }
-
-        } catch (URISyntaxException e) {
-            log.error("Failed to parse checkout URL: {}", checkoutUrl, e);
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "Malformed checkout URL returned from provider.");
-        }
-    }
-
-    private boolean isSafeCheckoutUrl(String urlString) {
-        try {
-            URI uri = new URI(urlString);
-            String host = uri.getHost();
-            boolean isHttpsOrLocal = "https".equalsIgnoreCase(uri.getScheme()) || "localhost".equals(host) || host.contains("localhost");
-            return isHttpsOrLocal && 
-                   host != null && 
-                   (host.equals("paymongo.com") || host.endsWith(".paymongo.com") || 
-                    host.equals("maya.ph") || host.endsWith(".maya.ph") ||
-                    host.contains("localhost") || host.equals("developerph.dev") || host.endsWith(".developerph.dev") || allowedInternalHost.contains(host));
+            if (host == null) return false;
+            return allowedDomains.stream().anyMatch(d -> host.equals(d) || host.endsWith("." + d));
         } catch (Exception e) {
-            log.warn("URL rejected: Malformed syntax or invalid host.");
             return false;
         }
     }
 
-    @Transactional(readOnly = true)
+    public PaymentIntent getIntent(String id) {
+        return paymentIntentRepository.findByIntentId(id)
+                .orElseThrow(() -> new com.company.banking.common.exception.NotFoundException("Payment intent not found"));
+    }
+
     public PaymentIntent getPaymentIntent(String intentId, Long merchantId) {
-        PaymentIntent intent = getIntent(intentId);
+        PaymentIntent intent = paymentIntentRepository.findByIntentId(intentId)
+                .orElseThrow(() -> new com.company.banking.common.exception.NotFoundException("Payment intent not found"));
         if (!intent.getMerchantId().equals(merchantId)) {
-            log.warn("Unauthorized access attempt to Payment Intent {} by merchantId {}", intentId, merchantId);
-            throw new BusinessException(ErrorCode.FORBIDDEN, "Not authorized to access this payment intent");
+            throw new com.company.banking.common.exception.ForbiddenException("Not authorized to access this intent");
         }
         return intent;
     }
 
-    @Transactional(readOnly = true)
-    public PaymentIntent getIntent(String intentId) {
-        return paymentIntentRepository.findByIntentId(intentId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Payment Intent not found"));
+    @Transactional
+    public void cancelIntent(String id) {
+        PaymentIntent intent = getIntent(id);
+        if (intent.getStatus() == PaymentIntentStatus.SUCCESS || intent.getStatus() == PaymentIntentStatus.CANCELLED) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Cannot cancel intent in current status");
+        }
+        intent.setStatus(PaymentIntentStatus.CANCELLED);
+        paymentIntentRepository.save(intent);
+        
+        if (intent.getCustomerAccountNumber() != null) {
+            Account account = accountPersistencePort.findByAccountNumber(intent.getCustomerAccountNumber()).orElseThrow();
+            account.setBalance(account.getBalance().add(intent.getAmount()));
+            accountPersistencePort.save(account);
+        }
     }
 
-    @Transactional
-    public void cancelIntent(String intentId) {
-        PaymentIntent intent = getIntent(intentId);
-        
-        if (intent.getStatus() == PaymentIntentStatus.CHECKOUT_CREATED || intent.getStatus() == PaymentIntentStatus.AUTHORIZED) {
-            intent.setStatus(PaymentIntentStatus.CANCELLED);
-            paymentIntentRepository.save(intent);
-            
-            accountPersistencePort.findByAccountNumber(intent.getCustomerAccountNumber()).ifPresent(acc -> {
-                acc.setBalance(acc.getBalance().add(intent.getAmount()));
-                accountPersistencePort.save(acc);
-            });
-            log.info("Payment Intent {} has been cancelled and hold released.", intentId);
-        } else {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Cannot cancel an intent in status: " + intent.getStatus());
-        }
+    private PaymentSessionResponse mapToResponse(PaymentIntent intent) {
+        PaymentSessionResponse response = new PaymentSessionResponse();
+        response.setPaymentIntentId(intent.getIntentId());
+        return response;
     }
 }

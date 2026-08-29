@@ -41,20 +41,46 @@ public class DataInitializer implements CommandLineRunner {
     private final AuditLogPersistencePort auditLogPersistencePort;
     private final PaymentRailConfigurationJpaRepository paymentRailConfigurationJpaRepository;
     private final MerchantJpaRepository merchantJpaRepository;
+    private final com.company.banking.apigateway.infrastructure.ApiKeyJpaRepository apiKeyJpaRepository;
+    private final jakarta.persistence.EntityManager entityManager;
 
     // Defined standard ISO PANs for seeding
     private final String MOCK_SOURCE_PAN = "4859220013371001";
     private final String MOCK_RECIPIENT_PAN = "4859220013379999";
 
     @Override
+    @jakarta.transaction.Transactional
     public void run(String... args) {
         // Seed Merchants for Payment Gateway Tests
+        if (!merchantJpaRepository.existsById(999L)) {
+            log.info("Seeding test Merchant 999");
+            entityManager.createNativeQuery(
+                "INSERT INTO merchants (id, merchant_code, legal_name, business_registration_number, status, created_at, updated_at) VALUES (999, 'M-DEFAULT', 'Fallback Default Merchant', 'BRN-999999', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            ).executeUpdate();
+        }
         if (!merchantJpaRepository.existsById(1001L)) {
-            log.info("Seeding test Merchants (999 and 1001)");
-            if (!merchantJpaRepository.existsById(999L)) {
-                merchantJpaRepository.save(Merchant.builder().id(999L).merchantCode("M-DEFAULT").legalName("Fallback Default Merchant").businessRegistrationNumber("BRN-999999").status("ACTIVE").build());
-            }
-            merchantJpaRepository.save(Merchant.builder().id(1001L).merchantCode("M-1001").legalName("Test Client Merchant").businessRegistrationNumber("BRN-100100").status("ACTIVE").build());
+            log.info("Seeding test Merchant 1001");
+            entityManager.createNativeQuery(
+                "INSERT INTO merchants (id, merchant_code, legal_name, business_registration_number, status, created_at, updated_at) VALUES (1001, 'M-1001', 'Test Client Merchant', 'BRN-100100', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            ).executeUpdate();
+        }
+
+        // Seed Test API Key for Integration Testing
+        String mockApiKeyRaw = "sk_test_mock_123456789";
+        String mockKeyHash = com.company.banking.apigateway.application.CreateApiKeyService.hashKey(mockApiKeyRaw);
+        if (apiKeyJpaRepository.findByKeyHash(mockKeyHash).isEmpty()) {
+            log.info("Seeding test API key for gateway integration tests");
+            apiKeyJpaRepository.save(com.company.banking.apigateway.infrastructure.ApiKeyJpaEntity.builder()
+                    .keyPrefix("sk_test_")
+                    .keyHash(mockKeyHash)
+                    .merchantId(999L)
+                    .name("Default Integration Test Key")
+                    .environment("TEST")
+                    .cidrWhitelist("0.0.0.0/0")
+                    .scopes("payments:write,payments:read")
+                    .linkedAccountId(MOCK_SOURCE_PAN)
+                    .expiresAt(java.time.LocalDateTime.now().plusYears(1))
+                    .build());
         }
 
         // Seed payment rails if not present

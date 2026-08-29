@@ -33,6 +33,7 @@ public enum ErrorCode {
     FX_UNSUPPORTED_PAIR("ERR_BANK_013", "The requested currency pair is not supported for FX", HttpStatus.BAD_REQUEST),
     FX_PROVIDER_INVALID_RESPONSE("ERR_BANK_014", "External FX provider returned an invalid or missing rate", HttpStatus.BAD_GATEWAY),
     FX_QUOTE_INVALID("ERR_BANK_015", "Invalid or non-positive FX rate received", HttpStatus.BAD_REQUEST),
+    METHOD_NOT_ALLOWED("ERR_405", "HTTP method not supported", HttpStatus.METHOD_NOT_ALLOWED),
     SYSTEM_ERROR("ERR_SYS_001", "System configuration or administrative error", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;

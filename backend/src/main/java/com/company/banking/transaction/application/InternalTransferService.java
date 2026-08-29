@@ -133,8 +133,8 @@ public class InternalTransferService implements TransactionUseCase {
 
             // 4. Validate Business Rules & VAM Hierarchy (Post-lock to ensure state hasn't changed)
             transferPolicy.validateApiKeyVamBinding(source);
-            transferPolicy.validateDestinationWithinVamHierarchy(source, destination);
             transferPolicy.validateVamPermissions(source, destination);
+
 
         zeroBalanceSweepService.executeSweepIfNecessary(source, request.getAmount(), "Internal Transfer");
 

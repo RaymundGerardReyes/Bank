@@ -33,7 +33,8 @@ public class OpenApiConfig {
                 .pathsToMatch(
                         "/api/v1/transactions/**",
                         "/api/v1/transfers/**",
-                        "/api/v1/statements/**"
+                        "/api/v1/statements/**",
+                        "/api/v1/gateway/**"
                 )
                 // EXPLICITLY strip internal operations from the spec
                 .pathsToExclude(
@@ -61,9 +62,9 @@ public class OpenApiConfig {
                         .url(serverUrl)
                         .description("NovaBank API Gateway"))
                 .info(new Info()
-                        .title("NovaBank Enterprise Developer Gateway")
+                        .title("NovaBank Enterprise & Gateway Developer API")
                         .version("1.0.0")
-                        .description("Public integration specifications for Virtual Account Management, Payment Orchestration, and Core Ledgers."))
+                        .description("Public integration specifications for Virtual Account Management, Payment Gateway Orchestration, and Core Ledgers."))
                 .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
                 .components(new Components()
                         .addSecuritySchemes(securitySchemeName,
@@ -95,8 +96,8 @@ public class OpenApiConfig {
                       -H "Content-Type: application/json" \\
                       -H "Authorization: Bearer $API_TOKEN" \\
                       -d '{
-                        "sourceAccountNumber": "4859228705057459",
-                        "destinationAccountNumber": "4859228705057460",
+                        "sourceAccountNumber": "4859220013371001",
+                        "destinationAccountNumber": "4859220013379999",
                         "amount": 150.00,
                         "idempotencyKey": "idemp-example",
                         "description": "Payment for consulting services",
@@ -119,8 +120,8 @@ public class OpenApiConfig {
                     request.AddHeader("Authorization", $"Bearer {token}");
                     
                     var body = new {
-                        sourceAccountNumber = "4859228705057459",
-                        destinationAccountNumber = "4859228705057460",
+                        sourceAccountNumber = "4859220013371001",
+                        destinationAccountNumber = "4859220013379999",
                         amount = 150.00m,
                         idempotencyKey = Guid.NewGuid().ToString(),
                         description = "Payment for consulting services",
@@ -155,8 +156,8 @@ public class OpenApiConfig {
                     }
                     
                     payload := InternalTransferRequest{
-                        SourceAccountNumber:      "4859228705057459",
-                        DestinationAccountNumber: "4859228705057460",
+                        SourceAccountNumber:      "4859220013371001",
+                        DestinationAccountNumber: "4859220013379999",
                         Amount:                   150.00,
                         IdempotencyKey:           "idemp-" + uuid.New().String(),
                         Description:              "Payment for consulting services",
@@ -194,8 +195,8 @@ public class OpenApiConfig {
                         raise RuntimeError("API_TOKEN is not configured")
                     
                     payload = {
-                        "sourceAccountNumber": "4859228705057459",
-                        "destinationAccountNumber": "4859228705057460",
+                        "sourceAccountNumber": "4859220013371001",
+                        "destinationAccountNumber": "4859220013379999",
                         "amount": 150.00,
                         "idempotencyKey": "idemp-example",
                         "description": "Payment for consulting services",
@@ -221,8 +222,8 @@ public class OpenApiConfig {
                     
                     String body = \"\"\"
                         {
-                          "sourceAccountNumber": "4859228705057459",
-                          "destinationAccountNumber": "4859228705057460",
+                          "sourceAccountNumber": "4859220013371001",
+                          "destinationAccountNumber": "4859220013379999",
                           "amount": 150.00,
                           "idempotencyKey": "idemp-" + UUID.randomUUID(),
                           "description": "Payment for consulting services",
@@ -233,6 +234,91 @@ public class OpenApiConfig {
                         .uri(URI.create(baseUrl + "/api/v1/transfers/internal"))
                         .header("Content-Type", "application/json")
                         .header("Authorization", "Bearer " + token)
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build();
+                    
+                    HttpResponse<String> response = HttpClient.newHttpClient()
+                        .send(request, HttpResponse.BodyHandlers.ofString());"""
+            )
+        );
+    }
+    @Bean
+    public OperationCustomizer gatewayCodeSampleCustomizer() {
+        return (operation, handlerMethod) -> {
+            String path = handlerMethod.getMethod().getName();
+            if ("createPaymentIntent".equals(path) || "createPayment".equals(path)) {
+                operation.addExtension("x-codeSamples", buildGatewayPaymentSamples());
+            }
+            return operation;
+        };
+    }
+
+    private List<Map<String, String>> buildGatewayPaymentSamples() {
+        return List.of(
+            Map.of(
+                "lang", "curl",
+                "label", "cURL",
+                "source", """
+                    curl -X POST "$API_BASE_URL/api/v1/gateway/payments/intents" \\
+                      -H "Content-Type: application/json" \\
+                      -H "Authorization: Bearer $API_TOKEN" \\
+                      -H "X-Client-Id: client_1001" \\
+                      -H "Idempotency-Key: idemp-"$RANDOM \\
+                      -d '{
+                        "customerAccountNumber": "4859220013371001",
+                        "amount": 500.00,
+                        "currency": "PHP"
+                      }'"""
+            ),
+            Map.of(
+                "lang", "python",
+                "label", "Python · httpx",
+                "source", """
+                    import os
+                    import httpx
+                    import uuid
+                    
+                    base_url = os.environ.get("API_BASE_URL")
+                    token = os.environ.get("API_TOKEN")
+                    
+                    payload = {
+                        "customerAccountNumber": "4859220013371001",
+                        "amount": 500.00,
+                        "currency": "PHP"
+                    }
+                    
+                    headers = {
+                        "Authorization": f"Bearer {token}",
+                        "X-Client-Id": "client_1001",
+                        "Idempotency-Key": f"idemp-{uuid.uuid4()}"
+                    }
+                    
+                    response = httpx.post(
+                        f"{base_url}/api/v1/gateway/payments/intents",
+                        json=payload,
+                        headers=headers
+                    )"""
+            ),
+            Map.of(
+                "lang", "java",
+                "label", "Java · HttpClient",
+                "source", """
+                    String baseUrl = System.getenv("API_BASE_URL");
+                    String token = System.getenv("API_TOKEN");
+                    
+                    String body = \"\"\"
+                        {
+                          "customerAccountNumber": "4859220013371001",
+                          "amount": 500.00,
+                          "currency": "PHP"
+                        }\"\"\";
+                    
+                    HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(baseUrl + "/api/v1/gateway/payments/intents"))
+                        .header("Content-Type", "application/json")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Client-Id", "client_1001")
+                        .header("Idempotency-Key", "idemp-" + UUID.randomUUID())
                         .POST(HttpRequest.BodyPublishers.ofString(body))
                         .build();
                     

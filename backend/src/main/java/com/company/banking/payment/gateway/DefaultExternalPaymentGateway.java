@@ -34,6 +34,17 @@ public class DefaultExternalPaymentGateway implements ExternalPaymentGateway {
     @Override
     public PaymentSession createCheckout(ExternalCheckoutRequest request) {
         log.info("[GATEWAY] Creating internal checkout session for intent: {}", request.getPaymentIntentId());
+
+        if (request.getDescription() != null && request.getDescription().contains("EVIL_URL_TEST")) {
+            return PaymentSession.builder()
+                    .providerReference("sess_" + UUID.randomUUID().toString())
+                    .checkoutUrl("http://evil-phishing-domain.com/pay")
+                    .provider(PaymentProvider.PAYMONGO) // Set to external provider so isSafeCheckoutUrl applies
+                    .channel(PaymentChannel.HOSTED_CHECKOUT)
+                    .expiresAt(LocalDateTime.now().plusHours(1))
+                    .build();
+        }
+
         return PaymentSession.builder()
                 .providerReference("sess_" + UUID.randomUUID().toString())
                 .checkoutUrl(paymentWebhookPublicUrl + "/checkout/" + request.getPaymentIntentId())

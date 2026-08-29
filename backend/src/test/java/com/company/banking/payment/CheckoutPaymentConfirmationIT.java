@@ -58,10 +58,13 @@ public class CheckoutPaymentConfirmationIT extends LedgerSpyIntegrationTest {
     private Account customerAccount;
     private Account merchantAccount;
 
+    private long initialTxCount;
+    private long initialLedgerCount;
+
     @BeforeEach
     public void setup() {
-
-
+        initialTxCount = transactionRepository.count();
+        initialLedgerCount = ledgerEntryRepository.count();
         // Seed Customer Account idempotently
         customerAccount = accountPersistencePort.findByAccountNumber("CUST-CONF-1001")
                 .map(acc -> {
@@ -131,8 +134,6 @@ public class CheckoutPaymentConfirmationIT extends LedgerSpyIntegrationTest {
 
     @Test
     public void authorizedCheckout_ShouldCaptureAndBecomePaid() {
-        long initialTxCount = transactionRepository.count();
-        long initialLedgerCount = ledgerEntryRepository.count();
 
         confirmationService.confirmCheckout(activeSession.getSessionId());
 
@@ -196,8 +197,8 @@ public class CheckoutPaymentConfirmationIT extends LedgerSpyIntegrationTest {
 
         // 1. Due to idempotency checks and DB locking, all threads might cleanly return a response
         // but the core financial effect MUST happen exactly once.
-        assertEquals(1, transactionRepository.count(), "Only ONE transaction must be recorded.");
-        assertEquals(2, ledgerEntryRepository.count(), "Only TWO ledger entries must be recorded.");
+        assertEquals(initialTxCount + 1, transactionRepository.count(), "Only ONE transaction must be recorded.");
+        assertEquals(initialLedgerCount + 2, ledgerEntryRepository.count(), "Only TWO ledger entries must be recorded.");
         
         Account updatedCustomer = accountPersistencePort.findByAccountNumber(customerAccount.getAccountNumber()).orElseThrow();
         assertEquals(0, new BigDecimal("9000.00").compareTo(updatedCustomer.getBalance()), "Customer balance deducted EXACTLY once.");
@@ -214,7 +215,7 @@ public class CheckoutPaymentConfirmationIT extends LedgerSpyIntegrationTest {
         });
 
         assertTrue(ex.getMessage().contains("Amount mismatch"));
-        assertEquals(0, transactionRepository.count(), "Refused capture must not create transactions.");
+        assertEquals(initialTxCount, transactionRepository.count(), "Refused capture must not create transactions.");
     }
 
     @Test
@@ -235,6 +236,6 @@ public class CheckoutPaymentConfirmationIT extends LedgerSpyIntegrationTest {
         assertEquals(CheckoutSessionStatus.AUTHORIZED, sessionRepository.findById(activeSession.getId()).get().getStatus());
         assertEquals(PaymentIntentStatus.AUTHORIZED, intentRepository.findById(activeIntent.getId()).get().getStatus());
         
-        assertEquals(0, transactionRepository.count(), "Transactions must be rolled back.");
+        assertEquals(initialTxCount, transactionRepository.count(), "Transactions must be rolled back.");
     }
 }

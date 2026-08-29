@@ -43,12 +43,16 @@ public class InternalTransferIntegrityIT extends TransferSpyIntegrationTest {
     private Account sourceAccount;
     private Account destAccount;
     private InternalTransferRequest validRequest;
+    private long initialTxCount;
+    private long initialLedgerCount;
 
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void setup() {
+        initialTxCount = transactionRepository.count();
+        initialLedgerCount = ledgerEntryRepository.count();
         try {
             jdbcTemplate.execute("ALTER TABLE ledger_entries ADD CONSTRAINT fk_ledger_transaction_reference FOREIGN KEY (transaction_reference) REFERENCES transactions(transaction_reference)");
         } catch (Exception ignored) {
@@ -100,8 +104,8 @@ public class InternalTransferIntegrityIT extends TransferSpyIntegrationTest {
         });
 
         // Verification: The @Transactional boundary MUST cleanly wipe the partial state
-        assertEquals(0, transactionRepository.count(), "Transaction record must be rolled back");
-        assertEquals(0, ledgerEntryRepository.count(), "Ledger entries must be rolled back");
+        assertEquals(initialTxCount, transactionRepository.count(), "Transaction record must be rolled back");
+        assertEquals(initialLedgerCount, ledgerEntryRepository.count(), "Ledger entries must be rolled back");
         
         Account unchangedSource = accountPersistencePort.findByAccountNumber(sourceAccount.getAccountNumber()).orElseThrow();
         assertEquals(0, new BigDecimal("500.00").compareTo(unchangedSource.getBalance()), "Balance must remain untouched");
@@ -121,8 +125,8 @@ public class InternalTransferIntegrityIT extends TransferSpyIntegrationTest {
 
         // Verification: Because we utilized @TransactionalEventListener(phase = AFTER_COMMIT),
         // the ledger must be permanently saved despite the notification failure.
-        assertEquals(1, transactionRepository.count(), "Transaction must commit successfully");
-        assertEquals(2, ledgerEntryRepository.count(), "Exactly 2 ledger entries must be written");
+        assertEquals(initialTxCount + 1, transactionRepository.count(), "Transaction must commit successfully");
+        assertEquals(initialLedgerCount + 2, ledgerEntryRepository.count(), "Exactly 2 ledger entries must be written");
 
         Account updatedSource = accountPersistencePort.findByAccountNumber(sourceAccount.getAccountNumber()).orElseThrow();
         assertEquals(0, new BigDecimal("450.00").compareTo(updatedSource.getBalance()), "Balance must be successfully deducted");
@@ -175,7 +179,7 @@ public class InternalTransferIntegrityIT extends TransferSpyIntegrationTest {
         assertEquals(com.company.banking.common.exception.ErrorCode.CROSS_CURRENCY_POSTING_NOT_AVAILABLE, ex.getErrorCode());
         
         // ULTIMATE VERIFICATION: The ledger must remain totally untouched
-        assertEquals(0, transactionRepository.count(), "No transaction should be saved to the database");
-        assertEquals(0, ledgerEntryRepository.count(), "No ledger entries should be saved to the database");
+        assertEquals(initialTxCount, transactionRepository.count(), "No transaction should be saved to the database");
+        assertEquals(initialLedgerCount, ledgerEntryRepository.count(), "No ledger entries should be saved to the database");
     }
 }

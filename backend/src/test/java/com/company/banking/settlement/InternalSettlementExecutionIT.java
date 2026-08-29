@@ -55,13 +55,16 @@ public class InternalSettlementExecutionIT extends LedgerSpyIntegrationTest {
     private final Long TEST_MERCHANT_ID = 77L;
     private final String SUSPENSE_ACC = "MERCHANT-SETTLEMENT-77";
     private final String DEST_ACC = "DEST-OP-123";
+    private long initialTxCount;
+    private long initialLedgerCount;
 
     @Autowired
     private com.company.banking.account.infrastructure.AccountJpaRepository accountJpaRepository;
 
     @BeforeEach
     public void setup() {
-
+        initialTxCount = transactionRepository.count();
+        initialLedgerCount = ledgerEntryRepository.count();
 
         // Seed Suspense & Destination Accounts idempotently
         accountPersistencePort.findByAccountNumber(SUSPENSE_ACC)
@@ -120,9 +123,9 @@ public class InternalSettlementExecutionIT extends LedgerSpyIntegrationTest {
         assertEquals(0, new BigDecimal("10000.00").compareTo(mb.getAvailableBalance()));
 
         // Verify Ledgers
-        List<Transaction> txs = transactionRepository.findAll();
-        assertEquals(1, txs.size());
-        assertEquals(2, ledgerEntryRepository.count());
+        long txsCount = transactionRepository.count();
+        assertEquals(initialTxCount + 1, txsCount);
+        assertEquals(initialLedgerCount + 2, ledgerEntryRepository.count());
     }
 
     @Test
@@ -135,7 +138,7 @@ public class InternalSettlementExecutionIT extends LedgerSpyIntegrationTest {
         });
 
         assertTrue(exception.getMessage().contains("must be RECONCILED"));
-        assertEquals(0, transactionRepository.count(), "No financial effects should occur");
+        assertEquals(initialTxCount, transactionRepository.count(), "No financial effects should occur");
     }
 
     @Test
@@ -180,7 +183,7 @@ public class InternalSettlementExecutionIT extends LedgerSpyIntegrationTest {
         // but the DB locks ensure the financial logic only executes once.
         Account dest = accountPersistencePort.findByAccountNumber(DEST_ACC).orElseThrow();
         assertEquals(0, new BigDecimal("10000.00").compareTo(dest.getBalance()), "Balance must not be double-credited");
-        assertEquals(1, transactionRepository.count(), "Exactly one settlement transaction must be recorded");
+        assertEquals(initialTxCount + 1, transactionRepository.count(), "Exactly one settlement transaction must be recorded");
     }
 
     @Test

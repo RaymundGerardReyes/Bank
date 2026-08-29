@@ -10,9 +10,11 @@ import java.util.List;
 public class TestDatabaseCleaner {
 
     private final EntityManager entityManager;
+    private final DataInitializer dataInitializer;
 
-    public TestDatabaseCleaner(EntityManager entityManager) {
+    public TestDatabaseCleaner(EntityManager entityManager, DataInitializer dataInitializer) {
         this.entityManager = entityManager;
+        this.dataInitializer = dataInitializer;
     }
 
     @Transactional
@@ -31,5 +33,6 @@ public class TestDatabaseCleaner {
         }
 
         entityManager.createNativeQuery("SET REFERENTIAL_INTEGRITY TRUE").executeUpdate();
+        dataInitializer.run();
     }
 }

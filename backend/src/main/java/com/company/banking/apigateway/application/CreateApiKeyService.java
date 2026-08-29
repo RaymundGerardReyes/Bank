@@ -99,13 +99,13 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
     @Override
     @Transactional
     public void revokeApiKey(Long merchantId, Long id) {
-        persistencePort.findById(id).ifPresent(key -> {
-            if (!key.getMerchantId().equals(merchantId)) {
-                throw new com.company.banking.common.exception.NotFoundException("API Key not found");
-            }
-            key.setRevokedAt(LocalDateTime.now());
-            persistencePort.save(key);
-        });
+        ApiKey key = persistencePort.findById(id)
+                .orElseThrow(() -> new com.company.banking.common.exception.NotFoundException("API Key not found"));
+        if (!key.getMerchantId().equals(merchantId)) {
+            throw new com.company.banking.common.exception.ForbiddenException("Not authorized to access this API Key");
+        }
+        key.setRevokedAt(LocalDateTime.now());
+        persistencePort.save(key);
     }
 
     @Override
@@ -115,7 +115,7 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
                 .orElseThrow(() -> new com.company.banking.common.exception.NotFoundException("API Key not found"));
 
         if (!oldKey.getMerchantId().equals(merchantId)) {
-            throw new com.company.banking.common.exception.NotFoundException("API Key not found");
+            throw new com.company.banking.common.exception.ForbiddenException("Not authorized to access this API Key");
         }
 
         // Revoke old key gracefully
