@@ -30,9 +30,13 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
   }
 
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  const apiPath = cleanEndpoint.startsWith("/auth") 
-    ? `/api${cleanEndpoint}` 
-    : `/api/proxy${cleanEndpoint}`;
+  
+  let apiPath = `/api/proxy${cleanEndpoint}`;
+  if (cleanEndpoint.startsWith("/auth")) {
+    apiPath = `/api${cleanEndpoint}`;
+  } else if (cleanEndpoint.startsWith("/api/v1/")) {
+    apiPath = cleanEndpoint; // Direct backend calls (e.g., checkout API on webhook domain)
+  }
 
   const baseUrl = typeof window !== "undefined" ? "" : process.env.NEXT_PUBLIC_APP_URL || "";
   const url = endpoint.startsWith("http") ? endpoint : `${baseUrl}${apiPath}`;

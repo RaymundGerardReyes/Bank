@@ -4,7 +4,11 @@ import { apiFetch } from "@/services/api/httpClient";
 
 export const accountService = {
   getAccounts: async (): Promise<ApiResponse<Account[]>> => {
-    return apiFetch<ApiResponse<Account[]>>(endpoints.accounts.list);
+    const response = await apiFetch<ApiResponse<Account[]>>(endpoints.accounts.list);
+    if (response.data) {
+      response.data = response.data.filter(acc => !acc.accountNumber.startsWith("MERCHANT-SETTLEMENT-"));
+    }
+    return response;
   },
   getAccountById: async (id: string): Promise<ApiResponse<Account>> => {
     return apiFetch<ApiResponse<Account>>(endpoints.accounts.byId(id));

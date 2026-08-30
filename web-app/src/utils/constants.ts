@@ -26,7 +26,8 @@ export const API_ENDPOINTS = {
   GATEWAY_QR_GENERATE: (intentId: string) => `/gateway/payment-intents/${intentId}/qr`,
   GATEWAY_QR_STATUS: (qrRef: string) => `/gateway/payment-intents/qr/${qrRef}/status`,
 
-  // --- GATEWAY: Merchants ---
+  // --- GATEWAY: Merchants & Developers ---
+  GATEWAY_DEVELOPER_ONBOARD: "/developer/setup/onboard",
   GATEWAY_MERCHANTS: "/gateway/merchants",
   GATEWAY_MERCHANT_BY_ID: (id: string) => `/gateway/merchants/${id}`,
   GATEWAY_MERCHANT_ADVANCE: (id: string) => `/gateway/merchants/${id}/advance`,

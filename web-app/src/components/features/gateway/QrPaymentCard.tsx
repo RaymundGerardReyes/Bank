@@ -11,14 +11,13 @@ export const QrPaymentCard: React.FC<{ qrPayment: DynamicQrPayment }> = ({ qrPay
       return;
     }
 
-    const interval = setInterval(() => {
+    const updateTimer = () => {
       const now = new Date().getTime();
       const expiration = new Date(qrPayment.expiresAt).getTime();
       const difference = expiration - now;
 
       if (difference <= 0) {
         setTimeLeft("00:00");
-        clearInterval(interval);
       } else {
         const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((difference % (1000 * 60)) / 1000);
@@ -26,7 +25,10 @@ export const QrPaymentCard: React.FC<{ qrPayment: DynamicQrPayment }> = ({ qrPay
           `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
         );
       }
-    }, 1000);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
   }, [qrPayment.expiresAt, isExpiredOrFinal]);

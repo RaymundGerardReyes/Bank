@@ -23,12 +23,16 @@ export default function AccountsPage() {
 
   // Calculate Total Liquidity for the Hero Section
   const totalLiquidity = useMemo(() => {
-    return accounts.reduce((sum, account) => sum + (account.balance || 0), 0);
+    return accounts
+      .filter(acc => !acc.accountNumber.startsWith("MERCHANT-SETTLEMENT-"))
+      .reduce((sum, account) => sum + (account.balance || 0), 0);
   }, [accounts]);
 
   // Enterprise VAM Grouping
   const mainAccounts = useMemo(() => {
-    return accounts.filter(acc => !acc.parentAccountId);
+    return accounts.filter(acc => 
+      !acc.parentAccountId && !acc.accountNumber.startsWith("MERCHANT-SETTLEMENT-")
+    );
   }, [accounts]);
 
   const subAccountsByParent = useMemo(() => {

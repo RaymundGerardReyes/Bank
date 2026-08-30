@@ -45,6 +45,7 @@ export const endpoints = {
       status: API_ENDPOINTS.GATEWAY_QR_STATUS,
     },
     merchants: {
+      onboard: API_ENDPOINTS.GATEWAY_DEVELOPER_ONBOARD,
       list: API_ENDPOINTS.GATEWAY_MERCHANTS,
       byId: API_ENDPOINTS.GATEWAY_MERCHANT_BY_ID,
       advance: API_ENDPOINTS.GATEWAY_MERCHANT_ADVANCE,

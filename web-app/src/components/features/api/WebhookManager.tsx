@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { Zap } from "lucide-react";
 import { WebhookTestConsole } from "./WebhookTestConsole";
 
 export interface WebhookEndpoint {
@@ -39,13 +41,17 @@ export const WebhookManager: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [activeTab, setActiveTab] = useState<"EXTERNAL" | "LOCAL">("EXTERNAL");
 
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+
   const fetchEndpoints = async () => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/proxy/webhooks");
+      const json = await res.json();
       if (res.ok) {
-        const json = await res.json();
         setEndpoints(json.data || []);
+      } else if (res.status === 404) {
+        setNeedsOnboarding(true);
       }
     } catch (err: any) {
       console.error("Failed to load webhooks", err);
@@ -110,6 +116,33 @@ export const WebhookManager: React.FC = () => {
     setCopiedState(true);
     setTimeout(() => setCopiedState(false), 2000);
   };
+
+  if (needsOnboarding) {
+    return (
+      <div className="flex flex-col gap-6 mt-8">
+        <Card>
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center gap-6">
+            <div className="w-14 h-14 rounded-2xl bg-sky-100 border border-sky-200 text-sky-700 flex items-center justify-center shadow-md">
+              <Zap className="w-7 h-7 text-sky-600" />
+            </div>
+            <div className="flex flex-col gap-2 max-w-lg">
+              <h3 className="text-3xl font-black text-accent tracking-tight">Activate Developer Portal</h3>
+              <p className="text-accent/70 font-medium text-base sm:text-lg leading-relaxed">
+                You must provision a Merchant Account to manage Webhooks, HTTPS callbacks, and API endpoints.
+              </p>
+            </div>
+            <Link
+              href="/api/onboard"
+              className="mt-2 px-8 py-4 bg-accent hover:bg-accent/90 text-white font-extrabold rounded-xl transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-accent/20 focus:ring-2 focus:ring-sky-500 focus:outline-none min-h-[48px]"
+            >
+              <Zap className="w-5 h-5 text-sky-400" />
+              Start Developer Onboarding
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 mt-8">
@@ -214,7 +247,7 @@ export const WebhookManager: React.FC = () => {
                         checked={selectedEvents.includes(event)}
                         onChange={(e) => {
                             if (e.target.checked) setSelectedEvents([...selectedEvents, event]);
-                            else setSelectedEvents(selectedEvents.filter((s) => s !== event));
+                            else setSelectedEvents(selectedEvents.filter((s: string) => s !== event));
                         }}
                         className="rounded border-secondary w-4 h-4 text-sky-600 focus:ring-sky-500"
                         />
@@ -237,7 +270,7 @@ export const WebhookManager: React.FC = () => {
               <p className="text-accent/60 font-bold">No active webhooks configured.</p>
             </div>
           ) : (
-            endpoints.map((endpoint) => (
+            endpoints.map((endpoint: WebhookEndpoint) => (
                 <div key={endpoint.id} className="flex flex-col md:flex-row md:items-center justify-between p-5 bg-dominant border rounded-xl gap-4 shadow-sm border-secondary/40 hover:border-secondary/80">
                   <div>
                     <div className="flex flex-wrap items-center gap-3 mb-2">

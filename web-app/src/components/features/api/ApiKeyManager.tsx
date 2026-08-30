@@ -5,6 +5,8 @@ import { Card } from "@/components/ui/Card";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useAccounts } from "@/hooks/useAccounts";
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { Zap } from "lucide-react";
 
 export interface ApiKey {
   id: number;
@@ -58,22 +60,35 @@ export const ApiKeyManager: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [newlyGeneratedKey, setNewlyGeneratedKey] = useState<{ name: string; rawKey: string } | null>(null);
   const [copiedState, setCopiedState] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   // Form State
   const [newKeyName, setNewKeyName] = useState("");
   const [environment, setEnvironment] = useState<"LIVE" | "SANDBOX">("SANDBOX");
   const [ipWhitelist, setIpWhitelist] = useState("");
   const [selectedScopes, setSelectedScopes] = useState<string[]>(["treasury:read", "treasury:write", "accounts:read"]);
-  const [linkedAccountId, setLinkedAccountId] = useState("ALL");
+  const [linkedAccountId, setLinkedAccountId] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
+
+  useEffect(() => {
+    if (accounts && accounts.length > 0 && !linkedAccountId) {
+      setLinkedAccountId(accounts[0].accountNumber);
+    }
+  }, [accounts, linkedAccountId]);
 
   const fetchKeys = async () => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/proxy/apikeys");
+      const json = await res.json();
       if (res.ok) {
-        const json = await res.json();
         setKeys(json.data || []);
+      } else {
+        if (res.status === 404) {
+          setNeedsOnboarding(true);
+        } else {
+          setErrorMsg(json.message || json.error?.message || "Failed to load API keys");
+        }
       }
     } catch (err: any) {
       console.error("Failed to load API keys", err);
@@ -96,6 +111,9 @@ export const ApiKeyManager: React.FC = () => {
     e.preventDefault();
     setErrorMsg(null);
     if (!newKeyName.trim()) return setErrorMsg("Key name is required.");
+    if (!linkedAccountId || linkedAccountId === "ALL") {
+      return setErrorMsg("API Credential Account Scope selection is required. API Keys must be scoped to an eligible VAM sub-account.");
+    }
     if (ipWhitelist.trim() && !validateCidr(ipWhitelist)) {
       return setErrorMsg("Invalid CIDR format. Use standard notation like 192.168.1.0/24.");
     }
@@ -106,7 +124,7 @@ export const ApiKeyManager: React.FC = () => {
         environment,
         cidrWhitelist: ipWhitelist.trim() || "0.0.0.0/0",
         scopes: selectedScopes,
-        linkedAccountId: linkedAccountId === "ALL" ? null : linkedAccountId,
+        linkedAccountId: linkedAccountId,
       };
 
       const res = await fetch("/api/proxy/apikeys", {
@@ -154,7 +172,7 @@ export const ApiKeyManager: React.FC = () => {
     if (!window.confirm("Revoking this key will instantly block all traffic using it. Continue?")) return;
     try {
       await fetch(`/api/proxy/apikeys/${id}/revoke`, { method: "POST" });
-      setKeys(keys.map((k) => (k.id === id ? { ...k, revokedAt: new Date().toISOString() } : k)));
+      setKeys(keys.map((k: ApiKey) => (k.id === id ? { ...k, revokedAt: new Date().toISOString() } : k)));
     } catch (err) {
       alert("Failed to revoke key.");
     }
@@ -174,6 +192,33 @@ export const ApiKeyManager: React.FC = () => {
     return { label: `ACTIVE (${diffDays}D)`, style: "bg-emerald-100 text-emerald-700 border-emerald-200" };
   };
 
+  if (needsOnboarding) {
+    return (
+      <div className="flex flex-col gap-6">
+        <Card>
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center gap-6">
+            <div className="w-14 h-14 rounded-2xl bg-sky-100 border border-sky-200 text-sky-700 flex items-center justify-center shadow-md">
+              <Zap className="w-7 h-7 text-sky-600" />
+            </div>
+            <div className="flex flex-col gap-2 max-w-lg">
+              <h3 className="text-3xl font-black text-accent tracking-tight">Activate Developer Portal</h3>
+              <p className="text-accent/70 font-medium text-base sm:text-lg leading-relaxed">
+                You must provision a Merchant Account to generate HMAC API Keys and access the Payment Orchestrator.
+              </p>
+            </div>
+            <Link
+              href="/api/onboard"
+              className="mt-2 px-8 py-4 bg-accent hover:bg-accent/90 text-white font-extrabold rounded-xl transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-accent/20 focus:ring-2 focus:ring-sky-500 focus:outline-none min-h-[48px]"
+            >
+              <Zap className="w-5 h-5 text-sky-400" />
+              Start Developer Onboarding
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <Card>
@@ -181,7 +226,7 @@ export const ApiKeyManager: React.FC = () => {
           <div>
             <h3 className="text-xl font-extrabold text-accent">API Keys & Security Controls</h3>
             <p className="text-sm text-accent/70 font-medium mt-1">
-              Manage HMAC SHA256 keys for API access. Bind keys to specific isolated VAM sub-accounts.
+              Manage HMAC SHA256 keys for API access. Scope keys to specific eligible VAM sub-accounts.
             </p>
           </div>
           {!showCreateForm && !newlyGeneratedKey && (
@@ -217,7 +262,7 @@ export const ApiKeyManager: React.FC = () => {
 
         {showCreateForm && !newlyGeneratedKey && (
           <form onSubmit={handleCreateKey} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 bg-surface p-6 rounded-xl border border-secondary/30 animate-in slide-in-from-top-4">
-            
+
             <div className="flex flex-col gap-1.5 md:col-span-2">
               <label htmlFor="keyNameInput" className="text-xs font-bold text-accent uppercase tracking-wider">Key Name</label>
               <input
@@ -249,17 +294,19 @@ export const ApiKeyManager: React.FC = () => {
 
             {/* VAM SUB-ACCOUNT BINDING - Highlighted for clarity */}
             <div className="flex flex-col gap-1.5 md:col-span-2 mt-4">
-              <label className="text-xs font-bold text-emerald-600 uppercase tracking-wider">VAM Boundary (Required)</label>
-              <p className="text-[10px] text-accent/60 mb-1 leading-tight">Restrict this API key's operations entirely to a specific Virtual Account Sub-Ledger. Scopes will only apply to this boundary.</p>
+              <label className="text-xs font-bold text-emerald-600 uppercase tracking-wider">API Credential Account Scope (Required)</label>
+              <p className="text-[10px] text-accent/60 mb-1 leading-tight">This API credential can access only the selected VAM sub-account, subject to your account permissions.</p>
               <select
                 value={linkedAccountId}
                 onChange={(e) => setLinkedAccountId(e.target.value)}
                 className="px-3.5 py-2.5 bg-emerald-50 border border-emerald-300 rounded-lg text-emerald-900 font-bold focus:ring-2 focus:ring-emerald-500"
               >
-                <option value="ALL">Unrestricted (Access All Master/Sub-Accounts)</option>
+                {(!accounts || accounts.length === 0) && (
+                  <option value="">No Accounts Available</option>
+                )}
                 {accounts?.map((acc) => (
                   <option key={acc.accountNumber} value={acc.accountNumber}>
-                    {acc.accountName || acc.accountType} (**** {acc.accountNumber.slice(-4)})
+                    {acc.accountNumber} {acc.accountName ? `(${acc.accountName})` : ''} (**** {acc.accountNumber.slice(-4)}) — {acc.currency || 'PHP'}
                   </option>
                 ))}
               </select>
@@ -280,30 +327,30 @@ export const ApiKeyManager: React.FC = () => {
             {/* ENHANCED GRANULAR SCOPES */}
             <div className="flex flex-col gap-3 md:col-span-4 mt-4">
               <div className="flex items-center justify-between border-b border-secondary/30 pb-2">
-                 <label className="text-xs font-bold text-accent uppercase tracking-wider">Granted Scopes</label>
-                 <span className="text-[10px] text-accent/60 font-bold bg-secondary/10 px-2 py-0.5 rounded">Action Limits</span>
+                <label className="text-xs font-bold text-accent uppercase tracking-wider">Granted Scopes</label>
+                <span className="text-[10px] text-accent/60 font-bold bg-secondary/10 px-2 py-0.5 rounded">Action Limits</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {SCOPE_GROUPS.map((group) => (
-                   <div key={group.domain} className="bg-surface p-3 rounded-lg border border-secondary/30 flex flex-col gap-2">
-                      <span className="text-[11px] font-extrabold text-sky-700 tracking-wide">{group.domain}</span>
-                      <div className="flex flex-col gap-2">
-                        {group.scopes.map(scope => (
-                           <label key={scope.id} className="flex items-center gap-2 text-xs font-bold text-accent cursor-pointer ml-1">
-                             <input
-                               type="checkbox"
-                               checked={selectedScopes.includes(scope.id)}
-                               onChange={(e) => {
-                                 if (e.target.checked) setSelectedScopes([...selectedScopes, scope.id]);
-                                 else setSelectedScopes(selectedScopes.filter((s) => s !== scope.id));
-                               }}
-                               className="rounded border-secondary w-4 h-4 text-sky-600 focus:ring-sky-500"
-                             />
-                             {scope.label} <span className="text-[9px] text-accent/40 font-mono">({scope.id})</span>
-                           </label>
-                        ))}
-                      </div>
-                   </div>
+                  <div key={group.domain} className="bg-surface p-3 rounded-lg border border-secondary/30 flex flex-col gap-2">
+                    <span className="text-[11px] font-extrabold text-sky-700 tracking-wide">{group.domain}</span>
+                    <div className="flex flex-col gap-2">
+                      {group.scopes.map(scope => (
+                        <label key={scope.id} className="flex items-center gap-2 text-xs font-bold text-accent cursor-pointer ml-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedScopes.includes(scope.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setSelectedScopes([...selectedScopes, scope.id]);
+                              else setSelectedScopes(selectedScopes.filter((s: string) => s !== scope.id));
+                            }}
+                            className="rounded border-secondary w-4 h-4 text-sky-600 focus:ring-sky-500"
+                          />
+                          {scope.label} <span className="text-[9px] text-accent/40 font-mono">({scope.id})</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -321,7 +368,7 @@ export const ApiKeyManager: React.FC = () => {
               <p className="text-accent/60 font-bold">No active API keys found in database.</p>
             </div>
           ) : (
-            keys.map((key) => {
+            keys.map((key: ApiKey) => {
               const status = getExpiryStatus(key.expiresAt, key.revokedAt);
               const isRevoked = !!key.revokedAt;
 
@@ -339,7 +386,7 @@ export const ApiKeyManager: React.FC = () => {
                       {key.linkedAccountId && (
                         <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase tracking-wider flex items-center gap-1">
                           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                          Locked to VAM: ****{key.linkedAccountId.slice(-4)}
+                          Account Scope: ****{key.linkedAccountId.slice(-4)}
                         </span>
                       )}
                     </div>

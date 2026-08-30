@@ -31,40 +31,53 @@ export default function CreateQrPaymentPage() {
     defaultValues: { amount: 0 },
   });
 
+  React.useEffect(() => {
+    if (!qrPayment?.qrReference) return;
+    
+    // 1. Initial check: don't start polling if it's already terminal
+    if (['PAID', 'EXPIRED', 'CANCELLED'].includes(qrPayment.status)) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const statusRes = await paymentService.getQrStatus(qrPayment.qrReference);
+        if (statusRes.data) {
+          setQrPayment(statusRes.data);
+          
+          // 2. CRITICAL FIX: Clear the interval from the inside immediately 
+          // once a terminal status is reached.
+          if (['PAID', 'EXPIRED', 'CANCELLED'].includes(statusRes.data.status)) {
+            clearInterval(pollInterval);
+          }
+        }
+      } catch (e) {
+        console.error("Polling error", e);
+      }
+    }, 5000);
+
+    // 3. Clean up on unmount
+    return () => {
+      clearInterval(pollInterval);
+    };
+    
+    // 4. CRITICAL FIX: Remove qrPayment?.status from deps to prevent "Timer Drift"
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrPayment?.qrReference]);
+
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     setError("");
     try {
-      // 1. In a real flow, we would create a PaymentIntent first if one doesn't exist,
-      // but for this UI demo we assume the API creates it or we mock the flow.
-      // Assuming a generic creation flow for the demo:
       const intentRes = await fetch('/api/proxy/gateway/payments', { 
          method: 'POST', 
-         body: JSON.stringify({ amount: data.amount, currency: 'PHP', merchantId: 1, channel: 'QR_PH_P2M' }) // Mock body
+         body: JSON.stringify({ amount: data.amount, currency: 'PHP', merchantId: 1, channel: 'QR_PH_P2M' })
       }).then(r => r.json());
       
       const intentId = intentRes.data?.intentId || "mock-intent-id";
 
-      // 2. Generate the QR for the intent
       const qrRes = await paymentService.generateQr(intentId);
       
       if (qrRes.success && qrRes.data) {
         setQrPayment(qrRes.data);
-        
-        // Start polling for status changes (mocked)
-        const pollInterval = setInterval(async () => {
-           try {
-             const statusRes = await paymentService.getQrStatus(qrRes.data.qrReference);
-             if (statusRes.data) {
-                setQrPayment(statusRes.data);
-                if (statusRes.data.status === 'PAID' || statusRes.data.status === 'EXPIRED') {
-                  clearInterval(pollInterval);
-                }
-             }
-           } catch(e) {
-             console.error("Polling error", e);
-           }
-        }, 5000);
       } else {
         setError(qrRes.message || "Failed to generate QR");
       }

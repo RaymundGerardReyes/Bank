@@ -24,4 +24,13 @@ export const merchantService = {
       body: JSON.stringify({ expectedStatus, nextStatus, reviewer, riskProfileUpdate }),
     });
   },
+
+  onboardDeveloper: async (
+    payload: { legalName: string; merchantCode: string; businessRegistrationNumber: string; email: string; }
+  ): Promise<{ merchantId: number; settlementAccountNumber: string; apiKey: string }> => {
+    return apiFetch<{ merchantId: number; settlementAccountNumber: string; apiKey: string }>(endpoints.gateway.merchants.onboard, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
 };
