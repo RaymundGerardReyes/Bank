@@ -43,7 +43,7 @@ services:
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
       - TUNNEL_EDGE_BIND_ADDRESS=0.0.0.0
-      - TUNNEL_TRANSPORT_PROTOCOL=http2
+      - TUNNEL_TRANSPORT_PROTOCOL=quic
     depends_on:
       nginx:
         condition: service_started
@@ -66,6 +66,7 @@ services:
       API_PUBLIC_URL: ${API_PUBLIC_URL}
       PAYMENT_WEBHOOK_PUBLIC_URL: ${PAYMENT_WEBHOOK_PUBLIC_URL}
       PAYMENT_WEBHOOK_HOST: ${PAYMENT_WEBHOOK_HOST}
+      PAYMENT_ALLOWED_DOMAINS: ${PAYMENT_ALLOWED_DOMAINS}
       # Docker Compose acts as the container-runtime boundary override.
       # While native bootRun uses DB_HOST=localhost (via .env), the containerized
       # application MUST use the Docker-internal topology invariant.
