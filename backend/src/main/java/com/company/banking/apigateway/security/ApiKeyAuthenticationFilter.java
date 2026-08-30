@@ -7,6 +7,7 @@ import com.company.banking.common.exception.ErrorCode;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -54,15 +55,6 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             ApiKey apiKey;
             if (apiKeyOpt.isPresent() && apiKeyOpt.get().isActive()) {
                 apiKey = apiKeyOpt.get();
-            } else if (rawKey.contains("sk_test_mock")) {
-                apiKey = ApiKey.builder()
-                        .id(999L)
-                        .merchantId(999L)
-                        .linkedAccountId("MERCHANT-SETTLEMENT-123")
-                        .environment("TEST")
-                        .scopes(java.util.Set.of("payments:write", "payments:read", "accounts:write", "accounts:read", "payroll:write", "payroll:read", "routing:write", "routing:read"))
-                        .cidrWhitelist("0.0.0.0/0")
-                        .build();
             } else {
                 request.setAttribute("GATEWAY_AUTH_STAGE", "API_KEY_REJECTED");
                 request.setAttribute("GATEWAY_AUTH_FAILURE_REASON", "API_KEY_INVALID");
@@ -114,6 +106,35 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             );
             SecurityContextHolder.getContext().setAuthentication(auth);
             request.setAttribute("GATEWAY_AUTH_STAGE", "API_KEY_AUTHENTICATED");
+
+            HttpServletRequestWrapper wrappedRequest = new HttpServletRequestWrapper(request) {
+                @Override
+                public String getHeader(String name) {
+                    if ("X-Client-Id".equalsIgnoreCase(name)) return String.valueOf(apiKey.getMerchantId());
+                    if ("X-Linked-Account".equalsIgnoreCase(name)) return apiKey.getLinkedAccountId();
+                    return super.getHeader(name);
+                }
+
+                @Override
+                public java.util.Enumeration<String> getHeaderNames() {
+                    java.util.List<String> names = java.util.Collections.list(super.getHeaderNames());
+                    if (names.stream().noneMatch("X-Client-Id"::equalsIgnoreCase)) names.add("X-Client-Id");
+                    if (names.stream().noneMatch("X-Linked-Account"::equalsIgnoreCase)) names.add("X-Linked-Account");
+                    return java.util.Collections.enumeration(names);
+                }
+
+                @Override
+                public java.util.Enumeration<String> getHeaders(String name) {
+                    String val = getHeader(name);
+                    if (val != null) {
+                        return java.util.Collections.enumeration(java.util.Collections.singletonList(val));
+                    }
+                    return super.getHeaders(name);
+                }
+            };
+            
+            filterChain.doFilter(wrappedRequest, response);
+            return;
         }
 
         filterChain.doFilter(request, response);

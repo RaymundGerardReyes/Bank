@@ -5,6 +5,8 @@ import com.company.banking.apigateway.api.dto.CreateApiKeyRequest;
 import com.company.banking.apigateway.application.port.in.CreateApiKeyUseCase;
 import com.company.banking.apigateway.application.port.out.ApiKeyPersistencePort;
 import com.company.banking.apigateway.domain.ApiKey;
+import com.company.banking.account.application.port.out.AccountPersistencePort;
+import com.company.banking.account.domain.Account;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ import java.util.List;
 public class CreateApiKeyService implements CreateApiKeyUseCase {
 
     private final ApiKeyPersistencePort persistencePort;
+    private final AccountPersistencePort accountPersistencePort;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Override
@@ -42,6 +45,15 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
         String cidr = request.getCidrWhitelist() != null && !request.getCidrWhitelist().trim().isEmpty()
                 ? request.getCidrWhitelist().trim()
                 : "0.0.0.0/0";
+
+        // VAM Boundary Authorization Check
+        if (request.getLinkedAccountId() != null && !request.getLinkedAccountId().trim().isEmpty()) {
+            Account account = accountPersistencePort.findByAccountNumber(request.getLinkedAccountId().trim())
+                    .orElseThrow(() -> new com.company.banking.common.exception.NotFoundException("Account '" + request.getLinkedAccountId().trim() + "' not found."));
+            if (!merchantId.equals(account.getMerchantId())) {
+                throw new com.company.banking.common.exception.ForbiddenException("Not authorized to bind API key to this account");
+            }
+        }
 
         ApiKey domain = ApiKey.builder()
                 .keyPrefix(prefix)
@@ -67,6 +79,7 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
                 .rawKey(rawKey)
                 .cidrWhitelist(saved.getCidrWhitelist())
                 .scopes(saved.getScopes())
+                .linkedAccountId(saved.getLinkedAccountId())
                 .expiresAt(saved.getExpiresAt())
                 .revokedAt(saved.getRevokedAt())
                 .lastUsedAt(saved.getLastUsedAt())
@@ -118,6 +131,15 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
             throw new com.company.banking.common.exception.ForbiddenException("Not authorized to access this API Key");
         }
 
+        // Re-verify the user has not lost access to the account since initial creation
+        if (oldKey.getLinkedAccountId() != null && !oldKey.getLinkedAccountId().trim().isEmpty()) {
+            Account account = accountPersistencePort.findByAccountNumber(oldKey.getLinkedAccountId().trim())
+                    .orElseThrow(() -> new com.company.banking.common.exception.NotFoundException("Account '" + oldKey.getLinkedAccountId().trim() + "' not found."));
+            if (!merchantId.equals(account.getMerchantId())) {
+                throw new com.company.banking.common.exception.ForbiddenException("Not authorized to rotate API key bound to this account");
+            }
+        }
+
         // Revoke old key gracefully
         oldKey.setRevokedAt(LocalDateTime.now());
         persistencePort.save(oldKey);
@@ -128,6 +150,7 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
         req.setEnvironment(oldKey.getEnvironment());
         req.setCidrWhitelist(oldKey.getCidrWhitelist());
         req.setScopes(oldKey.getScopes());
+        req.setLinkedAccountId(oldKey.getLinkedAccountId());
 
         return createApiKey(merchantId, req);
     }

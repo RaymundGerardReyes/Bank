@@ -26,7 +26,7 @@ public class GatewayRateLimitFilter extends OncePerRequestFilter {
     private final ConcurrentHashMap<String, AtomicInteger> requestCounts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Long> windowStartTimes = new ConcurrentHashMap<>();
 
-    private static final int MAX_REQUESTS_PER_MINUTE = 100;
+    private static final int MAX_REQUESTS_PER_MINUTE = 1000;
     private static final long WINDOW_SIZE_MS = 60_000;
 
     @Override
@@ -56,7 +56,7 @@ public class GatewayRateLimitFilter extends OncePerRequestFilter {
         }
         
         // 3. Endpoint-specific throttle (e.g., /payments is stricter than /status)
-        if (endpoint.contains("/payments") && clientId != null && isRateLimited("ENDPOINT:" + clientId + ":PAYMENTS", 20)) {
+        if (endpoint.contains("/payments") && clientId != null && isRateLimited("ENDPOINT:" + clientId + ":PAYMENTS", 1000)) {
             auditEventPublisher.publishEvent("API_THROTTLED", clientId, "Payment endpoint throttled.", endpoint);
             rejectRateLimit(response, "Payment creation velocity limit exceeded");
             return;

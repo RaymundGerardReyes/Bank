@@ -96,22 +96,42 @@ public class CheckoutSessionService {
     @Transactional(readOnly = true)
     public PublicCheckoutSessionResponse getPublicSessionState(String publicToken) {
         CheckoutSession session = sessionRepository.findBySessionId(publicToken)
+                .or(() -> sessionRepository.findByPaymentIntentId(publicToken))
+                .orElse(null);
+
+        if (session != null) {
+            String merchantName = merchantRepository.findById(session.getMerchantId())
+                    .map(m -> m.getLegalName())
+                    .orElse("Nova Bank Merchant");
+
+            return PublicCheckoutSessionResponse.builder()
+                    .id(session.getSessionId())
+                    .status(session.getStatus().name())
+                    .amount(session.getAmount())
+                    .currency(session.getCurrency())
+                    .description(session.getDescription())
+                    .merchantName(merchantName)
+                    .paymentMethods(List.of("INTERNAL_ACCOUNT"))
+                    .expiresAt(session.getExpiresAt())
+                    .build();
+        }
+
+        PaymentIntent intent = intentRepository.findByIntentId(publicToken)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Checkout session not found"));
 
-        // Fetch safe merchant display name
-        String merchantName = merchantRepository.findById(session.getMerchantId())
+        String merchantName = merchantRepository.findById(intent.getMerchantId())
                 .map(m -> m.getLegalName())
                 .orElse("Nova Bank Merchant");
 
         return PublicCheckoutSessionResponse.builder()
-                .id(session.getSessionId())
-                .status(session.getStatus().name())
-                .amount(session.getAmount())
-                .currency(session.getCurrency())
-                .description(session.getDescription())
+                .id(intent.getIntentId())
+                .status("ACTIVE")
+                .amount(intent.getAmount())
+                .currency(intent.getCurrency() != null ? intent.getCurrency() : "PHP")
+                .description(intent.getDescription() != null ? intent.getDescription() : "Order Payment")
                 .merchantName(merchantName)
                 .paymentMethods(List.of("INTERNAL_ACCOUNT"))
-                .expiresAt(session.getExpiresAt())
+                .expiresAt(intent.getCreatedAt() != null ? intent.getCreatedAt().plusHours(1) : LocalDateTime.now().plusHours(1))
                 .build();
     }
 

@@ -35,6 +35,9 @@ public class Merchant {
     @Column(name = "industry_code")
     private String industryCode;
 
+    @Column(name = "owner_id")
+    private Long ownerId;
+
     @Column(name = "beneficial_owner_name")
     private String beneficialOwnerName;
 

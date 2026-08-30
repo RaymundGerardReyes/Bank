@@ -125,13 +125,27 @@ public class PaymentGatewayIdentityIT {
     }
 
     @Test
-    public void testC_ExistingAuthorizedAccount_ShouldStillRouteCorrectly() throws Exception {
-        // Attempting to route for a different account should fail (403 Forbidden)
+    public void testC_CrossAccountBola_AttemptToRouteToOtherOwnedAccount_ShouldDeny() throws Exception {
+        // 1. Merchant owns BOTH Account A (MERCHANT-SETTLEMENT-555) and Account B (MERCHANT-PAYROLL-555)
+        com.company.banking.account.domain.Account accountB = com.company.banking.account.domain.Account.builder()
+                .accountNumber("MERCHANT-PAYROLL-555")
+                .customerId(999L)
+                .status(com.company.banking.common.enums.AccountStatus.ACTIVE)
+                .balance(new java.math.BigDecimal("5000.00"))
+                .currency("PHP")
+                .accountType("PAYROLL")
+                .allowIncoming(true)
+                .allowOutgoing(true)
+                .build();
+        accountRepository.save(accountB);
+
+        // 2. The validApiKey is bound exclusively to Account A (MERCHANT-SETTLEMENT-555)
+        // 3. Attempt to use this credential against Account B
         mockMvc.perform(post("/api/v1/gateway/payments/intents")
                 .header("X-API-Key", validApiKeyRaw)
                 .header("Idempotency-Key", UUID.randomUUID().toString())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"amount\": 300, \"currency\": \"PHP\", \"sourceAccountId\": \"SOME-OTHER-ACCOUNT\", \"description\": \"Test C\"}"))
+                .content("{\"amount\": 300, \"currency\": \"PHP\", \"sourceAccountId\": \"MERCHANT-PAYROLL-555\", \"description\": \"BOLA Test\"}"))
                 .andExpect(status().isForbidden());
     }
     @Test

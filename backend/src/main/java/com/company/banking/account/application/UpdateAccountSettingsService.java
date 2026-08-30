@@ -19,7 +19,7 @@ public class UpdateAccountSettingsService implements UpdateAccountSettingsUseCas
     @Transactional
     public AccountResponse updateSettings(String accountNumber, UpdateAccountSettingsRequest request, Long ownerId) {
         Account account = accountPersistencePort.findByAccountNumber(accountNumber)
-            .orElseThrow(() -> new NotFoundException("Account not found"));
+            .orElseThrow(() -> new NotFoundException("Account '" + accountNumber + "' not found."));
             
         if (!account.getCustomerId().equals(ownerId)) {
             throw new com.company.banking.common.exception.ForbiddenException("Not authorized to access this account");

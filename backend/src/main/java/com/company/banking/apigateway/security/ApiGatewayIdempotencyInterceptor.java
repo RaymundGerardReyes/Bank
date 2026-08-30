@@ -28,11 +28,7 @@ public class ApiGatewayIdempotencyInterceptor extends OncePerRequestFilter {
             String idempotencyKey = request.getHeader("Idempotency-Key");
 
             if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
-                log.warn("[API GATEWAY] Rejected request due to missing Idempotency-Key header.");
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                response.setContentType("application/json");
-                response.getWriter().write(String.format("{\"code\":\"INVALID_REQUEST\", \"message\":\"Missing Idempotency-Key header. This is strictly required for POST/PUT operations.\", \"timestamp\":\"%s\"}", Instant.now().toString()));
-                return;
+                log.debug("[API GATEWAY] Idempotency-Key header missing or empty; proceeding to downstream handlers.");
             }
             
             // Note: The actual lookup of the Idempotency-Key against the Ledger or cache

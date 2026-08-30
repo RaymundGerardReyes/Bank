@@ -31,6 +31,19 @@ public class DefaultExternalPaymentGateway implements ExternalPaymentGateway {
     @Value("${PAYMENT_WEBHOOK_PUBLIC_URL:http://localhost:8080/api/v1/payments/webhook}")
     private String paymentWebhookPublicUrl;
 
+    private String getCheckoutBaseUrl() {
+        try {
+            java.net.URI uri = new java.net.URI(paymentWebhookPublicUrl);
+            if (uri.getScheme() == null || uri.getAuthority() == null) {
+                throw new IllegalArgumentException("Invalid PAYMENT_WEBHOOK_PUBLIC_URL structure: " + paymentWebhookPublicUrl);
+            }
+            return uri.getScheme() + "://" + uri.getAuthority();
+        } catch (Exception e) {
+            log.error("[GATEWAY] Error parsing base URL from PAYMENT_WEBHOOK_PUBLIC_URL: {}", paymentWebhookPublicUrl, e);
+            throw new IllegalArgumentException("Failed to construct checkout base URL from PAYMENT_WEBHOOK_PUBLIC_URL: " + paymentWebhookPublicUrl, e);
+        }
+    }
+
     @Override
     public PaymentSession createCheckout(ExternalCheckoutRequest request) {
         log.info("[GATEWAY] Creating internal checkout session for intent: {}", request.getPaymentIntentId());
@@ -47,7 +60,7 @@ public class DefaultExternalPaymentGateway implements ExternalPaymentGateway {
 
         return PaymentSession.builder()
                 .providerReference("sess_" + UUID.randomUUID().toString())
-                .checkoutUrl(paymentWebhookPublicUrl + "/checkout/" + request.getPaymentIntentId())
+                .checkoutUrl(getCheckoutBaseUrl() + "/checkout/" + request.getPaymentIntentId())
                 .provider(PaymentProvider.INTERNAL)
                 .channel(PaymentChannel.HOSTED_CHECKOUT)
                 .expiresAt(LocalDateTime.now().plusHours(1))

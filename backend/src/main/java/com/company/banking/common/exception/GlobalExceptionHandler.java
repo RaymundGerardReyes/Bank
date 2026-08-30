@@ -34,6 +34,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException ex) {
         HttpStatus status = switch (ex.getErrorCode()) {
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case RESOURCE_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case FORBIDDEN -> HttpStatus.FORBIDDEN;
             case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
             case CONFLICT -> HttpStatus.CONFLICT;
@@ -41,7 +42,7 @@ public class GlobalExceptionHandler {
         };
         
         String mappedErrorCode = ex.getErrorCode().name();
-        if (ex.getErrorCode() == ErrorCode.NOT_FOUND) mappedErrorCode = "ERR_404";
+        if (ex.getErrorCode() == ErrorCode.NOT_FOUND || ex.getErrorCode() == ErrorCode.RESOURCE_NOT_FOUND) mappedErrorCode = "ERR_404";
         if (ex.getErrorCode() == ErrorCode.CONFLICT || ex.getErrorCode() == ErrorCode.DUPLICATE_TRANSACTION) mappedErrorCode = "ERR_409";
         
         return ResponseEntity.status(status)

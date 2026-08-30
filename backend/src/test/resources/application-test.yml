@@ -33,4 +33,5 @@ logging:
 API_PUBLIC_URL: http://localhost:8080
 PAYMENT_WEBHOOK_PUBLIC_URL: http://localhost:8080/api/v1/payments/webhook
 PAYMENT_WEBHOOK_HOST: http://localhost:8080
+PAYMENT_ALLOWED_DOMAINS: paymongo.com,developerph.dev,localhost
 

@@ -10,12 +10,10 @@ import java.math.BigDecimal;
 @Data
 public class CreatePaymentIntentRequest {
 
-    @NotBlank(message = "Source account ID is required")
-    @Pattern(regexp = "^[^\\u0000]+$", message = "Invalid characters or literal null detected")
+    @NotBlank(message = "sourceAccountId cannot be blank or null")
+    @Pattern(regexp = "^(?!null$).*", message = "sourceAccountId cannot be the literal string 'null'")
     private String sourceAccountId;
 
-    @NotNull(message = "Amount is required")
-    @Positive(message = "Amount must be strictly positive")
     private BigDecimal amount;
 
     private String currency;

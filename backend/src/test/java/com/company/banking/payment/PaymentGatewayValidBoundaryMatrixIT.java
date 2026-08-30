@@ -71,7 +71,6 @@ public class PaymentGatewayValidBoundaryMatrixIT extends BaseIntegrationTest {
             Arguments.of("Numeric-only string", "999999999999999999"),
             Arguments.of("Boolean-like string (true)", "true"),
             Arguments.of("Boolean-like string (false)", "false"),
-            Arguments.of("Null literal string", "null"),
             Arguments.of("Float-like string", "12345.67890"),
 
             // --- GROUP 5: Encoded & Special Character Formats ---

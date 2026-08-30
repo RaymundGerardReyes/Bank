@@ -2,6 +2,7 @@ package com.company.banking.payment.application;
 
 import com.company.banking.account.application.port.out.AccountPersistencePort;
 import com.company.banking.account.domain.Account;
+import com.company.banking.common.enums.AccountStatus;
 import com.company.banking.common.exception.BusinessException;
 import com.company.banking.common.exception.ErrorCode;
 import com.company.banking.payment.api.dto.CreatePaymentIntentRequest;
@@ -11,6 +12,11 @@ import com.company.banking.payment.domain.PaymentIntentStatus;
 import com.company.banking.payment.gateway.ExternalPaymentGateway;
 import com.company.banking.payment.gateway.dto.ExternalCheckoutRequest;
 import com.company.banking.payment.gateway.dto.PaymentSession;
+import com.company.banking.payment.domain.PaymentAttempt;
+import com.company.banking.payment.domain.CheckoutSession;
+import com.company.banking.payment.domain.CheckoutSessionStatus;
+import com.company.banking.payment.infrastructure.CheckoutSessionJpaRepository;
+import com.company.banking.payment.infrastructure.PaymentAttemptJpaRepository;
 import com.company.banking.payment.infrastructure.PaymentIntentJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.net.URI;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,11 +35,13 @@ import java.util.UUID;
 public class PaymentIntentOrchestrationService {
 
     private final PaymentIntentJpaRepository paymentIntentRepository;
+    private final PaymentAttemptJpaRepository attemptRepository;
+    private final CheckoutSessionJpaRepository sessionRepository;
     private final AccountPersistencePort accountPersistencePort;
     private final ExternalPaymentGateway externalPaymentGateway;
     private final TransactionTemplate transactionTemplate;
 
-    @Value("${payment.allowed-domains:paymongo.com,developerph.dev,localhost}")
+    @Value("${PAYMENT_ALLOWED_DOMAINS}")
     private List<String> allowedDomains;
 
     public PaymentSessionResponse createIntent(Long merchantId, String sourceAccountId, CreatePaymentIntentRequest request) {
@@ -98,7 +107,7 @@ public class PaymentIntentOrchestrationService {
         
         PaymentSession session = externalPaymentGateway.createCheckout(extReq);
         
-        if (session.getProvider() != com.company.banking.payment.domain.PaymentProvider.INTERNAL && !isSafeCheckoutUrl(session.getCheckoutUrl())) {
+        if (!isSafeCheckoutUrl(session.getCheckoutUrl())) {
             // Revert hold if malicious
             transactionTemplate.execute(status -> {
                 Account account = accountPersistencePort.findByAccountNumber(sourceAccountId).orElseThrow();
@@ -115,9 +124,36 @@ public class PaymentIntentOrchestrationService {
             updatedIntent.setStatus(PaymentIntentStatus.CHECKOUT_CREATED);
             paymentIntentRepository.save(updatedIntent);
             
+            PaymentAttempt attempt = PaymentAttempt.builder()
+                .attemptId("att_" + UUID.randomUUID().toString().replace("-", ""))
+                .paymentIntentId(updatedIntent.getId())
+                .provider(session.getProvider().name())
+                .providerReference(session.getProviderReference())
+                .checkoutUrl(session.getCheckoutUrl())
+                .status("PENDING")
+                .build();
+            attemptRepository.save(attempt);
+
+            CheckoutSession checkoutSession = CheckoutSession.builder()
+                .sessionId(updatedIntent.getIntentId())
+                .merchantId(updatedIntent.getMerchantId())
+                .idempotencyKey("idem_intent_" + updatedIntent.getIntentId())
+                .paymentIntentId(updatedIntent.getIntentId())
+                .amount(updatedIntent.getAmount())
+                .currency(updatedIntent.getCurrency() != null ? updatedIntent.getCurrency() : "PHP")
+                .description(updatedIntent.getDescription() != null ? updatedIntent.getDescription() : "Payment Intent Checkout")
+                .status(CheckoutSessionStatus.ACTIVE)
+                .successUrl(session.getCheckoutUrl() != null ? session.getCheckoutUrl() + "/success" : "/success")
+                .createdAt(LocalDateTime.now())
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .build();
+            sessionRepository.save(checkoutSession);
+
             PaymentSessionResponse res = mapToResponse(updatedIntent);
             res.setCheckoutUrl(session.getCheckoutUrl());
             res.setProvider(session.getProvider().name());
+            res.setExpiresAt(session.getExpiresAt());
+            res.setTransactionReference(session.getProviderReference());
             return res;
         });
 

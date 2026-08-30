@@ -14,5 +14,9 @@ public enum PaymentIntentStatus {
     REFUNDED,
     PARTIALLY_REFUNDED,
     QR_GENERATED,
+    QR_GENERATING,
+    AWAITING_PAYMENT,
+    PAID,
+    SETTLED,
     PENDING
 }

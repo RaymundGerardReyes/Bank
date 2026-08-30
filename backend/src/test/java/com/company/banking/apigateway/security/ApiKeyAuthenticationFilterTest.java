@@ -97,7 +97,9 @@ class ApiKeyAuthenticationFilterTest {
             assertEquals("API_KEY_AUTHENTICATED", request.getAttribute("GATEWAY_AUTH_STAGE"));
             assertInstanceOf(ApiKeyAuthenticationToken.class, SecurityContextHolder.getContext().getAuthentication());
             assertTrue(((ApiKeyAuthenticationToken) SecurityContextHolder.getContext().getAuthentication()).getScopes().contains("treasury:write"));
-            assertEquals(request, chain.getRequest());
+            jakarta.servlet.http.HttpServletRequest passedRequest = (jakarta.servlet.http.HttpServletRequest) chain.getRequest();
+            assertTrue(passedRequest instanceof jakarta.servlet.http.HttpServletRequestWrapper);
+            assertEquals(request, ((jakarta.servlet.http.HttpServletRequestWrapper) passedRequest).getRequest());
         } finally {
             SecurityContextHolder.clearContext();
         }

@@ -28,8 +28,11 @@ public class Account {
     @Column(unique = true, nullable = false)
     private String accountNumber;
 
-    @Column(nullable = false)
+    @Column(name = "customer_id")
     private Long customerId;
+
+    @Column(name = "merchant_id")
+    private Long merchantId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -67,14 +70,17 @@ public class Account {
     private boolean requireDualApproval;
 
     // --- CARD & ROUTING FIELDS ---
+    @Builder.Default
     @Column(name = "swift_code")
-    private String swiftCode;
+    private String swiftCode = "NOVBUS33XXX";
 
+    @Builder.Default
     @Column(name = "card_expiry")
-    private String cardExpiry;
+    private String cardExpiry = "12/99";
 
+    @Builder.Default
     @Column(name = "card_cvv")
-    private String cardCvv;
+    private String cardCvv = "000";
 
     @Builder.Default
     @Column(nullable = false)

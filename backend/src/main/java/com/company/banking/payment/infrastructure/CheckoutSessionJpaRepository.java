@@ -14,10 +14,14 @@ import java.util.Optional;
 @Repository
 public interface CheckoutSessionJpaRepository extends JpaRepository<CheckoutSession, Long> {
     Optional<CheckoutSession> findByMerchantIdAndIdempotencyKey(Long merchantId, String idempotencyKey);
-    Optional<CheckoutSession> findBySessionId(String sessionId);
+
+    @Query("SELECT c FROM CheckoutSession c WHERE c.sessionId = :token OR c.paymentIntentId = :token")
+    Optional<CheckoutSession> findBySessionId(@Param("token") String token);
+
+    Optional<CheckoutSession> findByPaymentIntentId(String paymentIntentId);
 
     // Prevents concurrent modifications when transitioning the session state
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT c FROM CheckoutSession c WHERE c.sessionId = :sessionId")
-    Optional<CheckoutSession> findBySessionIdForUpdate(@Param("sessionId") String sessionId);
+    @Query("SELECT c FROM CheckoutSession c WHERE c.sessionId = :token OR c.paymentIntentId = :token")
+    Optional<CheckoutSession> findBySessionIdForUpdate(@Param("token") String token);
 }
