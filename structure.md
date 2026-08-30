@@ -1,6 +1,9 @@
 .
+|-- CHANGELOG.md
 |-- ExpoBankingApp
+|   |-- AGENTS.md
 |   |-- App.tsx
+|   |-- CLAUDE.md
 |   |-- app.json
 |   |-- assets
 |   |   |-- adaptive-icon.png
@@ -9,6 +12,7 @@
 |   |   `-- splash-icon.png
 |   |-- babel.config.js
 |   |-- index.ts
+|   |-- mobile-app-structure.md
 |   |-- package-lock.json
 |   |-- package.json
 |   |-- plugins
@@ -44,6 +48,7 @@
 |   |   |   |-- useBiometric.ts
 |   |   |   |-- usePendingAuthorizations.ts
 |   |   |   `-- useTransactions.ts
+|   |   |-- mobile-app-structure.md
 |   |   |-- models
 |   |   |   |-- Account.ts
 |   |   |   |-- ApiResponse.ts
@@ -158,615 +163,651 @@
 |   |       |-- formatters.ts
 |   |       |-- logger.ts
 |   |       `-- validators.ts
+|   |-- structure-mobileapp.md
 |   `-- tsconfig.json
+|-- JavaBankingstructure.md
+|-- PORT_REGISTRY.md
+|-- api-gateway-hardening-prompt.md
 |-- backend
 |   |-- Backend.logs
+|   |-- CHANGELOG.md
 |   |-- Dockerfile
+|   |-- README.md
+|   |-- backend-app-structure.md
+|   |-- backendstructure.md
 |   |-- build.gradle
+|   |-- build.md
 |   |-- checkstyle.xml
 |   |-- dev.bat
 |   |-- docker-compose.yml
 |   |-- fix-backend-tests.mjs
+|   |-- gradle
+|   |   `-- wrapper
+|   |       |-- gradle-wrapper.jar
+|   |       `-- gradle-wrapper.properties
 |   |-- gradlew
 |   |-- gradlew.bat
 |   |-- hs_err_pid3708.log
 |   |-- hs_err_pid5552.log
 |   |-- logs.log
+|   |-- logs.md
 |   |-- pom.xml
 |   |-- settings.gradle
 |   |-- src
+|   |   |-- build.md
 |   |   |-- main
+|   |   |   |-- backend-app-structure.md
 |   |   |   |-- java
-|   |   |   |   `-- com
-|   |   |   |       `-- company
-|   |   |   |           `-- banking
-|   |   |   |               |-- BankingApplication.java
-|   |   |   |               |-- account
-|   |   |   |               |   |-- api
-|   |   |   |               |   |   |-- AccountController.java
-|   |   |   |               |   |   `-- dto
-|   |   |   |               |   |       |-- AccountResponse.java
-|   |   |   |               |   |       |-- AccountSummaryResponse.java
-|   |   |   |               |   |       |-- OpenAccountRequest.java
-|   |   |   |               |   |       `-- UpdateAccountSettingsRequest.java
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- AccountProvisioningService.java
-|   |   |   |               |   |   |-- ChangeAccountStatusService.java
-|   |   |   |               |   |   |-- GetAccountDetailsService.java
-|   |   |   |               |   |   |-- GlobalAccountLockGuard.java
-|   |   |   |               |   |   |-- ListCustomerAccountsService.java
-|   |   |   |               |   |   |-- OpenAccountService.java
-|   |   |   |               |   |   |-- UpdateAccountSettingsService.java
-|   |   |   |               |   |   |-- port
-|   |   |   |               |   |   |   |-- in
-|   |   |   |               |   |   |   |   |-- AccountUseCase.java
-|   |   |   |               |   |   |   |   |-- ChangeAccountStatusUseCase.java
-|   |   |   |               |   |   |   |   |-- GetAccountDetailsUseCase.java
-|   |   |   |               |   |   |   |   |-- ListCustomerAccountsUseCase.java
-|   |   |   |               |   |   |   |   |-- OpenAccountUseCase.java
-|   |   |   |               |   |   |   |   `-- UpdateAccountSettingsUseCase.java
-|   |   |   |               |   |   |   `-- out
-|   |   |   |               |   |   |       `-- AccountPersistencePort.java
-|   |   |   |               |   |   `-- provisioning
-|   |   |   |               |   |       |-- AccountNumberGenerator.java
-|   |   |   |               |   |       |-- CardProvisioner.java
-|   |   |   |               |   |       `-- ParentAccountValidator.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   |-- Account.java
-|   |   |   |               |   |   |-- AccountBalance.java
-|   |   |   |               |   |   |-- AccountLimit.java
-|   |   |   |               |   |   `-- AccountPolicy.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       |-- AccountJpaRepository.java
-|   |   |   |               |       `-- AccountPersistenceAdapter.java
-|   |   |   |               |-- admin
-|   |   |   |               |   |-- api
-|   |   |   |               |   |   `-- AdminAuditController.java
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- KycApprovalService.java
-|   |   |   |               |   |   |-- ReviewAuditLogService.java
-|   |   |   |               |   |   `-- port
-|   |   |   |               |   |       |-- in
-|   |   |   |               |   |       |   |-- AdminUseCase.java
-|   |   |   |               |   |       |   `-- KycApprovalUseCase.java
-|   |   |   |               |   |       `-- out
-|   |   |   |               |   |           `-- AuditLogPersistencePort.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       |-- AuditLogJpaEntity.java
-|   |   |   |               |       |-- AuditLogJpaRepository.java
-|   |   |   |               |       `-- AuditLogPersistenceAdapter.java
-|   |   |   |               |-- aml
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- AmlCaseService.java
-|   |   |   |               |   |   `-- TransactionMonitoringService.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   |-- AccountHold.java
-|   |   |   |               |   |   |-- AmlAlert.java
-|   |   |   |               |   |   |-- AmlCase.java
-|   |   |   |               |   |   `-- SuspiciousTransactionReport.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       `-- AmlAlertJpaRepository.java
-|   |   |   |               |-- apigateway
-|   |   |   |               |   |-- api
-|   |   |   |               |   |   |-- ApiKeyController.java
-|   |   |   |               |   |   |-- LocalWebhookSimulatorController.java
-|   |   |   |               |   |   |-- WebhookController.java
-|   |   |   |               |   |   `-- dto
-|   |   |   |               |   |       |-- ApiKeyResponse.java
-|   |   |   |               |   |       `-- CreateApiKeyRequest.java
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- ApiClientService.java
-|   |   |   |               |   |   |-- CreateApiKeyService.java
-|   |   |   |               |   |   |-- WebhookDispatcherService.java
-|   |   |   |               |   |   |-- WebhookManagementService.java
-|   |   |   |               |   |   `-- port
-|   |   |   |               |   |       |-- in
-|   |   |   |               |   |       |   `-- CreateApiKeyUseCase.java
-|   |   |   |               |   |       `-- out
-|   |   |   |               |   |           `-- ApiKeyPersistencePort.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   |-- ApiAuditEvent.java
-|   |   |   |               |   |   |-- ApiClient.java
-|   |   |   |               |   |   |-- ApiKey.java
-|   |   |   |               |   |   |-- WebhookDelivery.java
-|   |   |   |               |   |   `-- WebhookEndpoint.java
-|   |   |   |               |   |-- infrastructure
-|   |   |   |               |   |   |-- ApiAuditEventJpaRepository.java
-|   |   |   |               |   |   |-- ApiClientJpaRepository.java
-|   |   |   |               |   |   |-- ApiKeyJpaAdapter.java
-|   |   |   |               |   |   |-- ApiKeyJpaEntity.java
-|   |   |   |               |   |   |-- ApiKeyJpaRepository.java
-|   |   |   |               |   |   |-- WebhookDeliveryJpaRepository.java
-|   |   |   |               |   |   `-- WebhookEndpointJpaRepository.java
-|   |   |   |               |   |-- presentation
-|   |   |   |               |   |   `-- DynamicQrController.java
-|   |   |   |               |   `-- security
-|   |   |   |               |       |-- ApiAuditLoggingFilter.java
-|   |   |   |               |       |-- ApiGatewayIdempotencyInterceptor.java
-|   |   |   |               |       |-- ApiKeyAuthenticationFilter.java
-|   |   |   |               |       |-- ApiKeyAuthenticationToken.java
-|   |   |   |               |       |-- ApiSignatureFilter.java
-|   |   |   |               |       |-- CidrWhitelistValidator.java
-|   |   |   |               |       |-- GatewayRateLimitFilter.java
-|   |   |   |               |       `-- SandboxRoutingAspect.java
-|   |   |   |               |-- banking
-|   |   |   |               |   `-- orchestration
-|   |   |   |               |       `-- domain
-|   |   |   |               |           `-- RoutingRule.java
-|   |   |   |               |-- common
-|   |   |   |               |   |-- audit
-|   |   |   |               |   |   |-- AuditContext.java
-|   |   |   |               |   |   |-- AuditEvent.java
-|   |   |   |               |   |   |-- AuditEventPublisher.java
-|   |   |   |               |   |   `-- AuditLogRecord.java
-|   |   |   |               |   |-- enums
-|   |   |   |               |   |   |-- AccountStatus.java
-|   |   |   |               |   |   |-- RoleType.java
-|   |   |   |               |   |   `-- TransactionType.java
-|   |   |   |               |   |-- exception
-|   |   |   |               |   |   |-- BusinessException.java
-|   |   |   |               |   |   |-- ConflictException.java
-|   |   |   |               |   |   |-- ErrorCode.java
-|   |   |   |               |   |   |-- ForbiddenException.java
-|   |   |   |               |   |   |-- GlobalExceptionHandler.java
-|   |   |   |               |   |   `-- NotFoundException.java
-|   |   |   |               |   |-- mapper
-|   |   |   |               |   |   `-- BaseMapper.java
-|   |   |   |               |   |-- resilience
-|   |   |   |               |   |   |-- CriticalBusinessService.java
-|   |   |   |               |   |   |-- CriticalBusinessServiceJpaRepository.java
-|   |   |   |               |   |   |-- PaymentFailoverService.java
-|   |   |   |               |   |   `-- ResilienceEngine.java
-|   |   |   |               |   |-- response
-|   |   |   |               |   |   |-- ApiResponse.java
-|   |   |   |               |   |   `-- PagedResponse.java
-|   |   |   |               |   `-- util
-|   |   |   |               |       |-- DateUtils.java
-|   |   |   |               |       |-- IdempotencyKeyUtils.java
-|   |   |   |               |       |-- MaskingUtils.java
-|   |   |   |               |       `-- MoneyUtils.java
-|   |   |   |               |-- complaint
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   `-- CustomerComplaintService.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   `-- CustomerComplaint.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       `-- CustomerComplaintJpaRepository.java
-|   |   |   |               |-- config
-|   |   |   |               |   |-- ActuatorSecurityConfig.java
-|   |   |   |               |   |-- AsyncConfig.java
-|   |   |   |               |   |-- CacheConfig.java
-|   |   |   |               |   |-- CorsConfig.java
-|   |   |   |               |   |-- DataInitializer.java
-|   |   |   |               |   |-- FilterRegistrationConfig.java
-|   |   |   |               |   |-- JacksonConfig.java
-|   |   |   |               |   |-- OpenApiConfig.java
-|   |   |   |               |   |-- RateLimitConfig.java
-|   |   |   |               |   |-- SecretsConfig.java
-|   |   |   |               |   |-- SecurityConfig.java
-|   |   |   |               |   `-- WebSocketConfig.java
-|   |   |   |               |-- customer
-|   |   |   |               |   |-- api
-|   |   |   |               |   |   |-- CustomerController.java
-|   |   |   |               |   |   `-- dto
-|   |   |   |               |   |       |-- CustomerCreateRequest.java
-|   |   |   |               |   |       |-- CustomerResponse.java
-|   |   |   |               |   |       |-- CustomerUpdateRequest.java
-|   |   |   |               |   |       `-- NotificationResponse.java
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- CreateCustomerService.java
-|   |   |   |               |   |   |-- GetCustomerAlertsService.java
-|   |   |   |               |   |   |-- GetCustomerProfileService.java
-|   |   |   |               |   |   |-- UpdateCustomerProfileService.java
-|   |   |   |               |   |   `-- port
-|   |   |   |               |   |       |-- in
-|   |   |   |               |   |       |   |-- CreateCustomerUseCase.java
-|   |   |   |               |   |       |   |-- CustomerUseCase.java
-|   |   |   |               |   |       |   |-- GetCustomerAlertsUseCase.java
-|   |   |   |               |   |       |   `-- GetCustomerProfileUseCase.java
-|   |   |   |               |   |       `-- out
-|   |   |   |               |   |           `-- CustomerPersistencePort.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   |-- Customer.java
-|   |   |   |               |   |   |-- CustomerPolicy.java
-|   |   |   |               |   |   `-- CustomerProfile.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       |-- CustomerJpaRepository.java
-|   |   |   |               |       `-- CustomerPersistenceAdapter.java
-|   |   |   |               |-- fraud
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   `-- FraudManagementService.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   |-- DeviceRisk.java
-|   |   |   |               |   |   `-- FraudCase.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       |-- DeviceRiskJpaRepository.java
-|   |   |   |               |       `-- FraudCaseJpaRepository.java
-|   |   |   |               |-- governance
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- RegulatoryGovernanceService.java
-|   |   |   |               |   |   `-- RegulatoryReportingService.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   |-- ComplianceEvidenceRecord.java
-|   |   |   |               |   |   `-- RegulatoryRequirement.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       |-- ComplianceEvidenceRecordJpaRepository.java
-|   |   |   |               |       `-- RegulatoryRequirementJpaRepository.java
-|   |   |   |               |-- legacy
-|   |   |   |               |   `-- v1-deprecated
-|   |   |   |               |-- merchant
-|   |   |   |               |   |-- api
-|   |   |   |               |   |   |-- DeveloperSetupController.java
-|   |   |   |               |   |   `-- dto
-|   |   |   |               |   |       |-- DeveloperOnboardingRequest.java
-|   |   |   |               |   |       `-- DeveloperOnboardingResponse.java
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- DeveloperOnboardingService.java
-|   |   |   |               |   |   `-- MerchantApplicationService.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   `-- Merchant.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       `-- MerchantJpaRepository.java
-|   |   |   |               |-- notification
-|   |   |   |               |   |-- api
-|   |   |   |               |   |   |-- NotificationController.java
-|   |   |   |               |   |   `-- dto
-|   |   |   |               |   |       `-- NotificationResponse.java
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- SendOtpNotificationService.java
-|   |   |   |               |   |   |-- SendStatementReadyNotificationService.java
-|   |   |   |               |   |   |-- SendTransactionAlertService.java
-|   |   |   |               |   |   `-- port
-|   |   |   |               |   |       `-- out
-|   |   |   |               |   |           |-- EmailPort.java
-|   |   |   |               |   |           |-- PushNotificationPort.java
-|   |   |   |               |   |           `-- SmsPort.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       |-- EmailProviderAdapter.java
-|   |   |   |               |       |-- PushNotificationAdapter.java
-|   |   |   |               |       `-- SmsProviderAdapter.java
-|   |   |   |               |-- orchestration
-|   |   |   |               |   |-- api
-|   |   |   |               |   |   |-- OrchestrationController.java
-|   |   |   |               |   |   `-- dto
-|   |   |   |               |   |       |-- OrchestrationRequest.java
-|   |   |   |               |   |       `-- OrchestrationResponse.java
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- PaymentOrchestrationService.java
-|   |   |   |               |   |   |-- ReconciliationService.java
-|   |   |   |               |   |   `-- port
-|   |   |   |               |   |       |-- in
-|   |   |   |               |   |       |   `-- PaymentOrchestrationUseCase.java
-|   |   |   |               |   |       `-- out
-|   |   |   |               |   |           |-- MultiRailGatewayPort.java
-|   |   |   |               |   |           |-- PaymentRailConfigurationPort.java
-|   |   |   |               |   |           `-- RoutingRulePersistencePort.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   |-- PaymentGateway.java
-|   |   |   |               |   |   |-- PaymentRail.java
-|   |   |   |               |   |   `-- PaymentRailConfiguration.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       |-- MultiRailGatewayAdapter.java
-|   |   |   |               |       |-- PaymentRailConfigurationJpaAdapter.java
-|   |   |   |               |       |-- PaymentRailConfigurationJpaRepository.java
-|   |   |   |               |       |-- RoutingRuleJpaAdapter.java
-|   |   |   |               |       `-- RoutingRuleJpaRepository.java
-|   |   |   |               |-- payment
-|   |   |   |               |   |-- api
-|   |   |   |               |   |   |-- CheckoutSessionController.java
-|   |   |   |               |   |   |-- InstitutionPaymentController.java
-|   |   |   |               |   |   |-- MerchantGatewayController.java
-|   |   |   |               |   |   |-- PaymentGatewayController.java
-|   |   |   |               |   |   |-- PaymentIntentController.java
-|   |   |   |               |   |   |-- PaymentWebhookController.java
-|   |   |   |               |   |   |-- PublicCheckoutController.java
-|   |   |   |               |   |   `-- dto
-|   |   |   |               |   |       |-- AuthorizeCheckoutRequest.java
-|   |   |   |               |   |       |-- CheckoutSessionRequest.java
-|   |   |   |               |   |       |-- CheckoutSessionResponse.java
-|   |   |   |               |   |       |-- CreatePaymentIntentRequest.java
-|   |   |   |               |   |       |-- CreatePaymentSessionRequest.java
-|   |   |   |               |   |       |-- ExternalCheckoutRequest.java
-|   |   |   |               |   |       |-- InitiatePaymentRequest.java
-|   |   |   |               |   |       |-- InitiatePaymentResponse.java
-|   |   |   |               |   |       |-- LineItemDto.java
-|   |   |   |               |   |       |-- PaymentReceiptData.java
-|   |   |   |               |   |       |-- PaymentSessionApiResponse.java
-|   |   |   |               |   |       |-- PaymentSessionResponse.java
-|   |   |   |               |   |       |-- PublicCheckoutSessionResponse.java
-|   |   |   |               |   |       |-- SelectPaymentMethodRequest.java
-|   |   |   |               |   |       |-- SessionValidationResponse.java
-|   |   |   |               |   |       `-- merchant
-|   |   |   |               |   |           |-- MerchantCheckoutRequest.java
-|   |   |   |               |   |           |-- MerchantPaymentResponse.java
-|   |   |   |               |   |           `-- MerchantRefundRequest.java
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- CheckoutPaymentConfirmationService.java
-|   |   |   |               |   |   |-- CheckoutPaymentMethodService.java
-|   |   |   |               |   |   |-- CheckoutSessionService.java
-|   |   |   |               |   |   |-- DynamicQrService.java
-|   |   |   |               |   |   |-- GatewayDisputeService.java
-|   |   |   |               |   |   |-- InstitutionCallbackService.java
-|   |   |   |               |   |   |-- InstitutionPaymentService.java
-|   |   |   |               |   |   |-- InternalAccountAuthorizationService.java
-|   |   |   |               |   |   |-- InternalPaymentExecutionService.java
-|   |   |   |               |   |   |-- MerchantWebhookDeliveryService.java
-|   |   |   |               |   |   |-- PaymentEventOutboxRelay.java
-|   |   |   |               |   |   |-- PaymentEventOutboxService.java
-|   |   |   |               |   |   |-- PaymentIdempotencyService.java
-|   |   |   |               |   |   |-- PaymentIntentOrchestrationService.java
-|   |   |   |               |   |   |-- PaymentIntentService.java
-|   |   |   |               |   |   |-- PaymentMessagingService.java
-|   |   |   |               |   |   |-- PaymentReconciliationService.java
-|   |   |   |               |   |   |-- PaymentStateMachineService.java
-|   |   |   |               |   |   |-- PaymentWebhookService.java
-|   |   |   |               |   |   |-- PublicCheckoutService.java
-|   |   |   |               |   |   |-- WebhookIdempotencyService.java
-|   |   |   |               |   |   |-- idempotency
-|   |   |   |               |   |   |   |-- IdempotencyExecutionService.java
-|   |   |   |               |   |   |   |-- PaymentFingerprintService.java
-|   |   |   |               |   |   |   `-- PaymentRequestNormalizer.java
-|   |   |   |               |   |   `-- port
-|   |   |   |               |   |       `-- out
-|   |   |   |               |   |           `-- ExternalPaymentGateway.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   |-- CheckoutPaymentMethod.java
-|   |   |   |               |   |   |-- CheckoutSession.java
-|   |   |   |               |   |   |-- CheckoutSessionStateTransitionPolicy.java
-|   |   |   |               |   |   |-- CheckoutSessionStatus.java
-|   |   |   |               |   |   |-- DynamicQrPayment.java
-|   |   |   |               |   |   |-- GatewayDispute.java
-|   |   |   |               |   |   |-- HierarchicalLimitValidator.java
-|   |   |   |               |   |   |-- IdempotencyClaim.java
-|   |   |   |               |   |   |-- IdempotencyClaimStatus.java
-|   |   |   |               |   |   |-- InboundWebhookEvent.java
-|   |   |   |               |   |   |-- Institution.java
-|   |   |   |               |   |   |-- InstitutionCallbackLog.java
-|   |   |   |               |   |   |-- InstitutionCallbackPayload.java
-|   |   |   |               |   |   |-- PaymentAttempt.java
-|   |   |   |               |   |   |-- PaymentAuthorization.java
-|   |   |   |               |   |   |-- PaymentAuthorizationStatus.java
-|   |   |   |               |   |   |-- PaymentChannel.java
-|   |   |   |               |   |   |-- PaymentEvent.java
-|   |   |   |               |   |   |-- PaymentEventOutbox.java
-|   |   |   |               |   |   |-- PaymentEventOutboxStatus.java
-|   |   |   |               |   |   |-- PaymentEventType.java
-|   |   |   |               |   |   |-- PaymentIntent.java
-|   |   |   |               |   |   |-- PaymentIntentStatus.java
-|   |   |   |               |   |   |-- PaymentMessage.java
-|   |   |   |               |   |   |-- PaymentMethod.java
-|   |   |   |               |   |   |-- PaymentParticipant.java
-|   |   |   |               |   |   |-- PaymentProvider.java
-|   |   |   |               |   |   |-- PaymentReceiptPolicy.java
-|   |   |   |               |   |   |-- PaymentSession.java
-|   |   |   |               |   |   |-- PaymentSessionStatus.java
-|   |   |   |               |   |   |-- PaymentStateTransitionPolicy.java
-|   |   |   |               |   |   |-- Refund.java
-|   |   |   |               |   |   `-- exception
-|   |   |   |               |   |       `-- PaymentRequiredException.java
-|   |   |   |               |   |-- gateway
-|   |   |   |               |   |   |-- DefaultExternalPaymentGateway.java
-|   |   |   |               |   |   |-- ExternalPaymentGateway.java
-|   |   |   |               |   |   |-- PaymentWebhookVerifier.java
-|   |   |   |               |   |   `-- dto
-|   |   |   |               |   |       |-- ExternalCheckoutRequest.java
-|   |   |   |               |   |       |-- GatewayPaymentStatus.java
-|   |   |   |               |   |       `-- PaymentSession.java
-|   |   |   |               |   |-- infrastructure
-|   |   |   |               |   |   |-- CheckoutSessionJpaRepository.java
-|   |   |   |               |   |   |-- DynamicQrPaymentJpaRepository.java
-|   |   |   |               |   |   |-- GatewayDisputeJpaRepository.java
-|   |   |   |               |   |   |-- IdempotencyClaimJpaRepository.java
-|   |   |   |               |   |   |-- InboundWebhookEventJpaRepository.java
-|   |   |   |               |   |   |-- InstitutionCallbackLogJpaRepository.java
-|   |   |   |               |   |   |-- InstitutionJpaRepository.java
-|   |   |   |               |   |   |-- PaymentAttemptJpaRepository.java
-|   |   |   |               |   |   |-- PaymentAuthorizationJpaRepository.java
-|   |   |   |               |   |   |-- PaymentEventJpaRepository.java
-|   |   |   |               |   |   |-- PaymentEventOutboxJpaRepository.java
-|   |   |   |               |   |   |-- PaymentIntentJpaRepository.java
-|   |   |   |               |   |   |-- PaymentMessageJpaRepository.java
-|   |   |   |               |   |   |-- PaymentParticipantJpaRepository.java
-|   |   |   |               |   |   |-- PaymentSessionJpaRepository.java
-|   |   |   |               |   |   `-- RefundJpaRepository.java
-|   |   |   |               |   `-- routing
-|   |   |   |               |       |-- ConfigurablePaymentRouter.java
-|   |   |   |               |       `-- PaymentRouter.java
-|   |   |   |               |-- product
-|   |   |   |               |   |-- api
-|   |   |   |               |   |   `-- ProductController.java
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- GetProductCatalogService.java
-|   |   |   |               |   |   `-- port
-|   |   |   |               |   |       |-- in
-|   |   |   |               |   |       |   `-- ProductUseCase.java
-|   |   |   |               |   |       `-- out
-|   |   |   |               |   |           `-- ProductPersistencePort.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   |-- BankProduct.java
-|   |   |   |               |   |   `-- ProductType.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       |-- ProductJpaRepository.java
-|   |   |   |               |       `-- ProductPersistenceAdapter.java
-|   |   |   |               |-- reporting
-|   |   |   |               |   |-- api
-|   |   |   |               |   |   `-- ReportingController.java
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- GenerateMonthlyReportService.java
-|   |   |   |               |   |   `-- port
-|   |   |   |               |   |       |-- in
-|   |   |   |               |   |       |   `-- ReportingUseCase.java
-|   |   |   |               |   |       `-- out
-|   |   |   |               |   |           `-- ReportingPersistencePort.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   `-- ReportRequest.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       `-- ReportingPersistenceAdapter.java
-|   |   |   |               |-- security
-|   |   |   |               |   |-- auth
-|   |   |   |               |   |   |-- ApplicationSecurityBeansConfig.java
-|   |   |   |               |   |   |-- AuthenticationController.java
-|   |   |   |               |   |   |-- AuthenticationService.java
-|   |   |   |               |   |   |-- AuthorizationService.java
-|   |   |   |               |   |   |-- CustomUserDetailsService.java
-|   |   |   |               |   |   |-- LoginAttemptService.java
-|   |   |   |               |   |   |-- PasswordResetTokenService.java
-|   |   |   |               |   |   |-- WebAuthnSecurityConfig.java
-|   |   |   |               |   |   |-- domain
-|   |   |   |               |   |   |   `-- WebAuthnCredential.java
-|   |   |   |               |   |   |-- dto
-|   |   |   |               |   |   |   |-- AuthenticationRequest.java
-|   |   |   |               |   |   |   |-- AuthenticationResponse.java
-|   |   |   |               |   |   |   |-- FaceVerificationRequest.java
-|   |   |   |               |   |   |   |-- ForgotPasswordRequest.java
-|   |   |   |               |   |   |   |-- OtpRequest.java
-|   |   |   |               |   |   |   `-- ResetPasswordRequest.java
-|   |   |   |               |   |   `-- infrastructure
-|   |   |   |               |   |       `-- WebAuthnCredentialRepository.java
-|   |   |   |               |   |-- jwt
-|   |   |   |               |   |   |-- JwtAuthenticationFilter.java
-|   |   |   |               |   |   |-- JwtClaimsFactory.java
-|   |   |   |               |   |   |-- JwtTokenProvider.java
-|   |   |   |               |   |   `-- TokenBlacklistService.java
-|   |   |   |               |   |-- mfa
-|   |   |   |               |   |   |-- DeviceTrustService.java
-|   |   |   |               |   |   |-- OtpService.java
-|   |   |   |               |   |   `-- OtpVerificationService.java
-|   |   |   |               |   `-- policy
-|   |   |   |               |       |-- AccessPolicy.java
-|   |   |   |               |       |-- PasswordPolicy.java
-|   |   |   |               |       `-- SegregationOfDutiesPolicy.java
-|   |   |   |               |-- settlement
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- AdvancedSettlementService.java
-|   |   |   |               |   |   |-- InternalSettlementExecutionService.java
-|   |   |   |               |   |   |-- MerchantSettlementService.java
-|   |   |   |               |   |   |-- SettlementBatchService.java
-|   |   |   |               |   |   |-- SettlementEligibilityService.java
-|   |   |   |               |   |   |-- SettlementInstructionService.java
-|   |   |   |               |   |   `-- SettlementReconciliationService.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   |-- MerchantBalance.java
-|   |   |   |               |   |   |-- SettlementBatch.java
-|   |   |   |               |   |   |-- SettlementException.java
-|   |   |   |               |   |   |-- SettlementInstruction.java
-|   |   |   |               |   |   `-- SettlementWindow.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       |-- MerchantBalanceJpaRepository.java
-|   |   |   |               |       |-- SettlementBatchJpaRepository.java
-|   |   |   |               |       |-- SettlementExceptionJpaRepository.java
-|   |   |   |               |       |-- SettlementInstructionJpaRepository.java
-|   |   |   |               |       `-- SettlementWindowJpaRepository.java
-|   |   |   |               |-- statement
-|   |   |   |               |   |-- api
-|   |   |   |               |   |   |-- StatementController.java
-|   |   |   |               |   |   `-- dto
-|   |   |   |               |   |       `-- StatementResponse.java
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- GenerateStatementService.java
-|   |   |   |               |   |   |-- GetStatementService.java
-|   |   |   |               |   |   `-- port
-|   |   |   |               |   |       |-- in
-|   |   |   |               |   |       |   `-- StatementUseCase.java
-|   |   |   |               |   |       `-- out
-|   |   |   |               |   |           |-- StatementGeneratorPort.java
-|   |   |   |               |   |           `-- StatementPersistencePort.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   `-- Statement.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       |-- PdfStatementGenerator.java
-|   |   |   |               |       |-- StatementJpaRepository.java
-|   |   |   |               |       `-- StatementPersistenceAdapter.java
-|   |   |   |               |-- transaction
-|   |   |   |               |   |-- api
-|   |   |   |               |   |   |-- MobileAuthorizationController.java
-|   |   |   |               |   |   |-- TransactionController.java
-|   |   |   |               |   |   |-- TransactionIntentController.java
-|   |   |   |               |   |   |-- TransferController.java
-|   |   |   |               |   |   `-- dto
-|   |   |   |               |   |       |-- DepositRequest.java
-|   |   |   |               |   |       |-- DisputeReasonRequest.java
-|   |   |   |               |   |       |-- ExternalPaymentRequest.java
-|   |   |   |               |   |       |-- InternalTransferRequest.java
-|   |   |   |               |   |       |-- ReceiptNotificationRequest.java
-|   |   |   |               |   |       |-- TransactionResponse.java
-|   |   |   |               |   |       `-- WithdrawRequest.java
-|   |   |   |               |   |-- application
-|   |   |   |               |   |   |-- DepositService.java
-|   |   |   |               |   |   |-- DisputeTransactionService.java
-|   |   |   |               |   |   |-- ExternalPaymentService.java
-|   |   |   |               |   |   |-- FxCalculationService.java
-|   |   |   |               |   |   |-- GetTransactionHistoryService.java
-|   |   |   |               |   |   |-- IdempotencyGuardService.java
-|   |   |   |               |   |   |-- InternalTransferService.java
-|   |   |   |               |   |   |-- ReverseTransactionService.java
-|   |   |   |               |   |   |-- ScheduledTransferService.java
-|   |   |   |               |   |   |-- TransactionAccountResolver.java
-|   |   |   |               |   |   |-- TransactionAuthorizationService.java
-|   |   |   |               |   |   |-- TransferCompletedEvent.java
-|   |   |   |               |   |   |-- TransferNotificationListener.java
-|   |   |   |               |   |   |-- WithdrawService.java
-|   |   |   |               |   |   |-- ZeroBalanceSweepService.java
-|   |   |   |               |   |   `-- port
-|   |   |   |               |   |       |-- in
-|   |   |   |               |   |       |   |-- DepositUseCase.java
-|   |   |   |               |   |       |   |-- ExternalPaymentUseCase.java
-|   |   |   |               |   |       |   |-- GetTransactionHistoryUseCase.java
-|   |   |   |               |   |       |   |-- TransactionUseCase.java
-|   |   |   |               |   |       |   `-- WithdrawUseCase.java
-|   |   |   |               |   |       `-- out
-|   |   |   |               |   |           |-- FraudScreeningPort.java
-|   |   |   |               |   |           |-- FxRateProviderPort.java
-|   |   |   |               |   |           |-- LedgerPersistencePort.java
-|   |   |   |               |   |           `-- PaymentGatewayPort.java
-|   |   |   |               |   |-- domain
-|   |   |   |               |   |   |-- AuthorizationAttempt.java
-|   |   |   |               |   |   |-- CurrencyCode.java
-|   |   |   |               |   |   |-- DisputeCase.java
-|   |   |   |               |   |   |-- EntryType.java
-|   |   |   |               |   |   |-- FxCalculationService.java
-|   |   |   |               |   |   |-- FxQuote.java
-|   |   |   |               |   |   |-- LedgerEntry.java
-|   |   |   |               |   |   |-- Money.java
-|   |   |   |               |   |   |-- SufficientFundsPolicy.java
-|   |   |   |               |   |   |-- Transaction.java
-|   |   |   |               |   |   |-- TransactionIntent.java
-|   |   |   |               |   |   |-- TransactionIntentStatus.java
-|   |   |   |               |   |   |-- TransactionStatus.java
-|   |   |   |               |   |   |-- TransferIntent.java
-|   |   |   |               |   |   |-- TransferPolicy.java
-|   |   |   |               |   |   `-- TransferType.java
-|   |   |   |               |   `-- infrastructure
-|   |   |   |               |       |-- AuthorizationAttemptJpaRepository.java
-|   |   |   |               |       |-- DisputeCaseJpaRepository.java
-|   |   |   |               |       |-- FakeFxRateProviderAdapter.java
-|   |   |   |               |       |-- FraudScreeningAdapter.java
-|   |   |   |               |       |-- LedgerEntryJpaRepository.java
-|   |   |   |               |       |-- LedgerJpaAdapter.java
-|   |   |   |               |       |-- LedgerJpaRepository.java
-|   |   |   |               |       |-- PaymentGatewayAdapter.java
-|   |   |   |               |       |-- TransactionIntentJpaRepository.java
-|   |   |   |               |       |-- TransactionJpaRepository.java
-|   |   |   |               |       `-- fx
-|   |   |   |               |           |-- FrankfurterFxRateProviderAdapter.java
-|   |   |   |               |           `-- FrankfurterRateResponse.java
-|   |   |   |               `-- web
-|   |   |   |                   |-- advice
-|   |   |   |                   |   `-- ResponseSanitizerAdvice.java
-|   |   |   |                   |-- filter
-|   |   |   |                   |   |-- BffIdentityFilter.java
-|   |   |   |                   |   |-- CorrelationIdFilter.java
-|   |   |   |                   |   |-- RateLimitFilter.java
-|   |   |   |                   |   |-- RequestLoggingFilter.java
-|   |   |   |                   |   `-- SecurityHeadersFilter.java
-|   |   |   |                   `-- interceptor
-|   |   |   |                       `-- AuditInterceptor.java
+|   |   |   |   |-- com
+|   |   |   |   |   `-- company
+|   |   |   |   |       `-- banking
+|   |   |   |   |           |-- BankingApplication.java
+|   |   |   |   |           |-- account
+|   |   |   |   |           |   |-- api
+|   |   |   |   |           |   |   |-- AccountController.java
+|   |   |   |   |           |   |   `-- dto
+|   |   |   |   |           |   |       |-- AccountResponse.java
+|   |   |   |   |           |   |       |-- AccountSummaryResponse.java
+|   |   |   |   |           |   |       |-- OpenAccountRequest.java
+|   |   |   |   |           |   |       `-- UpdateAccountSettingsRequest.java
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- AccountProvisioningService.java
+|   |   |   |   |           |   |   |-- ChangeAccountStatusService.java
+|   |   |   |   |           |   |   |-- GetAccountDetailsService.java
+|   |   |   |   |           |   |   |-- GlobalAccountLockGuard.java
+|   |   |   |   |           |   |   |-- ListCustomerAccountsService.java
+|   |   |   |   |           |   |   |-- OpenAccountService.java
+|   |   |   |   |           |   |   |-- UpdateAccountSettingsService.java
+|   |   |   |   |           |   |   |-- port
+|   |   |   |   |           |   |   |   |-- in
+|   |   |   |   |           |   |   |   |   |-- AccountUseCase.java
+|   |   |   |   |           |   |   |   |   |-- ChangeAccountStatusUseCase.java
+|   |   |   |   |           |   |   |   |   |-- GetAccountDetailsUseCase.java
+|   |   |   |   |           |   |   |   |   |-- ListCustomerAccountsUseCase.java
+|   |   |   |   |           |   |   |   |   |-- OpenAccountUseCase.java
+|   |   |   |   |           |   |   |   |   `-- UpdateAccountSettingsUseCase.java
+|   |   |   |   |           |   |   |   `-- out
+|   |   |   |   |           |   |   |       `-- AccountPersistencePort.java
+|   |   |   |   |           |   |   `-- provisioning
+|   |   |   |   |           |   |       |-- AccountNumberGenerator.java
+|   |   |   |   |           |   |       |-- CardProvisioner.java
+|   |   |   |   |           |   |       `-- ParentAccountValidator.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   |-- Account.java
+|   |   |   |   |           |   |   |-- AccountBalance.java
+|   |   |   |   |           |   |   |-- AccountLimit.java
+|   |   |   |   |           |   |   `-- AccountPolicy.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       |-- AccountJpaRepository.java
+|   |   |   |   |           |       `-- AccountPersistenceAdapter.java
+|   |   |   |   |           |-- admin
+|   |   |   |   |           |   |-- api
+|   |   |   |   |           |   |   `-- AdminAuditController.java
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- KycApprovalService.java
+|   |   |   |   |           |   |   |-- ReviewAuditLogService.java
+|   |   |   |   |           |   |   `-- port
+|   |   |   |   |           |   |       |-- in
+|   |   |   |   |           |   |       |   |-- AdminUseCase.java
+|   |   |   |   |           |   |       |   `-- KycApprovalUseCase.java
+|   |   |   |   |           |   |       `-- out
+|   |   |   |   |           |   |           `-- AuditLogPersistencePort.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       |-- AuditLogJpaEntity.java
+|   |   |   |   |           |       |-- AuditLogJpaRepository.java
+|   |   |   |   |           |       `-- AuditLogPersistenceAdapter.java
+|   |   |   |   |           |-- aml
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- AmlCaseService.java
+|   |   |   |   |           |   |   `-- TransactionMonitoringService.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   |-- AccountHold.java
+|   |   |   |   |           |   |   |-- AmlAlert.java
+|   |   |   |   |           |   |   |-- AmlCase.java
+|   |   |   |   |           |   |   `-- SuspiciousTransactionReport.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       `-- AmlAlertJpaRepository.java
+|   |   |   |   |           |-- apigateway
+|   |   |   |   |           |   |-- api
+|   |   |   |   |           |   |   |-- ApiKeyController.java
+|   |   |   |   |           |   |   |-- LocalWebhookSimulatorController.java
+|   |   |   |   |           |   |   |-- WebhookController.java
+|   |   |   |   |           |   |   `-- dto
+|   |   |   |   |           |   |       |-- ApiKeyResponse.java
+|   |   |   |   |           |   |       `-- CreateApiKeyRequest.java
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- ApiClientService.java
+|   |   |   |   |           |   |   |-- CreateApiKeyService.java
+|   |   |   |   |           |   |   |-- WebhookDispatcherService.java
+|   |   |   |   |           |   |   |-- WebhookManagementService.java
+|   |   |   |   |           |   |   `-- port
+|   |   |   |   |           |   |       |-- in
+|   |   |   |   |           |   |       |   `-- CreateApiKeyUseCase.java
+|   |   |   |   |           |   |       `-- out
+|   |   |   |   |           |   |           `-- ApiKeyPersistencePort.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   |-- ApiAuditEvent.java
+|   |   |   |   |           |   |   |-- ApiClient.java
+|   |   |   |   |           |   |   |-- ApiKey.java
+|   |   |   |   |           |   |   |-- WebhookDelivery.java
+|   |   |   |   |           |   |   `-- WebhookEndpoint.java
+|   |   |   |   |           |   |-- infrastructure
+|   |   |   |   |           |   |   |-- ApiAuditEventJpaRepository.java
+|   |   |   |   |           |   |   |-- ApiClientJpaRepository.java
+|   |   |   |   |           |   |   |-- ApiKeyJpaAdapter.java
+|   |   |   |   |           |   |   |-- ApiKeyJpaEntity.java
+|   |   |   |   |           |   |   |-- ApiKeyJpaRepository.java
+|   |   |   |   |           |   |   |-- WebhookDeliveryJpaRepository.java
+|   |   |   |   |           |   |   `-- WebhookEndpointJpaRepository.java
+|   |   |   |   |           |   |-- presentation
+|   |   |   |   |           |   |   `-- DynamicQrController.java
+|   |   |   |   |           |   `-- security
+|   |   |   |   |           |       |-- ApiAuditLoggingFilter.java
+|   |   |   |   |           |       |-- ApiGatewayIdempotencyInterceptor.java
+|   |   |   |   |           |       |-- ApiKeyAuthenticationFilter.java
+|   |   |   |   |           |       |-- ApiKeyAuthenticationToken.java
+|   |   |   |   |           |       |-- ApiSignatureFilter.java
+|   |   |   |   |           |       |-- CidrWhitelistValidator.java
+|   |   |   |   |           |       |-- GatewayRateLimitFilter.java
+|   |   |   |   |           |       `-- SandboxRoutingAspect.java
+|   |   |   |   |           |-- banking
+|   |   |   |   |           |   `-- orchestration
+|   |   |   |   |           |       `-- domain
+|   |   |   |   |           |           `-- RoutingRule.java
+|   |   |   |   |           |-- common
+|   |   |   |   |           |   |-- audit
+|   |   |   |   |           |   |   |-- AuditContext.java
+|   |   |   |   |           |   |   |-- AuditEvent.java
+|   |   |   |   |           |   |   |-- AuditEventPublisher.java
+|   |   |   |   |           |   |   `-- AuditLogRecord.java
+|   |   |   |   |           |   |-- enums
+|   |   |   |   |           |   |   |-- AccountStatus.java
+|   |   |   |   |           |   |   |-- RoleType.java
+|   |   |   |   |           |   |   `-- TransactionType.java
+|   |   |   |   |           |   |-- exception
+|   |   |   |   |           |   |   |-- BusinessException.java
+|   |   |   |   |           |   |   |-- ConflictException.java
+|   |   |   |   |           |   |   |-- ErrorCode.java
+|   |   |   |   |           |   |   |-- ForbiddenException.java
+|   |   |   |   |           |   |   |-- GlobalExceptionHandler.java
+|   |   |   |   |           |   |   `-- NotFoundException.java
+|   |   |   |   |           |   |-- mapper
+|   |   |   |   |           |   |   `-- BaseMapper.java
+|   |   |   |   |           |   |-- resilience
+|   |   |   |   |           |   |   |-- CriticalBusinessService.java
+|   |   |   |   |           |   |   |-- CriticalBusinessServiceJpaRepository.java
+|   |   |   |   |           |   |   |-- PaymentFailoverService.java
+|   |   |   |   |           |   |   `-- ResilienceEngine.java
+|   |   |   |   |           |   |-- response
+|   |   |   |   |           |   |   |-- ApiResponse.java
+|   |   |   |   |           |   |   `-- PagedResponse.java
+|   |   |   |   |           |   `-- util
+|   |   |   |   |           |       |-- DateUtils.java
+|   |   |   |   |           |       |-- IdempotencyKeyUtils.java
+|   |   |   |   |           |       |-- MaskingUtils.java
+|   |   |   |   |           |       `-- MoneyUtils.java
+|   |   |   |   |           |-- complaint
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   `-- CustomerComplaintService.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   `-- CustomerComplaint.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       `-- CustomerComplaintJpaRepository.java
+|   |   |   |   |           |-- config
+|   |   |   |   |           |   |-- ActuatorSecurityConfig.java
+|   |   |   |   |           |   |-- AsyncConfig.java
+|   |   |   |   |           |   |-- CacheConfig.java
+|   |   |   |   |           |   |-- CorsConfig.java
+|   |   |   |   |           |   |-- DataInitializer.java
+|   |   |   |   |           |   |-- FilterRegistrationConfig.java
+|   |   |   |   |           |   |-- JacksonConfig.java
+|   |   |   |   |           |   |-- OpenApiConfig.java
+|   |   |   |   |           |   |-- RateLimitConfig.java
+|   |   |   |   |           |   |-- SecretsConfig.java
+|   |   |   |   |           |   |-- SecurityConfig.java
+|   |   |   |   |           |   `-- WebSocketConfig.java
+|   |   |   |   |           |-- customer
+|   |   |   |   |           |   |-- api
+|   |   |   |   |           |   |   |-- CustomerController.java
+|   |   |   |   |           |   |   `-- dto
+|   |   |   |   |           |   |       |-- CustomerCreateRequest.java
+|   |   |   |   |           |   |       |-- CustomerResponse.java
+|   |   |   |   |           |   |       |-- CustomerUpdateRequest.java
+|   |   |   |   |           |   |       `-- NotificationResponse.java
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- CreateCustomerService.java
+|   |   |   |   |           |   |   |-- GetCustomerAlertsService.java
+|   |   |   |   |           |   |   |-- GetCustomerProfileService.java
+|   |   |   |   |           |   |   |-- UpdateCustomerProfileService.java
+|   |   |   |   |           |   |   `-- port
+|   |   |   |   |           |   |       |-- in
+|   |   |   |   |           |   |       |   |-- CreateCustomerUseCase.java
+|   |   |   |   |           |   |       |   |-- CustomerUseCase.java
+|   |   |   |   |           |   |       |   |-- GetCustomerAlertsUseCase.java
+|   |   |   |   |           |   |       |   `-- GetCustomerProfileUseCase.java
+|   |   |   |   |           |   |       `-- out
+|   |   |   |   |           |   |           `-- CustomerPersistencePort.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   |-- Customer.java
+|   |   |   |   |           |   |   |-- CustomerPolicy.java
+|   |   |   |   |           |   |   `-- CustomerProfile.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       |-- CustomerJpaRepository.java
+|   |   |   |   |           |       `-- CustomerPersistenceAdapter.java
+|   |   |   |   |           |-- fraud
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   `-- FraudManagementService.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   |-- DeviceRisk.java
+|   |   |   |   |           |   |   `-- FraudCase.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       |-- DeviceRiskJpaRepository.java
+|   |   |   |   |           |       `-- FraudCaseJpaRepository.java
+|   |   |   |   |           |-- governance
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- RegulatoryGovernanceService.java
+|   |   |   |   |           |   |   `-- RegulatoryReportingService.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   |-- ComplianceEvidenceRecord.java
+|   |   |   |   |           |   |   `-- RegulatoryRequirement.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       |-- ComplianceEvidenceRecordJpaRepository.java
+|   |   |   |   |           |       `-- RegulatoryRequirementJpaRepository.java
+|   |   |   |   |           |-- legacy
+|   |   |   |   |           |   |-- README.md
+|   |   |   |   |           |   `-- v1-deprecated
+|   |   |   |   |           |-- merchant
+|   |   |   |   |           |   |-- api
+|   |   |   |   |           |   |   |-- DeveloperSetupController.java
+|   |   |   |   |           |   |   `-- dto
+|   |   |   |   |           |   |       |-- DeveloperOnboardingRequest.java
+|   |   |   |   |           |   |       `-- DeveloperOnboardingResponse.java
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- DeveloperOnboardingService.java
+|   |   |   |   |           |   |   `-- MerchantApplicationService.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   |-- Merchant.java
+|   |   |   |   |           |   |   `-- MerchantPaymentProfile.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       |-- MerchantJpaRepository.java
+|   |   |   |   |           |       `-- MerchantPaymentProfileJpaRepository.java
+|   |   |   |   |           |-- notification
+|   |   |   |   |           |   |-- api
+|   |   |   |   |           |   |   |-- NotificationController.java
+|   |   |   |   |           |   |   `-- dto
+|   |   |   |   |           |   |       `-- NotificationResponse.java
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- SendOtpNotificationService.java
+|   |   |   |   |           |   |   |-- SendStatementReadyNotificationService.java
+|   |   |   |   |           |   |   |-- SendTransactionAlertService.java
+|   |   |   |   |           |   |   `-- port
+|   |   |   |   |           |   |       `-- out
+|   |   |   |   |           |   |           |-- EmailPort.java
+|   |   |   |   |           |   |           |-- PushNotificationPort.java
+|   |   |   |   |           |   |           `-- SmsPort.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       |-- EmailProviderAdapter.java
+|   |   |   |   |           |       |-- PushNotificationAdapter.java
+|   |   |   |   |           |       `-- SmsProviderAdapter.java
+|   |   |   |   |           |-- orchestration
+|   |   |   |   |           |   |-- api
+|   |   |   |   |           |   |   |-- OrchestrationController.java
+|   |   |   |   |           |   |   `-- dto
+|   |   |   |   |           |   |       |-- OrchestrationRequest.java
+|   |   |   |   |           |   |       `-- OrchestrationResponse.java
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- PaymentOrchestrationService.java
+|   |   |   |   |           |   |   |-- ReconciliationService.java
+|   |   |   |   |           |   |   `-- port
+|   |   |   |   |           |   |       |-- in
+|   |   |   |   |           |   |       |   `-- PaymentOrchestrationUseCase.java
+|   |   |   |   |           |   |       `-- out
+|   |   |   |   |           |   |           |-- MultiRailGatewayPort.java
+|   |   |   |   |           |   |           |-- PaymentRailConfigurationPort.java
+|   |   |   |   |           |   |           `-- RoutingRulePersistencePort.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   |-- PaymentGateway.java
+|   |   |   |   |           |   |   |-- PaymentRail.java
+|   |   |   |   |           |   |   `-- PaymentRailConfiguration.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       |-- MultiRailGatewayAdapter.java
+|   |   |   |   |           |       |-- PaymentRailConfigurationJpaAdapter.java
+|   |   |   |   |           |       |-- PaymentRailConfigurationJpaRepository.java
+|   |   |   |   |           |       |-- RoutingRuleJpaAdapter.java
+|   |   |   |   |           |       `-- RoutingRuleJpaRepository.java
+|   |   |   |   |           |-- payment
+|   |   |   |   |           |   |-- api
+|   |   |   |   |           |   |   |-- CheckoutSessionController.java
+|   |   |   |   |           |   |   |-- InstitutionPaymentController.java
+|   |   |   |   |           |   |   |-- LegacyPaymentGatewayController.java
+|   |   |   |   |           |   |   |-- MerchantGatewayController.java
+|   |   |   |   |           |   |   |-- PaymentGatewayController.java
+|   |   |   |   |           |   |   |-- PaymentGatewayStrictEnforcementFilter.java
+|   |   |   |   |           |   |   |-- PaymentIntentController.java
+|   |   |   |   |           |   |   |-- PaymentWebhookController.java
+|   |   |   |   |           |   |   |-- PublicCheckoutController.java
+|   |   |   |   |           |   |   `-- dto
+|   |   |   |   |           |   |       |-- AuthorizeCheckoutRequest.java
+|   |   |   |   |           |   |       |-- CheckoutSessionRequest.java
+|   |   |   |   |           |   |       |-- CheckoutSessionResponse.java
+|   |   |   |   |           |   |       |-- CreatePaymentIntentRequest.java
+|   |   |   |   |           |   |       |-- CreatePaymentSessionRequest.java
+|   |   |   |   |           |   |       |-- ExternalCheckoutRequest.java
+|   |   |   |   |           |   |       |-- InitiatePaymentRequest.java
+|   |   |   |   |           |   |       |-- InitiatePaymentResponse.java
+|   |   |   |   |           |   |       |-- LineItemDto.java
+|   |   |   |   |           |   |       |-- PaymentReceiptData.java
+|   |   |   |   |           |   |       |-- PaymentSessionApiResponse.java
+|   |   |   |   |           |   |       |-- PaymentSessionResponse.java
+|   |   |   |   |           |   |       |-- PublicCheckoutSessionResponse.java
+|   |   |   |   |           |   |       |-- SelectPaymentMethodRequest.java
+|   |   |   |   |           |   |       |-- SessionValidationResponse.java
+|   |   |   |   |           |   |       `-- merchant
+|   |   |   |   |           |   |           |-- MerchantCheckoutRequest.java
+|   |   |   |   |           |   |           |-- MerchantPaymentResponse.java
+|   |   |   |   |           |   |           `-- MerchantRefundRequest.java
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- CheckoutPaymentConfirmationService.java
+|   |   |   |   |           |   |   |-- CheckoutPaymentMethodService.java
+|   |   |   |   |           |   |   |-- CheckoutSessionService.java
+|   |   |   |   |           |   |   |-- DynamicQrService.java
+|   |   |   |   |           |   |   |-- GatewayDisputeService.java
+|   |   |   |   |           |   |   |-- InstitutionCallbackService.java
+|   |   |   |   |           |   |   |-- InstitutionPaymentService.java
+|   |   |   |   |           |   |   |-- InternalAccountAuthorizationService.java
+|   |   |   |   |           |   |   |-- InternalPaymentExecutionService.java
+|   |   |   |   |           |   |   |-- MerchantWebhookDeliveryService.java
+|   |   |   |   |           |   |   |-- PaymentEventOutboxRelay.java
+|   |   |   |   |           |   |   |-- PaymentEventOutboxService.java
+|   |   |   |   |           |   |   |-- PaymentIdempotencyService.java
+|   |   |   |   |           |   |   |-- PaymentIntentOrchestrationService.java
+|   |   |   |   |           |   |   |-- PaymentIntentService.java
+|   |   |   |   |           |   |   |-- PaymentMessagingService.java
+|   |   |   |   |           |   |   |-- PaymentReconciliationService.java
+|   |   |   |   |           |   |   |-- PaymentStateMachineService.java
+|   |   |   |   |           |   |   |-- PaymentWebhookService.java
+|   |   |   |   |           |   |   |-- PublicCheckoutService.java
+|   |   |   |   |           |   |   |-- WebhookIdempotencyService.java
+|   |   |   |   |           |   |   |-- idempotency
+|   |   |   |   |           |   |   |   |-- IdempotencyExecutionService.java
+|   |   |   |   |           |   |   |   |-- PaymentFingerprintService.java
+|   |   |   |   |           |   |   |   `-- PaymentRequestNormalizer.java
+|   |   |   |   |           |   |   `-- port
+|   |   |   |   |           |   |       `-- out
+|   |   |   |   |           |   |           `-- ExternalPaymentGateway.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   |-- CheckoutPaymentMethod.java
+|   |   |   |   |           |   |   |-- CheckoutSession.java
+|   |   |   |   |           |   |   |-- CheckoutSessionStateTransitionPolicy.java
+|   |   |   |   |           |   |   |-- CheckoutSessionStatus.java
+|   |   |   |   |           |   |   |-- DynamicQrPayment.java
+|   |   |   |   |           |   |   |-- GatewayDispute.java
+|   |   |   |   |           |   |   |-- HierarchicalLimitValidator.java
+|   |   |   |   |           |   |   |-- IdempotencyClaim.java
+|   |   |   |   |           |   |   |-- IdempotencyClaimStatus.java
+|   |   |   |   |           |   |   |-- InboundWebhookEvent.java
+|   |   |   |   |           |   |   |-- Institution.java
+|   |   |   |   |           |   |   |-- InstitutionCallbackLog.java
+|   |   |   |   |           |   |   |-- InstitutionCallbackPayload.java
+|   |   |   |   |           |   |   |-- PaymentAttempt.java
+|   |   |   |   |           |   |   |-- PaymentAuthorization.java
+|   |   |   |   |           |   |   |-- PaymentAuthorizationStatus.java
+|   |   |   |   |           |   |   |-- PaymentChannel.java
+|   |   |   |   |           |   |   |-- PaymentEvent.java
+|   |   |   |   |           |   |   |-- PaymentEventOutbox.java
+|   |   |   |   |           |   |   |-- PaymentEventOutboxStatus.java
+|   |   |   |   |           |   |   |-- PaymentEventType.java
+|   |   |   |   |           |   |   |-- PaymentIntent.java
+|   |   |   |   |           |   |   |-- PaymentIntentStatus.java
+|   |   |   |   |           |   |   |-- PaymentMessage.java
+|   |   |   |   |           |   |   |-- PaymentMethod.java
+|   |   |   |   |           |   |   |-- PaymentParticipant.java
+|   |   |   |   |           |   |   |-- PaymentProvider.java
+|   |   |   |   |           |   |   |-- PaymentQrCode.java
+|   |   |   |   |           |   |   |-- PaymentReceiptPolicy.java
+|   |   |   |   |           |   |   |-- PaymentSession.java
+|   |   |   |   |           |   |   |-- PaymentSessionStatus.java
+|   |   |   |   |           |   |   |-- PaymentStateTransitionPolicy.java
+|   |   |   |   |           |   |   |-- Refund.java
+|   |   |   |   |           |   |   `-- exception
+|   |   |   |   |           |   |       `-- PaymentRequiredException.java
+|   |   |   |   |           |   |-- gateway
+|   |   |   |   |           |   |   |-- DefaultExternalPaymentGateway.java
+|   |   |   |   |           |   |   |-- ExternalPaymentGateway.java
+|   |   |   |   |           |   |   |-- PaymentWebhookVerifier.java
+|   |   |   |   |           |   |   `-- dto
+|   |   |   |   |           |   |       |-- ExternalCheckoutRequest.java
+|   |   |   |   |           |   |       |-- GatewayPaymentStatus.java
+|   |   |   |   |           |   |       `-- PaymentSession.java
+|   |   |   |   |           |   |-- infrastructure
+|   |   |   |   |           |   |   |-- CheckoutSessionJpaRepository.java
+|   |   |   |   |           |   |   |-- DynamicQrPaymentJpaRepository.java
+|   |   |   |   |           |   |   |-- GatewayDisputeJpaRepository.java
+|   |   |   |   |           |   |   |-- IdempotencyClaimJpaRepository.java
+|   |   |   |   |           |   |   |-- InboundWebhookEventJpaRepository.java
+|   |   |   |   |           |   |   |-- InstitutionCallbackLogJpaRepository.java
+|   |   |   |   |           |   |   |-- InstitutionJpaRepository.java
+|   |   |   |   |           |   |   |-- PaymentAttemptJpaRepository.java
+|   |   |   |   |           |   |   |-- PaymentAuthorizationJpaRepository.java
+|   |   |   |   |           |   |   |-- PaymentEventJpaRepository.java
+|   |   |   |   |           |   |   |-- PaymentEventOutboxJpaRepository.java
+|   |   |   |   |           |   |   |-- PaymentIntentJpaRepository.java
+|   |   |   |   |           |   |   |-- PaymentMessageJpaRepository.java
+|   |   |   |   |           |   |   |-- PaymentParticipantJpaRepository.java
+|   |   |   |   |           |   |   |-- PaymentQrCodeJpaRepository.java
+|   |   |   |   |           |   |   |-- PaymentSessionJpaRepository.java
+|   |   |   |   |           |   |   `-- RefundJpaRepository.java
+|   |   |   |   |           |   `-- routing
+|   |   |   |   |           |       |-- ConfigurablePaymentRouter.java
+|   |   |   |   |           |       `-- PaymentRouter.java
+|   |   |   |   |           |-- product
+|   |   |   |   |           |   |-- api
+|   |   |   |   |           |   |   `-- ProductController.java
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- GetProductCatalogService.java
+|   |   |   |   |           |   |   `-- port
+|   |   |   |   |           |   |       |-- in
+|   |   |   |   |           |   |       |   `-- ProductUseCase.java
+|   |   |   |   |           |   |       `-- out
+|   |   |   |   |           |   |           `-- ProductPersistencePort.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   |-- BankProduct.java
+|   |   |   |   |           |   |   `-- ProductType.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       |-- ProductJpaRepository.java
+|   |   |   |   |           |       `-- ProductPersistenceAdapter.java
+|   |   |   |   |           |-- qr
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- DefaultQrPaymentProvider.java
+|   |   |   |   |           |   |   |-- QrPaymentFinalizationService.java
+|   |   |   |   |           |   |   |-- QrPaymentOrchestrator.java
+|   |   |   |   |           |   |   |-- QrPaymentPreparationService.java
+|   |   |   |   |           |   |   `-- QrPaymentProvider.java
+|   |   |   |   |           |   `-- domain
+|   |   |   |   |           |       |-- QrPaymentRequest.java
+|   |   |   |   |           |       |-- QrPaymentResult.java
+|   |   |   |   |           |       `-- QrType.java
+|   |   |   |   |           |-- reporting
+|   |   |   |   |           |   |-- api
+|   |   |   |   |           |   |   `-- ReportingController.java
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- GenerateMonthlyReportService.java
+|   |   |   |   |           |   |   `-- port
+|   |   |   |   |           |   |       |-- in
+|   |   |   |   |           |   |       |   `-- ReportingUseCase.java
+|   |   |   |   |           |   |       `-- out
+|   |   |   |   |           |   |           `-- ReportingPersistencePort.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   `-- ReportRequest.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       `-- ReportingPersistenceAdapter.java
+|   |   |   |   |           |-- security
+|   |   |   |   |           |   |-- auth
+|   |   |   |   |           |   |   |-- ApplicationSecurityBeansConfig.java
+|   |   |   |   |           |   |   |-- AuthenticationController.java
+|   |   |   |   |           |   |   |-- AuthenticationService.java
+|   |   |   |   |           |   |   |-- AuthorizationService.java
+|   |   |   |   |           |   |   |-- CustomUserDetailsService.java
+|   |   |   |   |           |   |   |-- LoginAttemptService.java
+|   |   |   |   |           |   |   |-- PasswordResetTokenService.java
+|   |   |   |   |           |   |   |-- WebAuthnSecurityConfig.java
+|   |   |   |   |           |   |   |-- domain
+|   |   |   |   |           |   |   |   `-- WebAuthnCredential.java
+|   |   |   |   |           |   |   |-- dto
+|   |   |   |   |           |   |   |   |-- AuthenticationRequest.java
+|   |   |   |   |           |   |   |   |-- AuthenticationResponse.java
+|   |   |   |   |           |   |   |   |-- FaceVerificationRequest.java
+|   |   |   |   |           |   |   |   |-- ForgotPasswordRequest.java
+|   |   |   |   |           |   |   |   |-- OtpRequest.java
+|   |   |   |   |           |   |   |   `-- ResetPasswordRequest.java
+|   |   |   |   |           |   |   `-- infrastructure
+|   |   |   |   |           |   |       `-- WebAuthnCredentialRepository.java
+|   |   |   |   |           |   |-- jwt
+|   |   |   |   |           |   |   |-- JwtAuthenticationFilter.java
+|   |   |   |   |           |   |   |-- JwtClaimsFactory.java
+|   |   |   |   |           |   |   |-- JwtTokenProvider.java
+|   |   |   |   |           |   |   `-- TokenBlacklistService.java
+|   |   |   |   |           |   |-- mfa
+|   |   |   |   |           |   |   |-- DeviceTrustService.java
+|   |   |   |   |           |   |   |-- OtpService.java
+|   |   |   |   |           |   |   `-- OtpVerificationService.java
+|   |   |   |   |           |   `-- policy
+|   |   |   |   |           |       |-- AccessPolicy.java
+|   |   |   |   |           |       |-- PasswordPolicy.java
+|   |   |   |   |           |       `-- SegregationOfDutiesPolicy.java
+|   |   |   |   |           |-- settlement
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- AdvancedSettlementService.java
+|   |   |   |   |           |   |   |-- InternalSettlementExecutionService.java
+|   |   |   |   |           |   |   |-- MerchantSettlementService.java
+|   |   |   |   |           |   |   |-- SettlementBatchService.java
+|   |   |   |   |           |   |   |-- SettlementEligibilityService.java
+|   |   |   |   |           |   |   |-- SettlementInstructionService.java
+|   |   |   |   |           |   |   `-- SettlementReconciliationService.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   |-- MerchantBalance.java
+|   |   |   |   |           |   |   |-- SettlementBatch.java
+|   |   |   |   |           |   |   |-- SettlementException.java
+|   |   |   |   |           |   |   |-- SettlementInstruction.java
+|   |   |   |   |           |   |   `-- SettlementWindow.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       |-- MerchantBalanceJpaRepository.java
+|   |   |   |   |           |       |-- SettlementBatchJpaRepository.java
+|   |   |   |   |           |       |-- SettlementExceptionJpaRepository.java
+|   |   |   |   |           |       |-- SettlementInstructionJpaRepository.java
+|   |   |   |   |           |       `-- SettlementWindowJpaRepository.java
+|   |   |   |   |           |-- statement
+|   |   |   |   |           |   |-- api
+|   |   |   |   |           |   |   |-- StatementController.java
+|   |   |   |   |           |   |   `-- dto
+|   |   |   |   |           |   |       `-- StatementResponse.java
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- GenerateStatementService.java
+|   |   |   |   |           |   |   |-- GetStatementService.java
+|   |   |   |   |           |   |   `-- port
+|   |   |   |   |           |   |       |-- in
+|   |   |   |   |           |   |       |   `-- StatementUseCase.java
+|   |   |   |   |           |   |       `-- out
+|   |   |   |   |           |   |           |-- StatementGeneratorPort.java
+|   |   |   |   |           |   |           `-- StatementPersistencePort.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   `-- Statement.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       |-- PdfStatementGenerator.java
+|   |   |   |   |           |       |-- StatementJpaRepository.java
+|   |   |   |   |           |       `-- StatementPersistenceAdapter.java
+|   |   |   |   |           |-- transaction
+|   |   |   |   |           |   |-- api
+|   |   |   |   |           |   |   |-- MobileAuthorizationController.java
+|   |   |   |   |           |   |   |-- TransactionController.java
+|   |   |   |   |           |   |   |-- TransactionIntentController.java
+|   |   |   |   |           |   |   |-- TransferController.java
+|   |   |   |   |           |   |   `-- dto
+|   |   |   |   |           |   |       |-- DepositRequest.java
+|   |   |   |   |           |   |       |-- DisputeReasonRequest.java
+|   |   |   |   |           |   |       |-- ExternalPaymentRequest.java
+|   |   |   |   |           |   |       |-- InternalTransferRequest.java
+|   |   |   |   |           |   |       |-- ReceiptNotificationRequest.java
+|   |   |   |   |           |   |       |-- TransactionResponse.java
+|   |   |   |   |           |   |       `-- WithdrawRequest.java
+|   |   |   |   |           |   |-- application
+|   |   |   |   |           |   |   |-- DepositService.java
+|   |   |   |   |           |   |   |-- DisputeTransactionService.java
+|   |   |   |   |           |   |   |-- ExternalPaymentService.java
+|   |   |   |   |           |   |   |-- FxCalculationService.java
+|   |   |   |   |           |   |   |-- GetTransactionHistoryService.java
+|   |   |   |   |           |   |   |-- IdempotencyGuardService.java
+|   |   |   |   |           |   |   |-- InternalTransferService.java
+|   |   |   |   |           |   |   |-- ReverseTransactionService.java
+|   |   |   |   |           |   |   |-- ScheduledTransferService.java
+|   |   |   |   |           |   |   |-- TransactionAccountResolver.java
+|   |   |   |   |           |   |   |-- TransactionAuthorizationService.java
+|   |   |   |   |           |   |   |-- TransferCompletedEvent.java
+|   |   |   |   |           |   |   |-- TransferNotificationListener.java
+|   |   |   |   |           |   |   |-- WithdrawService.java
+|   |   |   |   |           |   |   |-- ZeroBalanceSweepService.java
+|   |   |   |   |           |   |   `-- port
+|   |   |   |   |           |   |       |-- in
+|   |   |   |   |           |   |       |   |-- DepositUseCase.java
+|   |   |   |   |           |   |       |   |-- ExternalPaymentUseCase.java
+|   |   |   |   |           |   |       |   |-- GetTransactionHistoryUseCase.java
+|   |   |   |   |           |   |       |   |-- TransactionUseCase.java
+|   |   |   |   |           |   |       |   `-- WithdrawUseCase.java
+|   |   |   |   |           |   |       `-- out
+|   |   |   |   |           |   |           |-- FraudScreeningPort.java
+|   |   |   |   |           |   |           |-- FxRateProviderPort.java
+|   |   |   |   |           |   |           |-- LedgerPersistencePort.java
+|   |   |   |   |           |   |           `-- PaymentGatewayPort.java
+|   |   |   |   |           |   |-- domain
+|   |   |   |   |           |   |   |-- AuthorizationAttempt.java
+|   |   |   |   |           |   |   |-- CurrencyCode.java
+|   |   |   |   |           |   |   |-- DisputeCase.java
+|   |   |   |   |           |   |   |-- EntryType.java
+|   |   |   |   |           |   |   |-- FxCalculationService.java
+|   |   |   |   |           |   |   |-- FxQuote.java
+|   |   |   |   |           |   |   |-- LedgerEntry.java
+|   |   |   |   |           |   |   |-- Money.java
+|   |   |   |   |           |   |   |-- SufficientFundsPolicy.java
+|   |   |   |   |           |   |   |-- Transaction.java
+|   |   |   |   |           |   |   |-- TransactionIntent.java
+|   |   |   |   |           |   |   |-- TransactionIntentStatus.java
+|   |   |   |   |           |   |   |-- TransactionStatus.java
+|   |   |   |   |           |   |   |-- TransferIntent.java
+|   |   |   |   |           |   |   |-- TransferPolicy.java
+|   |   |   |   |           |   |   `-- TransferType.java
+|   |   |   |   |           |   `-- infrastructure
+|   |   |   |   |           |       |-- AuthorizationAttemptJpaRepository.java
+|   |   |   |   |           |       |-- DisputeCaseJpaRepository.java
+|   |   |   |   |           |       |-- FakeFxRateProviderAdapter.java
+|   |   |   |   |           |       |-- FraudScreeningAdapter.java
+|   |   |   |   |           |       |-- LedgerEntryJpaRepository.java
+|   |   |   |   |           |       |-- LedgerJpaAdapter.java
+|   |   |   |   |           |       |-- LedgerJpaRepository.java
+|   |   |   |   |           |       |-- PaymentGatewayAdapter.java
+|   |   |   |   |           |       |-- TransactionIntentJpaRepository.java
+|   |   |   |   |           |       |-- TransactionJpaRepository.java
+|   |   |   |   |           |       `-- fx
+|   |   |   |   |           |           |-- FrankfurterFxRateProviderAdapter.java
+|   |   |   |   |           |           `-- FrankfurterRateResponse.java
+|   |   |   |   |           `-- web
+|   |   |   |   |               |-- advice
+|   |   |   |   |               |   `-- ResponseSanitizerAdvice.java
+|   |   |   |   |               |-- filter
+|   |   |   |   |               |   |-- BffIdentityFilter.java
+|   |   |   |   |               |   |-- CorrelationIdFilter.java
+|   |   |   |   |               |   |-- RateLimitFilter.java
+|   |   |   |   |               |   |-- RequestLoggingFilter.java
+|   |   |   |   |               |   `-- SecurityHeadersFilter.java
+|   |   |   |   |               `-- interceptor
+|   |   |   |   |                   `-- AuditInterceptor.java
+|   |   |   |   `-- structure.md
 |   |   |   `-- resources
 |   |   |       |-- application-dev.yml
 |   |   |       |-- application-prod.yml
 |   |   |       |-- application-staging.yml
 |   |   |       |-- application-test.yml
 |   |   |       |-- application.yml
+|   |   |       |-- banner.txt
 |   |   |       |-- db
 |   |   |       |   `-- migration
 |   |   |       |       |-- V10__relax_legacy_api_keys_constraints.sql
@@ -820,7 +861,12 @@
 |   |   |       |       |-- V55__seed_default_merchants.sql
 |   |   |       |       |-- V56__add_idempotency_claims_schema.sql
 |   |   |       |       |-- V57__seed_university_merchant.sql
+|   |   |       |       |-- V58__add_merchant_owner.sql
+|   |   |       |       |-- V59__resolve_account_ownership_semantics.sql
 |   |   |       |       |-- V5__api_gateway_and_security.sql
+|   |   |       |       |-- V60__add_qr_generation_started_at.sql
+|   |   |       |       |-- V61__restore_dynamic_qr_payments_schema.sql
+|   |   |       |       |-- V62__satisfy_hibernate_qr_schema.sql
 |   |   |       |       |-- V6__orchestration_and_routing.sql
 |   |   |       |       |-- V7__payroll_and_ledger.sql
 |   |   |       |       |-- V8__add_transaction_dispute_columns.sql
@@ -843,8 +889,11 @@
 |   |       |               |-- apigateway
 |   |       |               |   |-- GatewayAuditIntegrityIT.java
 |   |       |               |   |-- api
+|   |       |               |   |   |-- ApiKeyControllerTest.java
 |   |       |               |   |   |-- GatewayManagementApiIT.java
 |   |       |               |   |   `-- GatewayManagementAuthorizationIT.java
+|   |       |               |   |-- application
+|   |       |               |   |   `-- CreateApiKeyServiceTest.java
 |   |       |               |   `-- security
 |   |       |               |       |-- ApiKeyAuthenticationFilterTest.java
 |   |       |               |       |-- ApiKeyAuthenticationIT.java
@@ -858,6 +907,7 @@
 |   |       |               |   |-- BaseIntegrationTest.java
 |   |       |               |   |-- LedgerSpyIntegrationTest.java
 |   |       |               |   |-- TestDatabaseCleaner.java
+|   |       |               |   |-- TestFixtures.java
 |   |       |               |   |-- TransferSpyIntegrationTest.java
 |   |       |               |   `-- WebIntegrationTest.java
 |   |       |               |-- customer
@@ -904,7 +954,13 @@
 |   |       |               |   |-- PaymentIntentOrchestrationPathIT.java
 |   |       |               |   |-- PaymentIntentOrchestrationServiceTest.java
 |   |       |               |   |-- PaymentUrlSecurityTest.java
-|   |       |               |   `-- PublicCheckoutSessionSecurityIT.java
+|   |       |               |   |-- PublicCheckoutSessionSecurityIT.java
+|   |       |               |   `-- application
+|   |       |               |       |-- DynamicQrServiceBoundaryTest.java
+|   |       |               |       `-- DynamicQrServiceTest.java
+|   |       |               |-- qr
+|   |       |               |   `-- application
+|   |       |               |       `-- QrPaymentConcurrencyIT.java
 |   |       |               |-- security
 |   |       |               |   |-- JwtAuthenticationIT.java
 |   |       |               |   `-- auth
@@ -952,13 +1008,29 @@
 |   |       |                       `-- BffIdentityFilterTest.java
 |   |       `-- resources
 |   |           `-- application-test.yml
+|   |-- structure.md
 |   |-- test.log
 |   |-- test.logs
 |   `-- tests.log
+|-- banking-backend-hardened-architecture.md
 |-- check-env.js
+|-- codebase-infrastructure.md
+|-- development-progress.md
 |-- docs
-|   `-- decisions
+|   |-- ENVIRONMENT.md
+|   |-- api-contracts.md
+|   |-- architecture.md
+|   |-- decisions
+|   |   |-- ADR-0001-modular-monolith.md
+|   |   |-- ADR-0002-jwt-vs-session.md
+|   |   `-- ADR-0003-ledger-design.md
+|   |-- deprecation-policy.md
+|   |-- incident-runbook.md
+|   |-- sequence-flows.md
+|   `-- threat-model.md
 |-- fix_flattened_files.js
+|-- hardened-backend-implementation.md
+|-- implementation_plan.md
 |-- infra
 |   |-- docker
 |   |   |-- compose.dev.yaml
@@ -970,18 +1042,30 @@
 |   |   |-- ingress.yaml
 |   |   `-- service.yaml
 |   |-- loadbalancer
+|   |   |-- lb-health-check.md
+|   |   `-- upstream-pool.md
 |   |-- nginx
 |   |   |-- conf.d
 |   |   |   |-- api.conf
 |   |   |   `-- security-headers.conf
 |   |   |-- nginx.conf
 |   |   `-- tls
+|   |       `-- README.md
 |   `-- terraform
 |-- isolated_release.sh
 |-- migrate_test_directories.js
+|-- mobile-app-react-native-architecture.md
 |-- modules.conf
+|-- modules.conf.example.txt
+|-- money-movement-feature-extension-prompt.md
 |-- package-lock.json
 |-- package.json
+|-- principal-devops-repo-branching-prompt.md
+|-- release_log_20260828_224834.txt
+|-- release_log_20260828_224929.txt
+|-- release_log_20260828_225314.txt
+|-- release_log_20260829_234844.txt
+|-- release_log_20260829_234948.txt
 |-- remove_dirties_context.js
 |-- revert_directories.js
 |-- scaffold-mobile.sh
@@ -994,6 +1078,8 @@
 |   |-- db-migrate.sh
 |   |-- port_validator.js
 |   `-- run-local.sh
+|-- structure.md
+|-- test.log
 |-- tests
 |   |-- 04-fx-tests.json
 |   |-- account-management-tests.json
@@ -1004,380 +1090,407 @@
 |   |-- security-matrix.json
 |   |-- transaction-controller-tests.json
 |   `-- vam-transfer-tests.json
-`-- web-app
-    |-- Dockerfile
-    |-- fix-imports.mjs
-    |-- next-env.d.ts
-    |-- next.config.ts
-    |-- organize-frontend.ps1
-    |-- package-lock.json
-    |-- package.json
-    |-- playwright-report
-    |   |-- data
-    |   |   |-- 5984a314006f23f02cf7063815388c56ed90e3ec.zip
-    |   |   `-- c1ae90f4d39102260bb1c7bbc21871d4bbb8c4de.zip
-    |   |-- index.html
-    |   `-- trace
-    |       |-- assets
-    |       |   |-- codeMirrorModule-rXmQmLUY.js
-    |       |   |-- defaultSettingsView-B-dXF5JN.js
-    |       |   `-- urlMatch-L3liM589.js
-    |       |-- codeMirrorModule.-QdMvsKi.css
-    |       |-- codicon.DCmgc-ay.ttf
-    |       |-- defaultSettingsView.BLFoOugd.css
-    |       |-- index.B_TqY17P.css
-    |       |-- index.KZ4wOW1K.js
-    |       |-- index.html
-    |       |-- manifest.webmanifest
-    |       |-- playwright-logo.svg
-    |       |-- snapshot.B_Jk1wbt.js
-    |       |-- snapshot.html
-    |       |-- sw.bundle.js
-    |       |-- uiMode.C7UW1sC9.css
-    |       |-- uiMode.Dzuouizj.js
-    |       |-- uiMode.html
-    |       `-- xtermModule.kHJ-D0s7.css
-    |-- playwright.config.ts
-    |-- postcss.config.mjs
-    |-- runtimetest.log
-    |-- scripts
-    |   |-- clean.mjs
-    |   |-- cleanup-proxies.mjs
-    |   `-- fix-env-imports.mjs
-    |-- src
-    |   |-- app
-    |   |   |-- (portals)
-    |   |   |   |-- (admin)
-    |   |   |   |   |-- account-status
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |-- audit
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   `-- layout.tsx
-    |   |   |   |-- (auth)
-    |   |   |   |   |-- forgot-password
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |-- login
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |-- otp
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |-- passkey-setup
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |-- register
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   `-- reset-password
-    |   |   |   |       `-- page.tsx
-    |   |   |   |-- (dashboard)
-    |   |   |   |   |-- accounts
-    |   |   |   |   |   |-- [accountId]
-    |   |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |   |-- new
-    |   |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |-- api
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |-- layout.tsx
-    |   |   |   |   |-- products
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |-- profile
-    |   |   |   |   |   |-- devices
-    |   |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |   |-- page.tsx
-    |   |   |   |   |   `-- security
-    |   |   |   |   |       `-- page.tsx
-    |   |   |   |   |-- statements
-    |   |   |   |   |   |-- [accountNumber]
-    |   |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |-- transactions
-    |   |   |   |   |   |-- deposit
-    |   |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |   |-- external-payment
-    |   |   |   |   |   |   |-- page.tsx
-    |   |   |   |   |   |   |-- redirect
-    |   |   |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |   |   |-- review
-    |   |   |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |   |   `-- status
-    |   |   |   |   |   |       `-- page.tsx
-    |   |   |   |   |   |-- history
-    |   |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |   |-- receipt
-    |   |   |   |   |   |   `-- [txRef]
-    |   |   |   |   |   |       `-- page.tsx
-    |   |   |   |   |   `-- withdraw
-    |   |   |   |   |       `-- page.tsx
-    |   |   |   |   `-- transfers
-    |   |   |   |       |-- bank
-    |   |   |   |       |   `-- page.tsx
-    |   |   |   |       |-- confirm
-    |   |   |   |       |   `-- page.tsx
-    |   |   |   |       |-- internal
-    |   |   |   |       |   `-- page.tsx
-    |   |   |   |       |-- page.tsx
-    |   |   |   |       |-- payment-gateway
-    |   |   |   |       |   `-- result
-    |   |   |   |       |       `-- [paymentIntentId]
-    |   |   |   |       |           `-- page.tsx
-    |   |   |   |       |-- qr
-    |   |   |   |       |   `-- page.tsx
-    |   |   |   |       `-- review
-    |   |   |   |           `-- page.tsx
-    |   |   |   |-- (merchant)
-    |   |   |   |   |-- balances
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |-- layout.tsx
-    |   |   |   |   |-- merchant-dashboard
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |-- payments
-    |   |   |   |   |   |-- [intentId]
-    |   |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |-- qr-payments
-    |   |   |   |   |   |-- create
-    |   |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   |-- refunds
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   `-- settlements
-    |   |   |   |       `-- page.tsx
-    |   |   |   `-- (ops)
-    |   |   |       |-- complaints
-    |   |   |       |   `-- page.tsx
-    |   |   |       |-- compliance
-    |   |   |       |   |-- evidence
-    |   |   |       |   |   `-- page.tsx
-    |   |   |       |   `-- page.tsx
-    |   |   |       |-- fraud
-    |   |   |       |   |-- [caseId]
-    |   |   |       |   |   `-- page.tsx
-    |   |   |       |   `-- page.tsx
-    |   |   |       |-- layout.tsx
-    |   |   |       |-- merchants
-    |   |   |       |   |-- [merchantId]
-    |   |   |       |   |   `-- page.tsx
-    |   |   |       |   `-- page.tsx
-    |   |   |       |-- ops-dashboard
-    |   |   |       |   `-- page.tsx
-    |   |   |       |-- ops-payments
-    |   |   |       |   `-- page.tsx
-    |   |   |       `-- ops-settlements
-    |   |   |           |-- exceptions
-    |   |   |           |   `-- page.tsx
-    |   |   |           `-- page.tsx
-    |   |   |-- (public)
-    |   |   |   |-- (checkout)
-    |   |   |   |   |-- checkout
-    |   |   |   |   |   `-- [sessionId]
-    |   |   |   |   |       `-- page.tsx
-    |   |   |   |   |-- layout.tsx
-    |   |   |   |   `-- pay
-    |   |   |   |       `-- [sessionId]
-    |   |   |   |           |-- page.tsx
-    |   |   |   |           |-- processing
-    |   |   |   |           |   `-- page.tsx
-    |   |   |   |           `-- result
-    |   |   |   |               `-- page.tsx
-    |   |   |   |-- developers
-    |   |   |   |   |-- [...slug]
-    |   |   |   |   |   `-- page.tsx
-    |   |   |   |   `-- page.tsx
-    |   |   |   `-- page.tsx
-    |   |   |-- api
-    |   |   |   |-- auth
-    |   |   |   |   |-- forgot-password
-    |   |   |   |   |   `-- route.ts
-    |   |   |   |   |-- login
-    |   |   |   |   |   `-- route.ts
-    |   |   |   |   |-- logout
-    |   |   |   |   |   `-- route.ts
-    |   |   |   |   |-- refresh
-    |   |   |   |   |   `-- route.ts
-    |   |   |   |   `-- reset-password
-    |   |   |   |       `-- route.ts
-    |   |   |   |-- health
-    |   |   |   |   `-- route.ts
-    |   |   |   |-- proxy
-    |   |   |   |   `-- [...endpoint]
-    |   |   |   |       `-- route.ts
-    |   |   |   `-- v1
-    |   |   |       `-- [...endpoint]
-    |   |   |           `-- route.ts
-    |   |   |-- error.tsx
-    |   |   |-- global-error.tsx
-    |   |   |-- globals.css
-    |   |   |-- icon.svg
-    |   |   |-- layout.tsx
-    |   |   `-- not-found.tsx
-    |   |-- components
-    |   |   |-- docs
-    |   |   |   `-- ApiReferenceViewer.tsx
-    |   |   |-- features
-    |   |   |   |-- accounts
-    |   |   |   |   `-- AccountBalanceCard.tsx
-    |   |   |   |-- api
-    |   |   |   |   |-- ApiKeyManager.tsx
-    |   |   |   |   |-- DomainLibrary.tsx
-    |   |   |   |   |-- WebhookManager.tsx
-    |   |   |   |   `-- WebhookTestConsole.tsx
-    |   |   |   |-- checkout
-    |   |   |   |   |-- CheckoutConfirmation.tsx
-    |   |   |   |   |-- CheckoutOrchestrator.tsx
-    |   |   |   |   |-- CheckoutResult.tsx
-    |   |   |   |   |-- InternalAccountAuthorization.tsx
-    |   |   |   |   |-- PaymentMethodSelector.tsx
-    |   |   |   |   |-- RetryPaymentFlow.tsx
-    |   |   |   |   |-- SessionSummary.tsx
-    |   |   |   |   |-- SessionTimer.tsx
-    |   |   |   |   `-- TerminalStateScreen.tsx
-    |   |   |   |-- gateway
-    |   |   |   |   |-- DataTable.tsx
-    |   |   |   |   |-- MerchantLifecycleStepper.tsx
-    |   |   |   |   |-- MoneyDisplay.tsx
-    |   |   |   |   |-- PaymentStatusBadge.tsx
-    |   |   |   |   `-- QrPaymentCard.tsx
-    |   |   |   |-- payments
-    |   |   |   |   |-- ExternalPaymentRedirect.tsx
-    |   |   |   |   |-- PasskeyAuthorization.tsx
-    |   |   |   |   |-- PaymentResultFailed.tsx
-    |   |   |   |   |-- PaymentResultProcessing.tsx
-    |   |   |   |   |-- PaymentResultSuccess.tsx
-    |   |   |   |   |-- RecipientVerification.tsx
-    |   |   |   |   |-- TransactionError.tsx
-    |   |   |   |   |-- TransactionLayout.tsx
-    |   |   |   |   |-- TransactionProcessing.tsx
-    |   |   |   |   |-- TransactionProgress.tsx
-    |   |   |   |   |-- TransactionReceipt.tsx
-    |   |   |   |   |-- TransactionReview.tsx
-    |   |   |   |   `-- TransactionUnknown.tsx
-    |   |   |   `-- transactions
-    |   |   |       `-- TransactionListItem.tsx
-    |   |   |-- layout
-    |   |   |-- security
-    |   |   |   |-- MaskedValue.tsx
-    |   |   |   `-- PasskeyPrompt.tsx
-    |   |   `-- ui
-    |   |       |-- Button.tsx
-    |   |       |-- Card.tsx
-    |   |       |-- ErrorBanner.tsx
-    |   |       |-- Input.tsx
-    |   |       |-- LoadingOverlay.tsx
-    |   |       |-- Logo.tsx
-    |   |       `-- StarRating.tsx
-    |   |-- config
-    |   |   `-- featureFlags.ts
-    |   |-- hooks
-    |   |   |-- useAccounts.ts
-    |   |   |-- useAuth.ts
-    |   |   |-- useCheckoutSession.ts
-    |   |   |-- useIdleTimeout.ts
-    |   |   |-- usePaymentIntent.ts
-    |   |   `-- useTransactions.ts
-    |   |-- middleware.ts
-    |   |-- models
-    |   |   |-- Account.ts
-    |   |   |-- ApiResponse.ts
-    |   |   |-- GatewayModels.ts
-    |   |   |-- Product.ts
-    |   |   |-- Statement.ts
-    |   |   |-- Transaction.ts
-    |   |   |-- TransactionTypes.ts
-    |   |   `-- User.ts
-    |   |-- providers
-    |   |   `-- Providers.tsx
-    |   |-- security
-    |   |   |-- RoleGuard.tsx
-    |   |   |-- SessionGuard.tsx
-    |   |   |-- csp.ts
-    |   |   `-- rateLimiter.ts
-    |   |-- server
-    |   |   `-- config
-    |   |       `-- env.ts
-    |   |-- services
-    |   |   |-- account
-    |   |   |   `-- accountService.ts
-    |   |   |-- api
-    |   |   |   |-- endpoints.ts
-    |   |   |   |-- httpClient.ts
-    |   |   |   `-- interceptors
-    |   |   |       |-- correlationIdInterceptor.ts
-    |   |   |       |-- errorInterceptor.ts
-    |   |   |       `-- idempotencyInterceptor.ts
-    |   |   |-- auth
-    |   |   |   |-- authService.ts
-    |   |   |   |-- passkeyService.ts
-    |   |   |   `-- sessionService.ts
-    |   |   |-- checkout
-    |   |   |   |-- checkoutService.ts
-    |   |   |   `-- institutionService.ts
-    |   |   |-- docs
-    |   |   |   |-- apiTestRunner.ts
-    |   |   |   `-- openApiService.ts
-    |   |   |-- gateway
-    |   |   |   |-- fraudService.ts
-    |   |   |   |-- governanceService.ts
-    |   |   |   |-- merchantService.ts
-    |   |   |   |-- paymentService.ts
-    |   |   |   `-- settlementService.ts
-    |   |   |-- statement
-    |   |   |   `-- statementService.ts
-    |   |   `-- transaction
-    |   |       |-- idempotencyKeyService.ts
-    |   |       `-- transactionService.ts
-    |   |-- state
-    |   |   |-- authStore.ts
-    |   |   |-- queryClient.ts
-    |   |   `-- uiStore.ts
-    |   `-- utils
-    |       |-- constants.ts
-    |       |-- formatters.ts
-    |       |-- logger.ts
-    |       `-- validators.ts
-    |-- tailwind.config.ts
-    |-- test-results
-    |   |-- api-management-API-Managem-0f650--Management-Revocation-Flow-chromium
-    |   |   `-- trace.zip
-    |   |-- api-management-API-Managem-43bfd-rectly-in-Documentation-Tab-chromium
-    |   |   `-- trace.zip
-    |   |-- api-management-API-Managem-91d3b-ion---Blocks-localhost-HTTP-chromium
-    |   |   `-- trace.zip
-    |   |-- api-management-API-Managem-9f150-tion-Webhook-Ping-Test-Flow-chromium
-    |   |   `-- trace.zip
-    |   |-- api-management-API-Managem-ebbaf-ate-Key-Flow-Clipboard-Copy-chromium
-    |   |   `-- trace.zip
-    |   |-- login-Login-Flow-E2E-should-render-the-sign-in-form-chromium
-    |   |   `-- trace.zip
-    |   |-- transfer-Transfer-Payments-4d95f-ully-executes-and-redirects-chromium
-    |   |   `-- trace.zip
-    |   `-- transfer-Transfer-Payments-cd8a0-404-validation-from-backend-chromium
-    |       `-- trace.zip
-    |-- test.logs
-    |-- tests
-    |   |-- e2e
-    |   |   |-- account-settings.spec.ts
-    |   |   |-- api-management.spec.ts
-    |   |   |-- login.spec.ts
-    |   |   |-- statements.spec.ts
-    |   |   `-- transfer.spec.ts
-    |   `-- unit
-    |       |-- components
-    |       |   |-- qrTransfer.test.tsx
-    |       |   `-- transfers.test.tsx
-    |       |-- pages
-    |       |   |-- accounts
-    |       |   |   |-- accountDetailsSettings.test.tsx
-    |       |   |   `-- new.test.tsx
-    |       |   |-- api
-    |       |   |   `-- ApiManagementPage.test.tsx
-    |       |   |-- externalPaymentStatus.test.tsx
-    |       |   `-- transfers
-    |       |       `-- internal.test.tsx
-    |       `-- services
-    |           |-- authService.test.ts
-    |           |-- merchantService.test.ts
-    |           |-- paymentService.test.ts
-    |           `-- transactionService.test.ts
-    |-- tsconfig.json
-    |-- tsconfig.tsbuildinfo
-    `-- vitest.config.ts
+|-- web-app
+|   |-- Dockerfile
+|   |-- README.md
+|   |-- fix-imports.mjs
+|   |-- frontendstructure.md
+|   |-- next-env.d.ts
+|   |-- next.config.ts
+|   |-- organize-frontend.ps1
+|   |-- package-lock.json
+|   |-- package.json
+|   |-- playwright-report
+|   |   |-- data
+|   |   |   |-- 5984a314006f23f02cf7063815388c56ed90e3ec.zip
+|   |   |   |-- 76afc3978bf43016f325fbcdc684aa4a09048027.md
+|   |   |   `-- c1ae90f4d39102260bb1c7bbc21871d4bbb8c4de.zip
+|   |   |-- index.html
+|   |   `-- trace
+|   |       |-- assets
+|   |       |   |-- codeMirrorModule-rXmQmLUY.js
+|   |       |   |-- defaultSettingsView-B-dXF5JN.js
+|   |       |   `-- urlMatch-L3liM589.js
+|   |       |-- codeMirrorModule.-QdMvsKi.css
+|   |       |-- codicon.DCmgc-ay.ttf
+|   |       |-- defaultSettingsView.BLFoOugd.css
+|   |       |-- index.B_TqY17P.css
+|   |       |-- index.KZ4wOW1K.js
+|   |       |-- index.html
+|   |       |-- manifest.webmanifest
+|   |       |-- playwright-logo.svg
+|   |       |-- snapshot.B_Jk1wbt.js
+|   |       |-- snapshot.html
+|   |       |-- sw.bundle.js
+|   |       |-- uiMode.C7UW1sC9.css
+|   |       |-- uiMode.Dzuouizj.js
+|   |       |-- uiMode.html
+|   |       `-- xtermModule.kHJ-D0s7.css
+|   |-- playwright.config.ts
+|   |-- postcss.config.mjs
+|   |-- runtimetest.log
+|   |-- scripts
+|   |   |-- clean.mjs
+|   |   |-- cleanup-proxies.mjs
+|   |   `-- fix-env-imports.mjs
+|   |-- src
+|   |   |-- app
+|   |   |   |-- (portals)
+|   |   |   |   |-- (admin)
+|   |   |   |   |   |-- account-status
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |-- audit
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   `-- layout.tsx
+|   |   |   |   |-- (auth)
+|   |   |   |   |   |-- forgot-password
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |-- login
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |-- otp
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |-- passkey-setup
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |-- register
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   `-- reset-password
+|   |   |   |   |       `-- page.tsx
+|   |   |   |   |-- (dashboard)
+|   |   |   |   |   |-- accounts
+|   |   |   |   |   |   |-- [accountId]
+|   |   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |   |-- new
+|   |   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |-- api
+|   |   |   |   |   |   |-- onboard
+|   |   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |-- layout.tsx
+|   |   |   |   |   |-- products
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |-- profile
+|   |   |   |   |   |   |-- devices
+|   |   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |   |-- page.tsx
+|   |   |   |   |   |   `-- security
+|   |   |   |   |   |       `-- page.tsx
+|   |   |   |   |   |-- statements
+|   |   |   |   |   |   |-- [accountNumber]
+|   |   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |-- transactions
+|   |   |   |   |   |   |-- deposit
+|   |   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |   |-- external-payment
+|   |   |   |   |   |   |   |-- page.tsx
+|   |   |   |   |   |   |   |-- redirect
+|   |   |   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |   |   |-- review
+|   |   |   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |   |   `-- status
+|   |   |   |   |   |   |       `-- page.tsx
+|   |   |   |   |   |   |-- history
+|   |   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |   |-- receipt
+|   |   |   |   |   |   |   `-- [txRef]
+|   |   |   |   |   |   |       `-- page.tsx
+|   |   |   |   |   |   `-- withdraw
+|   |   |   |   |   |       `-- page.tsx
+|   |   |   |   |   `-- transfers
+|   |   |   |   |       |-- bank
+|   |   |   |   |       |   `-- page.tsx
+|   |   |   |   |       |-- confirm
+|   |   |   |   |       |   `-- page.tsx
+|   |   |   |   |       |-- internal
+|   |   |   |   |       |   `-- page.tsx
+|   |   |   |   |       |-- page.tsx
+|   |   |   |   |       |-- payment-gateway
+|   |   |   |   |       |   `-- result
+|   |   |   |   |       |       `-- [paymentIntentId]
+|   |   |   |   |       |           `-- page.tsx
+|   |   |   |   |       |-- qr
+|   |   |   |   |       |   `-- page.tsx
+|   |   |   |   |       `-- review
+|   |   |   |   |           `-- page.tsx
+|   |   |   |   |-- (merchant)
+|   |   |   |   |   |-- balances
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |-- layout.tsx
+|   |   |   |   |   |-- merchant-dashboard
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |-- payments
+|   |   |   |   |   |   |-- [intentId]
+|   |   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |-- qr-payments
+|   |   |   |   |   |   |-- create
+|   |   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   |-- refunds
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   `-- settlements
+|   |   |   |   |       `-- page.tsx
+|   |   |   |   `-- (ops)
+|   |   |   |       |-- complaints
+|   |   |   |       |   `-- page.tsx
+|   |   |   |       |-- compliance
+|   |   |   |       |   |-- evidence
+|   |   |   |       |   |   `-- page.tsx
+|   |   |   |       |   `-- page.tsx
+|   |   |   |       |-- fraud
+|   |   |   |       |   |-- [caseId]
+|   |   |   |       |   |   `-- page.tsx
+|   |   |   |       |   `-- page.tsx
+|   |   |   |       |-- layout.tsx
+|   |   |   |       |-- merchants
+|   |   |   |       |   |-- [merchantId]
+|   |   |   |       |   |   `-- page.tsx
+|   |   |   |       |   `-- page.tsx
+|   |   |   |       |-- ops-dashboard
+|   |   |   |       |   `-- page.tsx
+|   |   |   |       |-- ops-payments
+|   |   |   |       |   `-- page.tsx
+|   |   |   |       `-- ops-settlements
+|   |   |   |           |-- exceptions
+|   |   |   |           |   `-- page.tsx
+|   |   |   |           `-- page.tsx
+|   |   |   |-- (public)
+|   |   |   |   |-- (checkout)
+|   |   |   |   |   |-- checkout
+|   |   |   |   |   |   `-- [sessionId]
+|   |   |   |   |   |       `-- page.tsx
+|   |   |   |   |   |-- layout.tsx
+|   |   |   |   |   `-- pay
+|   |   |   |   |       `-- [sessionId]
+|   |   |   |   |           |-- page.tsx
+|   |   |   |   |           |-- processing
+|   |   |   |   |           |   `-- page.tsx
+|   |   |   |   |           `-- result
+|   |   |   |   |               `-- page.tsx
+|   |   |   |   |-- developers
+|   |   |   |   |   |-- [...slug]
+|   |   |   |   |   |   `-- page.tsx
+|   |   |   |   |   `-- page.tsx
+|   |   |   |   `-- page.tsx
+|   |   |   |-- api
+|   |   |   |   |-- auth
+|   |   |   |   |   |-- forgot-password
+|   |   |   |   |   |   `-- route.ts
+|   |   |   |   |   |-- login
+|   |   |   |   |   |   `-- route.ts
+|   |   |   |   |   |-- logout
+|   |   |   |   |   |   `-- route.ts
+|   |   |   |   |   |-- refresh
+|   |   |   |   |   |   `-- route.ts
+|   |   |   |   |   `-- reset-password
+|   |   |   |   |       `-- route.ts
+|   |   |   |   |-- health
+|   |   |   |   |   `-- route.ts
+|   |   |   |   |-- proxy
+|   |   |   |   |   `-- [...endpoint]
+|   |   |   |   |       `-- route.ts
+|   |   |   |   `-- v1
+|   |   |   |       `-- [...endpoint]
+|   |   |   |           `-- route.ts
+|   |   |   |-- error.tsx
+|   |   |   |-- global-error.tsx
+|   |   |   |-- globals.css
+|   |   |   |-- icon.svg
+|   |   |   |-- layout.tsx
+|   |   |   `-- not-found.tsx
+|   |   |-- components
+|   |   |   |-- docs
+|   |   |   |   `-- ApiReferenceViewer.tsx
+|   |   |   |-- features
+|   |   |   |   |-- accounts
+|   |   |   |   |   `-- AccountBalanceCard.tsx
+|   |   |   |   |-- api
+|   |   |   |   |   |-- ApiKeyManager.tsx
+|   |   |   |   |   |-- DomainLibrary.tsx
+|   |   |   |   |   |-- WebhookManager.tsx
+|   |   |   |   |   `-- WebhookTestConsole.tsx
+|   |   |   |   |-- checkout
+|   |   |   |   |   |-- CheckoutConfirmation.tsx
+|   |   |   |   |   |-- CheckoutOrchestrator.tsx
+|   |   |   |   |   |-- CheckoutResult.tsx
+|   |   |   |   |   |-- InternalAccountAuthorization.tsx
+|   |   |   |   |   |-- PaymentMethodSelector.tsx
+|   |   |   |   |   |-- RetryPaymentFlow.tsx
+|   |   |   |   |   |-- SessionSummary.tsx
+|   |   |   |   |   |-- SessionTimer.tsx
+|   |   |   |   |   `-- TerminalStateScreen.tsx
+|   |   |   |   |-- gateway
+|   |   |   |   |   |-- DataTable.tsx
+|   |   |   |   |   |-- MerchantLifecycleStepper.tsx
+|   |   |   |   |   |-- MoneyDisplay.tsx
+|   |   |   |   |   |-- PaymentStatusBadge.tsx
+|   |   |   |   |   `-- QrPaymentCard.tsx
+|   |   |   |   |-- payments
+|   |   |   |   |   |-- ExternalPaymentRedirect.tsx
+|   |   |   |   |   |-- PasskeyAuthorization.tsx
+|   |   |   |   |   |-- PaymentResultFailed.tsx
+|   |   |   |   |   |-- PaymentResultProcessing.tsx
+|   |   |   |   |   |-- PaymentResultSuccess.tsx
+|   |   |   |   |   |-- RecipientVerification.tsx
+|   |   |   |   |   |-- TransactionError.tsx
+|   |   |   |   |   |-- TransactionLayout.tsx
+|   |   |   |   |   |-- TransactionProcessing.tsx
+|   |   |   |   |   |-- TransactionProgress.tsx
+|   |   |   |   |   |-- TransactionReceipt.tsx
+|   |   |   |   |   |-- TransactionReview.tsx
+|   |   |   |   |   `-- TransactionUnknown.tsx
+|   |   |   |   `-- transactions
+|   |   |   |       `-- TransactionListItem.tsx
+|   |   |   |-- layout
+|   |   |   |-- security
+|   |   |   |   |-- MaskedValue.tsx
+|   |   |   |   `-- PasskeyPrompt.tsx
+|   |   |   `-- ui
+|   |   |       |-- Button.tsx
+|   |   |       |-- Card.tsx
+|   |   |       |-- ErrorBanner.tsx
+|   |   |       |-- Input.tsx
+|   |   |       |-- LoadingOverlay.tsx
+|   |   |       |-- Logo.tsx
+|   |   |       `-- StarRating.tsx
+|   |   |-- config
+|   |   |   `-- featureFlags.ts
+|   |   |-- hooks
+|   |   |   |-- useAccounts.ts
+|   |   |   |-- useAuth.ts
+|   |   |   |-- useCheckoutSession.ts
+|   |   |   |-- useIdleTimeout.ts
+|   |   |   |-- usePaymentIntent.ts
+|   |   |   `-- useTransactions.ts
+|   |   |-- middleware.ts
+|   |   |-- models
+|   |   |   |-- Account.ts
+|   |   |   |-- ApiResponse.ts
+|   |   |   |-- GatewayModels.ts
+|   |   |   |-- Product.ts
+|   |   |   |-- Statement.ts
+|   |   |   |-- Transaction.ts
+|   |   |   |-- TransactionTypes.ts
+|   |   |   `-- User.ts
+|   |   |-- providers
+|   |   |   `-- Providers.tsx
+|   |   |-- security
+|   |   |   |-- RoleGuard.tsx
+|   |   |   |-- SessionGuard.tsx
+|   |   |   |-- csp.ts
+|   |   |   `-- rateLimiter.ts
+|   |   |-- server
+|   |   |   `-- config
+|   |   |       `-- env.ts
+|   |   |-- services
+|   |   |   |-- account
+|   |   |   |   `-- accountService.ts
+|   |   |   |-- api
+|   |   |   |   |-- endpoints.ts
+|   |   |   |   |-- httpClient.ts
+|   |   |   |   `-- interceptors
+|   |   |   |       |-- correlationIdInterceptor.ts
+|   |   |   |       |-- errorInterceptor.ts
+|   |   |   |       `-- idempotencyInterceptor.ts
+|   |   |   |-- auth
+|   |   |   |   |-- authService.ts
+|   |   |   |   |-- passkeyService.ts
+|   |   |   |   `-- sessionService.ts
+|   |   |   |-- checkout
+|   |   |   |   |-- checkoutService.ts
+|   |   |   |   `-- institutionService.ts
+|   |   |   |-- docs
+|   |   |   |   |-- apiTestRunner.ts
+|   |   |   |   `-- openApiService.ts
+|   |   |   |-- gateway
+|   |   |   |   |-- fraudService.ts
+|   |   |   |   |-- governanceService.ts
+|   |   |   |   |-- merchantService.ts
+|   |   |   |   |-- paymentService.ts
+|   |   |   |   `-- settlementService.ts
+|   |   |   |-- statement
+|   |   |   |   `-- statementService.ts
+|   |   |   `-- transaction
+|   |   |       |-- idempotencyKeyService.ts
+|   |   |       `-- transactionService.ts
+|   |   |-- state
+|   |   |   |-- authStore.ts
+|   |   |   |-- queryClient.ts
+|   |   |   `-- uiStore.ts
+|   |   |-- tests
+|   |   |   |-- integration
+|   |   |   |   |-- ApiLifecycle.test.tsx
+|   |   |   |   |-- QrPaymentFlow.test.tsx
+|   |   |   |   `-- QrPollingConstraints.test.tsx
+|   |   |   |-- mocks
+|   |   |   |   `-- empty.ts
+|   |   |   `-- unit
+|   |   |       |-- components
+|   |   |       |   `-- ApiKeyManager.test.tsx
+|   |   |       `-- pages
+|   |   |           `-- api
+|   |   |               `-- ApiManagementPage.test.tsx
+|   |   |-- utils
+|   |   |   |-- constants.ts
+|   |   |   |-- formatters.ts
+|   |   |   |-- logger.ts
+|   |   |   `-- validators.ts
+|   |   `-- web-app-structure.md
+|   |-- structure.md
+|   |-- tailwind.config.ts
+|   |-- test-results
+|   |   |-- api-management-API-Managem-0f650--Management-Revocation-Flow-chromium
+|   |   |   |-- error-context.md
+|   |   |   `-- trace.zip
+|   |   |-- api-management-API-Managem-43bfd-rectly-in-Documentation-Tab-chromium
+|   |   |   |-- error-context.md
+|   |   |   `-- trace.zip
+|   |   |-- api-management-API-Managem-91d3b-ion---Blocks-localhost-HTTP-chromium
+|   |   |   |-- error-context.md
+|   |   |   `-- trace.zip
+|   |   |-- api-management-API-Managem-9f150-tion-Webhook-Ping-Test-Flow-chromium
+|   |   |   |-- error-context.md
+|   |   |   `-- trace.zip
+|   |   |-- api-management-API-Managem-ebbaf-ate-Key-Flow-Clipboard-Copy-chromium
+|   |   |   `-- trace.zip
+|   |   |-- login-Login-Flow-E2E-should-render-the-sign-in-form-chromium
+|   |   |   `-- trace.zip
+|   |   |-- transfer-Transfer-Payments-4d95f-ully-executes-and-redirects-chromium
+|   |   |   `-- trace.zip
+|   |   `-- transfer-Transfer-Payments-cd8a0-404-validation-from-backend-chromium
+|   |       |-- error-context.md
+|   |       `-- trace.zip
+|   |-- test.logs
+|   |-- tests
+|   |   |-- e2e
+|   |   |   |-- account-settings.spec.ts
+|   |   |   |-- api-management.spec.ts
+|   |   |   |-- login.spec.ts
+|   |   |   |-- statements.spec.ts
+|   |   |   `-- transfer.spec.ts
+|   |   `-- unit
+|   |       |-- components
+|   |       |   |-- qrTransfer.test.tsx
+|   |       |   `-- transfers.test.tsx
+|   |       |-- pages
+|   |       |   |-- accounts
+|   |       |   |   |-- accountDetailsSettings.test.tsx
+|   |       |   |   `-- new.test.tsx
+|   |       |   |-- api
+|   |       |   |   `-- ApiManagementPage.test.tsx
+|   |       |   |-- externalPaymentStatus.test.tsx
+|   |       |   `-- transfers
+|   |       |       `-- internal.test.tsx
+|   |       `-- services
+|   |           |-- authService.test.ts
+|   |           |-- merchantService.test.ts
+|   |           |-- paymentService.test.ts
+|   |           `-- transactionService.test.ts
+|   |-- tsconfig.json
+|   |-- tsconfig.tsbuildinfo
+|   |-- vitest.config.ts
+|   `-- web-app-structure.md
+`-- web-frontend-nextjs-architecture.md
 
-391 directories, 989 files
+408 directories, 1085 files
