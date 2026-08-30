@@ -16,7 +16,7 @@ set -e
 #   scope|tag_prefix|commit_type|commit_description|path1,path2,...
 #
 # Example line:
-#   inference-engine|inference-engine|feat|add CNN-LSTM fall-detection pipeline|src/ml/inference,src/ml/models
+#   backend|backend|feat|implement dynamic QR payments and API gateway|backend
 #
 # commit_type accepted: feat, feat!, fix, patch, refactor, perf,
 #                        chore, docs, test, major, breaking
