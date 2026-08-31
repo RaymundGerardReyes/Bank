@@ -103,3 +103,13 @@ release_log_*.txt
 .env.keys
 *.md
 !CHANGELOG.md
+
+# 9. Root junk files
+/*.js
+/*.sh
+/package.json
+/package-lock.json
+/.port-audit.json
+/modules.conf
+/modules.conf.example.txt
+/test.log
