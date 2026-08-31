@@ -98,3 +98,8 @@ release_log_*.txt
 *.tsbuildinfo
 .eslintcache
 .stylelintcache
+
+# 8. User Custom Exclusions
+.env.keys
+*.md
+!CHANGELOG.md
