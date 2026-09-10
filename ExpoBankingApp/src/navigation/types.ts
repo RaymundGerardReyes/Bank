@@ -17,6 +17,11 @@ export type MainTabParamList = {
 export type MainStackParamList = {
   MainTabs: undefined;
 
+  // Account Management Screens
+  AccountDetail: { accountNumber: string };
+  OpenAccount: { productType?: string } | undefined;
+  ProductCatalog: undefined;
+
   // Money Movement Screens
   TransferReview: {
     sourceAccountNumber: string;
@@ -32,11 +37,13 @@ export type MainStackParamList = {
     description?: string;
     idempotencyKey: string;
   };
-  Deposit: undefined;
+  Deposit: { targetAccountNumber?: string } | undefined;
+  Withdraw: { sourceAccountNumber?: string } | undefined;
+  ExternalPayment: { sourceAccountNumber?: string } | undefined;
 
   // Transactions & Ledger
   Transactions: { accountNumber?: string } | undefined;
-  TransactionDetail: { transaction: any };
+  TransactionDetail: { transaction: any; isCredit?: boolean };
 
   // Statements
   Statements: { accountNumber?: string } | undefined;
@@ -45,6 +52,7 @@ export type MainStackParamList = {
   // Profile & Security Settings
   SecuritySettings: undefined;
   DeviceManagement: undefined;
+  AuditLogs: undefined;
 };
 
 export type AdminStackParamList = {

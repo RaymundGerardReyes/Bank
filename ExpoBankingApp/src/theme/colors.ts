@@ -7,6 +7,7 @@ export const colors = {
 
   // --- Mapped to existing app architecture ---
   primary: '#0F2C59',       // Mapped to Accent for high priority
+  primaryLight: '#E0F2FE',  // Light blue tint for secondary buttons / highlight chips
   background: '#FFFFFF',    // Mapped to Dominant 60%
   card: '#FFFFFF',          // Pure white cards to sit on white backgrounds
   cardBorder: '#7BB2D9',    // Mapped to Secondary 30%

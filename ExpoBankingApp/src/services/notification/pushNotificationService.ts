@@ -8,8 +8,17 @@ import { store } from '../../state/store';
 import { logger } from '../../utils/logger';
 
 let stompClient: Client | null = null;
+const authRequestListeners: Array<(payload?: any) => void> = [];
 
 export const pushNotificationService = {
+  addAuthRequestListener: (callback: (payload?: any) => void): (() => void) => {
+    authRequestListeners.push(callback);
+    return () => {
+      const idx = authRequestListeners.indexOf(callback);
+      if (idx !== -1) authRequestListeners.splice(idx, 1);
+    };
+  },
+
   initialize: async (userIdentifier?: string): Promise<void> => {
     logger.info('Initializing Enterprise STOMP WebSocket connection...');
     await notifee.requestPermission();
@@ -41,6 +50,17 @@ export const pushNotificationService = {
           // Force the UI to refresh immediately
           store.dispatch(transactionApi.util.invalidateTags(['Transactions']));
           store.dispatch(accountApi.util.invalidateTags(['Accounts']));
+
+          // Check for real-time mobile authorization request
+          if (payload.route === '/authorizations/pending' || payload.title?.includes('Authorize')) {
+            authRequestListeners.forEach(listener => {
+              try {
+                listener(payload);
+              } catch (e) {
+                logger.error('[STOMP] Error in auth request listener', e);
+              }
+            });
+          }
 
           // Throw the Native OS Push Banner
           const channelId = await notifee.createChannel({

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-
+import { useState, useEffect, useCallback } from 'react';
 import { ENV } from '../config/env';
+import { tokenStorageService } from '../services/auth/tokenStorageService';
+import { pushNotificationService } from '../services/notification/pushNotificationService';
 
 export interface PendingAuthorization {
   transactionIntentId: number;
@@ -18,41 +19,57 @@ export function usePendingAuthorizations() {
   const [pendingAuths, setPendingAuths] = useState<PendingAuthorization[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Poll for pending authorizations every 3 seconds
-  useEffect(() => {
-    const fetchPending = async () => {
-      try {
-        // In a real app, this would use a secure fetch with Bearer token
-        const response = await fetch(`${ENV.API_BASE_URL}/mobile/authorizations/pending`, {
-          headers: {
-            'Authorization': 'Bearer ' + 'MOCK_TOKEN' // Using mock or stored token
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data) {
-            setPendingAuths(data.data);
-          }
-        }
-      } catch (e) {
-        console.debug("Error fetching pending authorizations", e);
+  const fetchPending = useCallback(async () => {
+    try {
+      const token = await tokenStorageService.getAccessToken();
+      if (!token) {
+        setPendingAuths([]);
+        return;
       }
-    };
 
-    const interval = setInterval(fetchPending, 3000);
-    fetchPending(); // Initial fetch
-    
-    return () => clearInterval(interval);
+      const response = await fetch(`${ENV.API_BASE_URL}/mobile/authorizations/pending`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.data)) {
+          setPendingAuths(data.data);
+        }
+      }
+    } catch (e) {
+      console.debug("Error fetching pending authorizations", e);
+    }
   }, []);
 
-  const approveAuthorization = async (intentId: number) => {
+  // Poll for pending authorizations every 3 seconds as fallback & listen for push
+  useEffect(() => {
+    fetchPending(); // Initial fetch
+    const interval = setInterval(fetchPending, 3000);
+
+    // Subscribe to real-time STOMP push notifications for instant wakeup
+    const unsubscribe = pushNotificationService.addAuthRequestListener(() => {
+      fetchPending();
+    });
+
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
+  }, [fetchPending]);
+
+  const approveAuthorization = async (intentId: number): Promise<boolean> => {
     setLoading(true);
     try {
+      const token = await tokenStorageService.getAccessToken();
+      if (!token) return false;
+
       const response = await fetch(`${ENV.API_BASE_URL}/mobile/authorizations/${intentId}/approve`, {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer ' + 'MOCK_TOKEN'
+          'Authorization': `Bearer ${token}`
         }
       });
       if (response.ok) {
@@ -68,5 +85,36 @@ export function usePendingAuthorizations() {
     return false;
   };
 
-  return { pendingAuths, approveAuthorization, loading };
+  const denyAuthorization = async (intentId: number): Promise<boolean> => {
+    setLoading(true);
+    try {
+      const token = await tokenStorageService.getAccessToken();
+      if (!token) return false;
+
+      const response = await fetch(`${ENV.API_BASE_URL}/mobile/authorizations/${intentId}/deny`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        // Remove from list
+        setPendingAuths(prev => prev.filter(a => a.transactionIntentId !== intentId));
+        return true;
+      }
+    } catch (e) {
+      console.error("Failed to deny authorization", e);
+    } finally {
+      setLoading(false);
+    }
+    return false;
+  };
+
+  return { 
+    pendingAuths, 
+    approveAuthorization, 
+    denyAuthorization, 
+    refreshPending: fetchPending, 
+    loading 
+  };
 }

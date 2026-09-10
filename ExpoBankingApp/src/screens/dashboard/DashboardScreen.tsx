@@ -125,6 +125,13 @@ export const DashboardScreen = () => {
             <Text style={styles.actionText}>Transfer</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('ExternalPayment')}>
+            <View style={[styles.actionIconBg, { backgroundColor: '#EFF6FF' }]}>
+              <Text style={styles.actionIconText}>🌐</Text>
+            </View>
+            <Text style={styles.actionText}>Wire</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Deposit')}>
             <View style={[styles.actionIconBg, { backgroundColor: '#ECFCCB' }]}>
               <Text style={styles.actionIconText}>📥</Text>
@@ -132,29 +139,45 @@ export const DashboardScreen = () => {
             <Text style={styles.actionText}>Deposit</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Withdraw')}>
+            <View style={[styles.actionIconBg, { backgroundColor: '#FEF3C7' }]}>
+              <Text style={styles.actionIconText}>📤</Text>
+            </View>
+            <Text style={styles.actionText}>Withdraw</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('OpenAccount')}>
+            <View style={[styles.actionIconBg, { backgroundColor: '#F3E8FF' }]}>
+              <Text style={styles.actionIconText}>✨</Text>
+            </View>
+            <Text style={styles.actionText}>Open New</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Statements')}>
-            <View style={[styles.actionIconBg, { backgroundColor: '#F3F4F6' }]}>
+            <View style={[styles.actionIconBg, { backgroundColor: '#F1F5F9' }]}>
               <Text style={styles.actionIconText}>📄</Text>
             </View>
             <Text style={styles.actionText}>Statements</Text>
           </TouchableOpacity>
-
-          {isAdminOrTeller ? (
-            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('AuditLogs')}>
-              <View style={[styles.actionIconBg, { backgroundColor: '#FFFBEB', borderColor: '#FDE68A', borderWidth: 1 }]}>
-                <Text style={styles.actionIconText}>⚡</Text>
-              </View>
-              <Text style={styles.actionText}>Audit Logs</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Profile')}>
-              <View style={[styles.actionIconBg, { backgroundColor: '#F8FAFC' }]}>
-                <Text style={styles.actionIconText}>⚙️</Text>
-              </View>
-              <Text style={styles.actionText}>Security</Text>
-            </TouchableOpacity>
-          )}
         </View>
+
+        {/* High-Yield Promo Banner */}
+        <TouchableOpacity
+          style={styles.promoBanner}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('OpenAccount', { productType: 'SAVINGS' })}
+        >
+          <View style={styles.promoBannerLeft}>
+            <View style={styles.promoBadge}>
+              <Text style={styles.promoBadgeText}>HIGH-YIELD SAVINGS</Text>
+            </View>
+            <Text style={styles.promoBannerTitle}>Earn 4.50% APY Guaranteed</Text>
+            <Text style={styles.promoBannerSub}>Open a savings sub-account with zero monthly maintenance fees.</Text>
+          </View>
+          <View style={styles.promoBannerArrow}>
+            <Text style={styles.promoArrowText}>→</Text>
+          </View>
+        </TouchableOpacity>
 
         <View style={styles.sectionHeaderBetween}>
           <Text style={styles.sectionTitle}>Your Accounts</Text>
@@ -168,6 +191,7 @@ export const DashboardScreen = () => {
             <View key={acc.accountNumber} style={styles.cardWrapper}>
               <AccountBalanceCard
                 account={acc}
+                onPress={() => navigation.navigate('AccountDetail', { accountNumber: acc.accountNumber })}
                 onTransfer={(accountNumber) => navigation.navigate('Transfers', { sourceAccountNumber: accountNumber })}
                 onViewStatements={(accountNumber) => navigation.navigate('Statements', { accountNumber })}
                 onViewLedger={(accountNumber) => navigation.navigate('Transactions', { accountNumber })}
@@ -408,26 +432,82 @@ const styles = StyleSheet.create({
   },
   quickActionsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.sm, // Added slight padding
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
   actionBtn: {
     alignItems: 'center',
-    width: '22%', // Adjusted for better spacing
+    width: '31%',
+    marginBottom: spacing.md,
   },
   actionIconBg: {
-    width: 60, // Refined circular size
-    height: 60,
-    borderRadius: 30, // Perfect circle
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
-    shadowColor: colors.accent, // Sleek shadow
+    marginBottom: 6,
+    shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
+  },
+  promoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    borderRadius: spacing.borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1.5,
+    borderColor: '#BAE6FD',
+    marginBottom: spacing.md,
+  },
+  promoBannerLeft: {
+    flex: 1,
+    paddingRight: spacing.sm,
+  },
+  promoBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#ECFCCB',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  promoBadgeText: {
+    color: colors.success,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  promoBannerTitle: {
+    color: colors.accent,
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  promoBannerSub: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  promoBannerArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  promoArrowText: {
+    color: colors.dominant,
+    fontSize: 16,
+    fontWeight: '800',
   },
   actionIconText: {
     fontSize: 26,

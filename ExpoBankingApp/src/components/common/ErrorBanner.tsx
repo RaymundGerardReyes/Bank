@@ -2,9 +2,9 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 
 // Importing from your existing theme system
-import { colors } from '@/theme/colors';
-import { spacing } from '@/theme/spacing';
-import { typography } from '@/theme/typography';
+import { colors } from '../../theme/colors';
+import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 
 interface ErrorBannerProps {
   message: string;
@@ -44,27 +44,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    // Uses your theme files, with standard fallback hex codes just in case
-    backgroundColor: colors?.errorBackground || '#FEE2E2', 
-    borderColor: colors?.error || '#EF4444',
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
     borderWidth: 1,
-    borderRadius: spacing?.sm || 8,
-    padding: spacing?.md || 16,
-    marginBottom: spacing?.md || 16,
+    borderRadius: spacing.sm,
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
   message: {
     flex: 1,
-    ...(typography?.body || { fontSize: 14 }),
-    color: colors?.errorText || '#B91C1C',
+    fontSize: typography.fontSize.sm,
+    color: colors.danger,
+    fontWeight: typography.fontWeight.medium,
   },
   dismissButton: {
-    paddingLeft: spacing?.sm || 8,
-    paddingVertical: spacing?.xs || 4,
+    paddingLeft: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   dismissText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors?.errorText || '#B91C1C',
+    color: colors.danger,
   },
 });
 

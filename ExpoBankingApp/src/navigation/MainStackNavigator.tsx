@@ -6,6 +6,10 @@ import { MainStackParamList } from './types';
 import { MainTabNavigator } from './MainTabNavigator';
 
 // Flow & Detail Screen Imports
+import { AccountDetailScreen } from '../screens/accounts/AccountDetailScreen';
+import { OpenAccountScreen } from '../screens/accounts/OpenAccountScreen';
+import { AuditLogScreen } from '../screens/admin/AuditLogScreen';
+import { ProductCatalogScreen } from '../screens/products/ProductCatalogScreen';
 import { DeviceManagementScreen } from '../screens/profile/DeviceManagementScreen';
 import { SecuritySettingsScreen } from '../screens/profile/SecuritySettingsScreen';
 import { StatementListScreen } from '../screens/statements/StatementListScreen';
@@ -13,8 +17,10 @@ import { StatementViewerScreen } from '../screens/statements/StatementViewerScre
 import { TransactionDetailScreen } from '../screens/transactions/TransactionDetailScreen';
 import { TransactionHistoryScreen } from '../screens/transactions/TransactionHistoryScreen';
 import { DepositScreen } from '../screens/transfers/DepositScreen';
+import { ExternalPaymentScreen } from '../screens/transfers/ExternalPaymentScreen';
 import { TransferConfirmScreen } from '../screens/transfers/TransferConfirmScreen';
 import { TransferReviewScreen } from '../screens/transfers/TransferReviewScreen';
+import { WithdrawScreen } from '../screens/transfers/WithdrawScreen';
 
 import { colors } from '../theme/colors';
 
@@ -38,7 +44,24 @@ export const MainStackNavigator = () => {
                 options={{ headerShown: false }}
             />
 
-            {/* 2. Registered Stack Flow Screens */}
+            {/* 2. Account Screens */}
+            <Stack.Screen
+                name="AccountDetail"
+                component={AccountDetailScreen}
+                options={{ title: 'Account Details' }}
+            />
+            <Stack.Screen
+                name="OpenAccount"
+                component={OpenAccountScreen}
+                options={{ title: 'Open New Account' }}
+            />
+            <Stack.Screen
+                name="ProductCatalog"
+                component={ProductCatalogScreen}
+                options={{ title: 'Products & Rates' }}
+            />
+
+            {/* 3. Money Movement Screens */}
             <Stack.Screen
                 name="TransferReview"
                 component={TransferReviewScreen}
@@ -54,6 +77,18 @@ export const MainStackNavigator = () => {
                 component={DepositScreen}
                 options={{ title: 'Deposit Cash' }}
             />
+            <Stack.Screen
+                name="Withdraw"
+                component={WithdrawScreen}
+                options={{ title: 'Withdraw Cash' }}
+            />
+            <Stack.Screen
+                name="ExternalPayment"
+                component={ExternalPaymentScreen}
+                options={{ title: 'Wire Transfer' }}
+            />
+
+            {/* 4. Ledger & Statements */}
             <Stack.Screen
                 name="Transactions"
                 component={TransactionHistoryScreen}
@@ -74,6 +109,8 @@ export const MainStackNavigator = () => {
                 component={StatementViewerScreen}
                 options={{ title: 'Encrypted PDF Viewer' }}
             />
+
+            {/* 5. Security & Governance */}
             <Stack.Screen
                 name="SecuritySettings"
                 component={SecuritySettingsScreen}
@@ -83,6 +120,11 @@ export const MainStackNavigator = () => {
                 name="DeviceManagement"
                 component={DeviceManagementScreen}
                 options={{ title: 'Trusted Devices' }}
+            />
+            <Stack.Screen
+                name="AuditLogs"
+                component={AuditLogScreen}
+                options={{ title: 'Audit Trail' }}
             />
         </Stack.Navigator>
     );

@@ -35,6 +35,12 @@ export const Button = ({
     }
   };
 
+  const getTextColor = () => {
+    if (disabled) return colors.textMuted;
+    if (variant === 'secondary') return colors.accent;
+    return colors.white;
+  };
+
   return (
     <TouchableOpacity
       style={[styles.button, { backgroundColor: getBackgroundColor() }, style]}
@@ -43,9 +49,9 @@ export const Button = ({
       activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator color={colors.white} />
+        <ActivityIndicator color={variant === 'secondary' ? colors.accent : colors.white} />
       ) : (
-        <Text style={[styles.text, textStyle]}>{title}</Text>
+        <Text style={[styles.text, { color: getTextColor() }, textStyle]}>{title}</Text>
       )}
     </TouchableOpacity>
   );
