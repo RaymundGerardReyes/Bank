@@ -107,9 +107,10 @@ release_log_*.txt
 # 9. Root junk files
 /*.js
 /*.sh
+!/isolated_release.sh
 /package.json
 /package-lock.json
 /.port-audit.json
-/modules.conf
 /modules.conf.example.txt
+!/modules.conf
 /test.log
