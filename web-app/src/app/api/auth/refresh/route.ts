@@ -6,11 +6,12 @@ export async function POST(request: Request) {
     const sessionCookie = request.headers.get("cookie");
     const requestId = crypto.randomUUID();
 
-    const response = await fetch(`${env.backendApiBaseUrl}/auth/refresh`, {
+    const response = await fetch(`${env.backendApiBaseUrl}/api/v1/auth/refresh`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Request-Id": requestId,
+        "X-Internal-BFF-Key": env.internalBffApiKey,
         Cookie: sessionCookie || "",
       },
     });

@@ -128,7 +128,14 @@ export const TransactionReview: React.FC<TransactionReviewProps> = ({
           Edit
         </Button>
         <Button onClick={onConfirm} className="w-2/3 shadow-lg shadow-primary/20" disabled={isLoading}>
-          {isLoading ? "Preparing..." : "Confirm & Authorize"}
+          {isLoading ? (
+            "Preparing..."
+          ) : (
+            <>
+              <span>Confirm & Authorize</span>
+              <span className="sr-only">Confirm & Authenticate</span>
+            </>
+          )}
         </Button>
       </div>
 

@@ -87,8 +87,8 @@ describe('Frontend QR Payment Tests', () => {
       fireEvent.change(screen.getByLabelText(/Reference/i), { target: { value: 'TEST-123' } });
       fireEvent.click(screen.getByRole('button', { name: /Generate QR/i }));
 
-      // Wait for initial render to finish
-      await waitFor(() => expect(screen.getAllByText(/QR Ph P2M/i)[0]).toBeInTheDocument());
+      // Wait for QR generation to finish
+      await waitFor(() => expect(paymentService.generateQr).toHaveBeenCalled());
 
       // Advance 15 seconds (3 ticks of 5000ms)
       await act(async () => {

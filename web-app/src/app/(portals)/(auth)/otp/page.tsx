@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { Logo } from "@/components/ui/Logo";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
@@ -89,7 +90,11 @@ export default function OtpPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen px-4 bg-dominant selection:bg-secondary selection:text-accent">
+    <div className="flex flex-col items-center justify-center min-h-screen px-4 py-12 bg-dominant selection:bg-secondary selection:text-accent font-sans">
+      <div className="w-full max-w-md mb-6 flex justify-center">
+        <Logo size="md" />
+      </div>
+
       <Card className="w-full max-w-md shadow-2xl shadow-accent/5 border-secondary/20" title="Security Verification">
         <form onSubmit={handleVerify} className="flex flex-col gap-4">
 
@@ -129,7 +134,7 @@ export default function OtpPage() {
             type="button"
             onClick={() => email && triggerSendOtp(email)}
             disabled={isSending || !email}
-            className="mt-2 text-sm font-bold text-secondary hover:text-sky-500 transition-colors disabled:opacity-50"
+            className="mt-2 text-sm font-bold text-secondary hover:text-sky-500 transition-colors disabled:opacity-50 cursor-pointer"
           >
             {isSending ? "Sending..." : "Didn't receive a code? Resend"}
           </button>

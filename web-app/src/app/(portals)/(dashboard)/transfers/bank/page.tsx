@@ -105,13 +105,14 @@ export default function BankTransferPage() {
 
       {/* Source Account */}
       <div className="flex flex-col gap-1.5 w-full">
-        <label className="text-sm font-bold text-accent">From Account</label>
+        <label htmlFor="fromAccount" className="text-sm font-bold text-accent">From Account</label>
         {accountsLoading ? (
           <div className="px-3.5 py-3 bg-surface border border-secondary/20 rounded-lg text-accent/50 font-medium animate-pulse">
             Loading...
           </div>
         ) : (
           <select
+            id="fromAccount"
             value={sourceAccount}
             onChange={(e) => setSourceAccount(e.target.value)}
             className="px-3.5 py-3 bg-surface border border-secondary/40 rounded-lg text-accent font-bold focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all cursor-pointer appearance-none"
@@ -131,8 +132,9 @@ export default function BankTransferPage() {
       {/* Recipient Details */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5 w-full">
-          <label className="text-sm font-bold text-accent">Recipient Bank</label>
+          <label htmlFor="recipientBank" className="text-sm font-bold text-accent">Recipient Bank</label>
           <select
+            id="recipientBank"
             value={bankCode}
             onChange={(e) => setBankCode(e.target.value)}
             className="px-3.5 py-3 bg-surface border border-secondary/40 rounded-lg text-accent font-bold focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all cursor-pointer appearance-none"

@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { Logo } from "@/components/ui/Logo";
 import { authService } from "@/services/auth/authService";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useRef, useState } from "react";
@@ -106,7 +107,10 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="flex items-center justify-center min-h-screen px-4 bg-dominant selection:bg-secondary selection:text-accent">
+    <div className="flex flex-col items-center justify-center min-h-screen px-4 py-12 bg-dominant selection:bg-secondary selection:text-accent font-sans">
+      <div className="w-full max-w-md mb-6 flex justify-center">
+        <Logo size="md" />
+      </div>
       <Card className="w-full max-w-md shadow-2xl shadow-accent/5 border-secondary/20" title="Create New Password">
         <p className="text-sm font-medium text-accent/70 leading-relaxed mb-6">
           Please enter your new password below. Ensure it is at least 8 characters long.

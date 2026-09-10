@@ -61,7 +61,7 @@ describe('Account Provisioning Workflow - Comprehensive Path Coverage', () => {
 
   it('Path 5: Rejects invalid characters in the account alias field', async () => {
     render(<OpenAccountScreen />);
-    expect(screen.getByText(/Master Account/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Master Account/i)[0]).toBeInTheDocument();
   });
 
   // --- 6. STATE TRANSITION PATHS ---

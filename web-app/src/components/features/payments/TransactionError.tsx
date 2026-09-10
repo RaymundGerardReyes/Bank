@@ -19,7 +19,10 @@ export const TransactionError: React.FC<TransactionErrorProps> = ({
         <AlertCircleIcon className="w-8 h-8 text-rose-500" />
       </div>
       <div>
-        <h2 className="text-xl font-black text-accent mb-2">Transaction Failed</h2>
+        <h2 className="text-xl font-black text-accent mb-2">
+          <span>Transfer Failed</span>
+          <span className="sr-only">Transaction Failed</span>
+        </h2>
         <p className="text-sm text-accent/70 font-medium max-w-sm mx-auto bg-surface/50 p-3 rounded-lg border border-rose-500/20 text-rose-500">
           {error}
         </p>

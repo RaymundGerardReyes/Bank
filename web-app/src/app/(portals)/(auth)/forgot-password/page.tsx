@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { Logo } from "@/components/ui/Logo";
 import { authService } from "@/services/auth/authService";
 import Link from "next/link";
 import React, { useState } from "react";
@@ -31,7 +32,11 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen px-4 bg-dominant selection:bg-secondary selection:text-accent font-sans">
+    <div className="flex flex-col items-center justify-center min-h-screen px-4 py-12 bg-dominant selection:bg-secondary selection:text-accent font-sans">
+      <div className="w-full max-w-md mb-6 flex justify-center">
+        <Logo size="md" />
+      </div>
+
       <Card className="w-full max-w-md shadow-2xl shadow-accent/5 border-secondary/20" title="Reset Password">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 animate-in fade-in duration-500">
           <p className="text-sm font-medium text-accent/70 leading-relaxed">

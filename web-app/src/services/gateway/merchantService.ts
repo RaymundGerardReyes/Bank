@@ -26,7 +26,16 @@ export const merchantService = {
   },
 
   onboardDeveloper: async (
-    payload: { legalName: string; merchantCode: string; businessRegistrationNumber: string; email: string; }
+    payload: {
+      legalName: string;
+      merchantCode?: string;
+      businessRegistrationNumber?: string;
+      email: string;
+      environment?: "LIVE" | "SANDBOX";
+      cidrWhitelist?: string;
+      scopes?: string[];
+      onboardingType?: "DEVELOPER" | "MERCHANT";
+    }
   ): Promise<{ merchantId: number; settlementAccountNumber: string; apiKey: string }> => {
     return apiFetch<{ merchantId: number; settlementAccountNumber: string; apiKey: string }>(endpoints.gateway.merchants.onboard, {
       method: "POST",

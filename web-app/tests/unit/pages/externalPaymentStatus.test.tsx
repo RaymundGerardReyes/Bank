@@ -2,31 +2,32 @@ import { render, screen, waitFor } from '@testing-library/react';
 import ExternalPaymentStatusPage from '@/app/(dashboard)/transactions/external-payment/status/page';
 import { paymentService } from '@/services/gateway/paymentService';
 import { useSearchParams } from 'next/navigation';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock dependencies
-jest.mock('next/navigation', () => ({
-    useRouter: () => ({ push: jest.fn() }),
-    useSearchParams: jest.fn(),
+vi.mock('next/navigation', () => ({
+    useRouter: () => ({ push: vi.fn() }),
+    useSearchParams: vi.fn(),
 }));
 
-jest.mock('@/services/gateway/paymentService', () => ({
+vi.mock('@/services/gateway/paymentService', () => ({
     paymentService: {
-        getPaymentIntent: jest.fn(),
+        getPaymentIntent: vi.fn(),
     },
 }));
 
 describe('ExternalPaymentStatusPage', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     it('displays loading state initially', () => {
-        (useSearchParams as jest.Mock).mockReturnValue({
+        (useSearchParams as any).mockReturnValue({
             get: () => 'PI-123',
         });
         
         // Mock unresolved promise to keep it in loading state
-        (paymentService.getPaymentIntent as jest.Mock).mockReturnValue(new Promise(() => {}));
+        (paymentService.getPaymentIntent as any).mockReturnValue(new Promise(() => {}));
 
         render(<ExternalPaymentStatusPage />);
         
@@ -35,11 +36,11 @@ describe('ExternalPaymentStatusPage', () => {
     });
 
     it('displays success state when backend returns SUCCESS', async () => {
-        (useSearchParams as jest.Mock).mockReturnValue({
+        (useSearchParams as any).mockReturnValue({
             get: () => 'PI-123',
         });
         
-        (paymentService.getPaymentIntent as jest.Mock).mockResolvedValue({
+        (paymentService.getPaymentIntent as any).mockResolvedValue({
             success: true,
             data: {
                 intentId: 'PI-123',
@@ -59,11 +60,11 @@ describe('ExternalPaymentStatusPage', () => {
     });
 
     it('displays failure state when backend returns FAILED', async () => {
-        (useSearchParams as jest.Mock).mockReturnValue({
+        (useSearchParams as any).mockReturnValue({
             get: () => 'PI-123',
         });
         
-        (paymentService.getPaymentIntent as jest.Mock).mockResolvedValue({
+        (paymentService.getPaymentIntent as any).mockResolvedValue({
             success: true,
             data: {
                 intentId: 'PI-123',

@@ -36,7 +36,12 @@ export const TransactionReceipt: React.FC<TransactionReceiptProps> = ({
       case "SUCCESS":
         return {
           icon: <CheckCircle2Icon className="w-16 h-16 text-emerald-500" />,
-          title: "Transfer Successful",
+          title: (
+            <>
+              <span>Transaction Successful</span>
+              <span className="sr-only">Transfer Successful</span>
+            </>
+          ),
           subtitle: "Your funds have been securely transferred.",
           badge: <span className="text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-1 rounded-md">Completed</span>,
         };

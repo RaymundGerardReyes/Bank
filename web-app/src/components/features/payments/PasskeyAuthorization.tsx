@@ -63,10 +63,26 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
     const pollInterval = setInterval(async () => {
       try {
         const res = await transactionService.getAuthStatus(intentId);
-        if (res.data?.status === 'AUTHORIZED' || res.data?.status === 'VERIFIED') {
+        const status = res.data?.status;
+        if (status === 'AUTHORIZED' || status === 'VERIFIED') {
           clearInterval(pollInterval);
           setWaitingForMobile(false);
-          handleSimulate(); // Trigger success automatically once mobile approves
+          onSuccess({
+            id: `oob-mobile-auth-${intentId}`,
+            rawId: `oob-mobile-auth-${intentId}`,
+            response: {
+              authenticatorData: "oob-mobile-verified",
+              clientDataJSON: "oob-mobile-verified",
+              signature: "oob-signature",
+              userHandle: `intent-${intentId}`,
+            },
+            type: "public-key",
+            clientExtensionResults: {},
+          });
+        } else if (status === 'FAILED' || status === 'DENIED') {
+          clearInterval(pollInterval);
+          setWaitingForMobile(false);
+          setError("Transaction authorization was rejected by your mobile device.");
         }
       } catch (e) {
         console.error("Polling error", e);
@@ -76,10 +92,13 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
     // Timeout after 60 seconds
     setTimeout(() => {
       clearInterval(pollInterval);
-      if (waitingForMobile) {
-         setWaitingForMobile(false);
-         setError("Mobile authorization timed out.");
-      }
+      setWaitingForMobile((current) => {
+        if (current) {
+          setError("Mobile authorization timed out.");
+          return false;
+        }
+        return current;
+      });
     }, 60000);
   };
 
@@ -258,7 +277,8 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
             className="w-full py-4 text-lg border-2 border-emerald-500/50 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400"
             disabled={authenticating}
           >
-            [DEV] Bypass Access
+            <span>[DEV] Bypass Access</span>
+            <span className="sr-only">Simulate Passkey Success</span>
           </Button>
         )}
 

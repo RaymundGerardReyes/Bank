@@ -7,11 +7,11 @@ export function generateCspHeader(nonce?: string): string {
 
   return [
     "default-src 'self'",
-    `script-src ${scriptSrc} 'unsafe-inline' 'unsafe-eval'`,
+    `script-src ${scriptSrc} 'unsafe-inline'`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https: http:",
-    `connect-src 'self' wss: ws: https: http: ${domainConnectHttps} ${domainConnectHttp} *`,
-    "font-src 'self' data: https: http:",
+    "img-src 'self' data: https:",
+    `connect-src 'self' wss: ws: ${domainConnectHttps} ${domainConnectHttp}`.trim(),
+    "font-src 'self' data:",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

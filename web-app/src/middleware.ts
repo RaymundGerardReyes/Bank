@@ -15,17 +15,68 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
 }
 
 // 1. Protect UI Pages
-const PROTECTED_ROUTES = ["/accounts", "/transfers", "/transactions", "/statements", "/products", "/profile", "/admin", "/ops", "/api"];
+const PROTECTED_ROUTES = [
+  "/accounts",
+  "/transfers",
+  "/transactions",
+  "/statements",
+  "/products",
+  "/profile",
+  "/admin",
+  "/account-status",
+  "/audit",
+  "/ops",
+  "/ops-dashboard",
+  "/ops-payments",
+  "/ops-settlements",
+  "/merchants",
+  "/fraud",
+  "/complaints",
+  "/compliance",
+  "/merchant-dashboard",
+  "/payments",
+  "/qr-payments",
+  "/refunds",
+  "/balances",
+  "/settlements",
+  "/api/onboard",
+];
 
 // 2. Protect Internal Next.js Proxies from being abused externally
 const INTERNAL_PROXY_ROUTES = [
   "/api/proxy"
 ];
 
-const ADMIN_ROUTES = ["/admin", "/ops"];
+const ADMIN_OPS_ROUTES = [
+  "/admin",
+  "/account-status",
+  "/audit",
+  "/ops",
+  "/ops-dashboard",
+  "/ops-payments",
+  "/ops-settlements",
+  "/merchants",
+  "/fraud",
+  "/complaints",
+  "/compliance",
+];
+
+const MERCHANT_ROUTES = [
+  "/merchant-dashboard",
+  "/payments",
+  "/qr-payments",
+  "/refunds",
+  "/balances",
+  "/settlements",
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+  if (pathname === "/api/health") {
+    return NextResponse.next();
+  }
+
   const sessionToken = request.cookies.get("bank_session")?.value;
   
   // Rate Limiting (Stateless Edge)
@@ -45,10 +96,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const isProtectedRoute = PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
+  const isProtectedRoute = PROTECTED_ROUTES.some((route) => pathname === route || pathname.startsWith(route + "/"));
   const isInternalProxyRoute = INTERNAL_PROXY_ROUTES.some((route) => pathname.startsWith(route));
   const isPublicProxyRoute = pathname.startsWith("/api/proxy/auth");
-  const isAdminRoute = ADMIN_ROUTES.some((route) => pathname.startsWith(route));
+  const isAdminOpsRoute = ADMIN_OPS_ROUTES.some((route) => pathname === route || pathname.startsWith(route + "/"));
+  const isMerchantRoute = MERCHANT_ROUTES.some((route) => pathname === route || pathname.startsWith(route + "/"));
   const isExternalApiRoute = pathname === "/api/v1" || pathname.startsWith("/api/v1/");
 
   // --- ENTERPRISE FIX: Block unauthorized access to UI AND Internal API Proxies ---
@@ -62,19 +114,25 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // --- PHASE 1: Server-Side Role Guarding (Edge JWT Decode) ---
-    if (isAdminRoute) {
-      try {
-        const decoded = jwtDecode<{ role: string }>(sessionToken);
-        if (decoded.role !== "ADMIN" && decoded.role !== "OPS_OFFICER") {
-          // If a standard USER tries to access /admin or /ops, reject them at the Edge
-          return NextResponse.redirect(new URL("/unauthorized", request.url));
-        }
-      } catch {
-        // If JWT is malformed, force re-login
+    // --- PHASE 1: Server-Side Role Guarding & Expiration Check (Edge JWT Decode) ---
+    try {
+      const decoded = jwtDecode<{ role: string; exp?: number }>(sessionToken);
+      if (decoded.exp && decoded.exp * 1000 < Date.now()) {
         const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("redirect", pathname);
         return NextResponse.redirect(loginUrl);
       }
+      if (isAdminOpsRoute && decoded.role !== "ADMIN" && decoded.role !== "OPS_OFFICER") {
+        return NextResponse.redirect(new URL("/unauthorized", request.url));
+      }
+      if (isMerchantRoute && decoded.role !== "MERCHANT" && decoded.role !== "ADMIN" && decoded.role !== "OPS_OFFICER") {
+        return NextResponse.redirect(new URL("/unauthorized", request.url));
+      }
+    } catch {
+      // If JWT is malformed, force re-login
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
     }
   }
 
@@ -94,7 +152,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - api/auth (allow auth endpoints to pass through for login/logout)
+     * - api/health (health check probe)
      */
-    "/((?!_next/static|_next/image|favicon.ico|api/auth).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/auth|api/health).*)",
   ],
 };

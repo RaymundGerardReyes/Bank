@@ -1,5 +1,6 @@
 "use client";
 
+import { PageTransition } from "@/components/ui/PageTransition";
 import { authService } from "@/services/auth/authService";
 import { useUIStore } from "@/state/uiStore";
 import Link from "next/link";
@@ -35,49 +36,60 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Logo & Desktop Nav */}
           <div className="flex items-center gap-8">
-            <Link href="/accounts" className="text-xl font-extrabold text-accent tracking-tight flex items-center gap-2">
-              <div className="w-6 h-6 bg-accent rounded text-dominant flex items-center justify-center text-xs">N</div>
+            <Link href="/accounts" className="text-xl font-extrabold text-accent tracking-tight flex items-center gap-2 group">
+              <div className="w-7 h-7 bg-accent rounded-lg text-dominant flex items-center justify-center text-xs font-black shadow-sm transition-transform duration-200 group-hover:scale-105">
+                N
+              </div>
               NovaBank
             </Link>
 
-            {/* Desktop Navigation (Hidden on Mobile) */}
-            <nav className="hidden md:flex items-center gap-6">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`text-sm font-bold transition-colors ${pathname.startsWith(item.href)
-                    ? "text-accent border-b-2 border-accent py-5"
-                    : "text-accent/60 hover:text-accent"
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-6 h-16">
+              {navItems.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`relative text-sm font-bold h-full flex items-center transition-all duration-200 ${
+                      isActive ? "text-accent font-extrabold" : "text-accent/60 hover:text-accent"
                     }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <div className="w-px h-6 bg-secondary/30 mx-2"></div>
+                  >
+                    {item.label}
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent rounded-full animate-scale-up" />
+                    )}
+                  </Link>
+                );
+              })}
+              <div className="w-px h-6 bg-secondary/30 mx-1"></div>
               <Link
                 href="/api"
-                className={`text-sm font-extrabold transition-all flex items-center gap-2 ${pathname.startsWith("/api")
-                  ? "text-sky-600 border-b-2 border-sky-600 py-5"
-                  : "text-sky-600/70 hover:text-sky-600"
-                  }`}
+                className={`relative text-sm font-extrabold h-full flex items-center transition-all ${
+                  pathname.startsWith("/api")
+                    ? "text-sky-600"
+                    : "text-sky-600/70 hover:text-sky-600"
+                }`}
               >
                 Developer API
+                {pathname.startsWith("/api") && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-600 rounded-full animate-scale-up" />
+                )}
               </Link>
             </nav>
           </div>
 
-          {/* Right Side Actions (Desktop & Mobile) */}
+          {/* Right Side Actions */}
           <div className="flex items-center gap-3 sm:gap-4">
             <button
               onClick={toggleMaskSensitiveData}
-              className="hidden sm:block px-3 py-1.5 text-xs font-bold bg-dominant hover:bg-secondary/10 border border-secondary/40 rounded-lg text-accent transition-colors shadow-sm"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-dominant hover:bg-secondary/15 border border-secondary/40 rounded-xl text-accent active:scale-95 transition-all shadow-sm cursor-pointer"
             >
               {maskSensitiveData ? "👁️ Reveal" : "🔒 Mask"}
             </button>
             <button
               onClick={handleLogout}
-              className="hidden sm:block px-3.5 py-1.5 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg transition-colors shadow-sm"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl active:scale-95 transition-all shadow-sm cursor-pointer"
             >
               Sign Out
             </button>
@@ -101,16 +113,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Mobile Navigation Dropdown */}
         {isMobileMenuOpen && (
-          <nav className="md:hidden bg-dominant border-b border-secondary/30 px-4 py-4 flex flex-col gap-4 animate-in slide-in-from-top-4 shadow-lg">
+          <nav className="md:hidden bg-dominant/95 backdrop-blur-md border-b border-secondary/30 px-4 py-4 flex flex-col gap-4 animate-scale-up shadow-lg">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`text-base font-bold transition-colors ${pathname.startsWith(item.href)
-                  ? "text-accent"
-                  : "text-accent/60"
-                  }`}
+                className={`text-base font-bold transition-colors ${
+                  pathname.startsWith(item.href) ? "text-accent font-extrabold" : "text-accent/60"
+                }`}
               >
                 {item.label}
               </Link>
@@ -123,16 +134,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               Developer API
             </Link>
 
-            <div className="w-full h-px bg-secondary/30 my-2"></div>
+            <div className="w-full h-px bg-secondary/30 my-1"></div>
 
             <button
-              onClick={() => { toggleMaskSensitiveData(); setIsMobileMenuOpen(false); }}
+              onClick={() => {
+                toggleMaskSensitiveData();
+                setIsMobileMenuOpen(false);
+              }}
               className="text-left text-sm font-bold text-accent"
             >
               {maskSensitiveData ? "👁️ Reveal Balances" : "🔒 Mask Balances"}
             </button>
             <button
-              onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
+              onClick={() => {
+                handleLogout();
+                setIsMobileMenuOpen(false);
+              }}
               className="text-left text-sm font-bold text-rose-600"
             >
               Sign Out
@@ -143,7 +160,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {children}
+        <PageTransition>{children}</PageTransition>
       </main>
 
       {/* Footer */}

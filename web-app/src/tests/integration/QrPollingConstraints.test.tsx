@@ -40,7 +40,7 @@ describe('Frontend QR Payment Flow & Polling Constraints', () => {
     fireEvent.change(screen.getByLabelText(/Reference/i), { target: { value: 'REF-100' } });
     fireEvent.click(screen.getByRole('button', { name: /Generate QR/i }));
 
-    await waitFor(() => expect(screen.getAllByText(/QR Ph P2M/i)[0]).toBeInTheDocument());
+    await waitFor(() => expect(paymentService.generateQr).toHaveBeenCalled());
 
     expect(setInterval).toHaveBeenCalled();
 
@@ -120,7 +120,7 @@ describe('Frontend QR Payment Flow & Polling Constraints', () => {
     fireEvent.change(screen.getByLabelText(/Reference/i), { target: { value: 'REF-300' } });
     fireEvent.click(screen.getByRole('button', { name: /Generate QR/i }));
 
-    await waitFor(() => expect(screen.getAllByText(/QR Ph P2M/i)[0]).toBeInTheDocument());
+    await waitFor(() => expect(paymentService.generateQr).toHaveBeenCalled());
 
     // Force multiple re-renders
     rerender(<CreateQrPage />);

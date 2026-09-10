@@ -3,7 +3,7 @@ import { Providers } from "@/providers/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "NovaBank Secure Portal",
+  title: "MunBank Secure Portal",
   description: "Next.js + TypeScript Hardened Enterprise Banking Client",
 };
 

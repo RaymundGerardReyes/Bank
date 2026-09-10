@@ -1,6 +1,7 @@
 import { CreatePaymentIntentRequest, PaymentIntent, DynamicQrPayment } from '../../models/GatewayModels';
 import { ApiResponse } from '../../models/ApiResponse';
-import { httpClient } from '../api/httpClient';
+import { httpClient, apiFetch } from '../api/httpClient';
+import { endpoints } from '../api/endpoints';
 
 export interface CheckoutSessionRequest {
   paymentIntentId: string;
@@ -69,14 +70,16 @@ export const paymentService = {
   },
 
   listPayments: async (): Promise<ApiResponse<PaymentIntent[]>> => {
-    return httpClient.get<ApiResponse<PaymentIntent[]>>('/gateway/payments');
+    return apiFetch<ApiResponse<PaymentIntent[]>>(endpoints.gateway.payments.list);
   },
 
   generateQr: async (intentId: string): Promise<ApiResponse<DynamicQrPayment>> => {
-    return httpClient.post<ApiResponse<DynamicQrPayment>>(`/gateway/qr-payments/generate`, { intentId });
+    return apiFetch<ApiResponse<DynamicQrPayment>>(endpoints.gateway.qr.generate(intentId), {
+      method: "POST",
+    });
   },
 
   getQrStatus: async (qrRef: string): Promise<ApiResponse<DynamicQrPayment>> => {
-    return httpClient.get<ApiResponse<DynamicQrPayment>>(`/gateway/qr-payments/${qrRef}`);
+    return apiFetch<ApiResponse<DynamicQrPayment>>(endpoints.gateway.qr.status(qrRef));
   }
 };

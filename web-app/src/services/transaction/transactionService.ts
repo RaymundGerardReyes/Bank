@@ -1,6 +1,6 @@
 import { ApiResponse, Transaction, PagedResponse } from "@/models/ApiResponse";
 import { endpoints } from "@/services/api/endpoints";
-import { apiFetch } from "@/services/api/httpClient";
+import { apiFetch, httpClient } from "@/services/api/httpClient";
 import { idempotencyKeyService } from "./idempotencyKeyService";
 import { TransactionResult, TransactionHistoryFilter, TransactionHistoryRecord } from "@/models/TransactionTypes";
 import type { AuthenticationResponseJSON, PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/types";
@@ -129,6 +129,11 @@ export const transactionService = {
       body: JSON.stringify(backendPayload),
       idempotencyKey: key,
     });
+  },
+
+  executeInternalTransfer: async (payload: any): Promise<any> => {
+    const res = await httpClient.post<any>('/transfers/internal', payload);
+    return res?.data !== undefined ? res.data : res;
   },
 
   deposit: async (payload: DepositPayload | string, amount?: number, description?: string): Promise<ApiResponse<Transaction>> => {

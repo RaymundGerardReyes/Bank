@@ -15,7 +15,6 @@ import {
   Loader2,
   Sparkles,
   HelpCircle,
-  Info,
   FileText,
   Lock,
   Server,
@@ -24,11 +23,47 @@ import {
   ChevronRight,
   Zap,
   Mail,
+  Network,
+  KeyRound,
 } from "lucide-react";
 import { merchantService } from "@/services/gateway/merchantService";
 
+// Grouped scopes matching backend ApiKeyAuthenticationFilter
+const SCOPE_GROUPS = [
+  {
+    domain: "Virtual Accounts (VAM)",
+    scopes: [
+      { id: "accounts:read", label: "Read Accounts" },
+      { id: "accounts:write", label: "Create / Manage Accounts" },
+    ],
+  },
+  {
+    domain: "Treasury & Transfers",
+    scopes: [
+      { id: "treasury:read", label: "Read Transfers" },
+      { id: "treasury:write", label: "Execute Transfers" },
+    ],
+  },
+  {
+    domain: "Payment Gateway",
+    scopes: [
+      { id: "payments:write", label: "Process Checkout Payments" },
+    ],
+  },
+  {
+    domain: "Payroll Batch",
+    scopes: [
+      { id: "payroll:read", label: "Read Payroll" },
+      { id: "payroll:write", label: "Dispatch Batch Payroll" },
+    ],
+  },
+];
+
 export default function DeveloperOnboardPage() {
   const router = useRouter();
+
+  // Tier Selection: Developer Quickstart vs Commercial Merchant
+  const [onboardingType, setOnboardingType] = useState<"DEVELOPER" | "MERCHANT">("DEVELOPER");
 
   // Form IDs for WCAG 2.2 Accessibility
   const legalNameId = useId();
@@ -47,11 +82,25 @@ export default function DeveloperOnboardPage() {
   const emailHelpId = useId();
   const emailErrorId = useId();
 
-  // Form State
+  const cidrId = useId();
+  const cidrHelpId = useId();
+  const cidrErrorId = useId();
+
+  // Core Identity Form State
   const [legalName, setLegalName] = useState("");
   const [businessRegistrationNumber, setBusinessRegistrationNumber] = useState("");
   const [merchantCode, setMerchantCode] = useState("");
   const [email, setEmail] = useState("");
+
+  // Security Credentials Form State
+  const [environment, setEnvironment] = useState<"LIVE" | "SANDBOX">("SANDBOX");
+  const [ipWhitelist, setIpWhitelist] = useState("");
+  const [selectedScopes, setSelectedScopes] = useState<string[]>([
+    "accounts:read",
+    "accounts:write",
+    "treasury:read",
+    "treasury:write",
+  ]);
 
   // Touch/Blur state for inline validation
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -65,6 +114,10 @@ export default function DeveloperOnboardPage() {
     settlementAccountNumber: string;
     apiKey: string;
     merchantCode: string;
+    environment: "LIVE" | "SANDBOX";
+    cidrWhitelist: string;
+    scopes: string[];
+    onboardingType: "DEVELOPER" | "MERCHANT";
   } | null>(null);
 
   // Copy Key state
@@ -73,14 +126,23 @@ export default function DeveloperOnboardPage() {
 
   // Validation Logic
   const getLegalNameError = (): string | null => {
-    if (!legalName.trim()) return "Legal Business Name is required.";
-    if (legalName.trim().length < 2) return "Legal Business Name must be at least 2 characters long.";
-    if (legalName.length > 100) return "Legal Business Name must not exceed 100 characters.";
+    if (!legalName.trim()) {
+      return onboardingType === "MERCHANT"
+        ? "Legal Business Name is required for commercial registration."
+        : "Developer / Workspace Name is required.";
+    }
+    if (legalName.trim().length < 2) return "Name must be at least 2 characters long.";
+    if (legalName.length > 100) return "Name must not exceed 100 characters.";
     return null;
   };
 
   const getBrnError = (): string | null => {
-    if (!businessRegistrationNumber.trim()) return "Business Registration Number is required.";
+    if (!businessRegistrationNumber.trim()) {
+      if (onboardingType === "MERCHANT") {
+        return "Business Registration Number (BRN / BIR TIN) is required for commercial merchant checkout.";
+      }
+      return null; // Optional for Developer Quickstart
+    }
     if (businessRegistrationNumber.trim().length < 3) return "BRN must be at least 3 characters long.";
     const brnRegex = /^[a-zA-Z0-9\-\s\/]+$/;
     if (!brnRegex.test(businessRegistrationNumber.trim())) {
@@ -93,7 +155,7 @@ export default function DeveloperOnboardPage() {
     if (!merchantCode.trim()) return null; // Optional
     const codeRegex = /^[A-Z0-9_-]{2,15}$/;
     if (!codeRegex.test(merchantCode.trim())) {
-      return "Merchant Code must be 2 to 15 uppercase letters, numbers, hyphens, or underscores.";
+      return "Code must be 2 to 15 uppercase letters, numbers, hyphens, or underscores.";
     }
     return null;
   };
@@ -107,16 +169,25 @@ export default function DeveloperOnboardPage() {
     return null;
   };
 
+  const getCidrError = (): string | null => {
+    if (!ipWhitelist.trim() || ipWhitelist.trim() === "0.0.0.0/0") return null;
+    const cidrRegex = /^([0-9]{1,3}\.){3}[0-9]{1,3}(\/([0-9]|[1-2][0-9]|3[0-2]))?$/;
+    const valid = ipWhitelist.split(",").every((p) => cidrRegex.test(p.trim()));
+    if (!valid) return "Invalid CIDR notation. Use format like 192.168.1.0/24 or comma-separated IPs.";
+    return null;
+  };
+
   const isLegalNameInvalid = touched.legalName && !!getLegalNameError();
   const isBrnInvalid = touched.brn && !!getBrnError();
   const isMerchantCodeInvalid = touched.merchantCode && !!getMerchantCodeError();
   const isEmailInvalid = touched.email && !!getEmailError();
+  const isCidrInvalid = touched.cidr && !!getCidrError();
 
   const handleBlur = (field: string) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
-  // Intelligent Error Classification (NN/G Heuristic #9: Helpful Errors)
+  // Intelligent Error Classification
   const parseOnboardingError = (err: any): { title: string; detail: string; action: string; isAuthError: boolean } => {
     const rawMessage = err?.message || err?.detail || "An unexpected error occurred during onboarding.";
     const lower = rawMessage.toLowerCase();
@@ -124,7 +195,7 @@ export default function DeveloperOnboardPage() {
     if (lower.includes("unauthorized") || lower.includes("session token") || lower.includes("401") || lower.includes("jwt")) {
       return {
         title: "Authentication Required (401 Unauthorized)",
-        detail: "Your user session is missing, expired, or unauthenticated. You must be logged in to provision a merchant workspace.",
+        detail: "Your user session is missing, expired, or unauthenticated. You must be logged in to provision a workspace.",
         action: "Please log in to your developer dashboard account to continue onboarding.",
         isAuthError: true,
       };
@@ -143,16 +214,7 @@ export default function DeveloperOnboardPage() {
       return {
         title: "Invalid Onboarding Payload (400 Bad Request)",
         detail: rawMessage,
-        action: "Please review the form fields above and ensure all required fields are correctly formatted.",
-        isAuthError: false,
-      };
-    }
-
-    if (lower.includes("unavailable") || lower.includes("502") || lower.includes("503") || lower.includes("failed to fetch")) {
-      return {
-        title: "Gateway Connection Error",
-        detail: "Unable to establish connection with internal core banking servers.",
-        action: "Please check your network connection or verify backend service health, then try again.",
+        action: "Please review the form fields and ensure all required values are correctly formatted.",
         isAuthError: false,
       };
     }
@@ -168,15 +230,15 @@ export default function DeveloperOnboardPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Touch all fields to trigger visual errors if invalid
-    setTouched({ legalName: true, brn: true, merchantCode: true, email: true });
+    setTouched({ legalName: true, brn: true, merchantCode: true, email: true, cidr: true });
 
     const legalNameErr = getLegalNameError();
     const brnErr = getBrnError();
     const codeErr = getMerchantCodeError();
     const emailErr = getEmailError();
+    const cidrErr = getCidrError();
 
-    if (legalNameErr || brnErr || codeErr || emailErr) {
+    if (legalNameErr || brnErr || codeErr || emailErr || cidrErr) {
       return;
     }
 
@@ -188,19 +250,23 @@ export default function DeveloperOnboardPage() {
 
     try {
       // Step 1: Validating details
-      await new Promise((res) => setTimeout(res, 400));
+      await new Promise((res) => setTimeout(res, 300));
       setSubmittingStep(2);
 
       // Step 2: Provisioning ledger
-      await new Promise((res) => setTimeout(res, 500));
+      await new Promise((res) => setTimeout(res, 400));
       setSubmittingStep(3);
 
       // Step 3: API Request
       const response = await merchantService.onboardDeveloper({
         legalName: legalName.trim(),
-        businessRegistrationNumber: businessRegistrationNumber.trim(),
+        businessRegistrationNumber: businessRegistrationNumber.trim() || undefined,
         merchantCode: generatedCode,
         email: email.trim(),
+        environment,
+        cidrWhitelist: ipWhitelist.trim() || "0.0.0.0/0",
+        scopes: selectedScopes,
+        onboardingType,
       });
 
       setSuccessData({
@@ -208,6 +274,10 @@ export default function DeveloperOnboardPage() {
         settlementAccountNumber: response.settlementAccountNumber,
         apiKey: response.apiKey,
         merchantCode: generatedCode,
+        environment,
+        cidrWhitelist: ipWhitelist.trim() || "0.0.0.0/0",
+        scopes: selectedScopes,
+        onboardingType,
       });
     } catch (err: any) {
       setError(parseOnboardingError(err));
@@ -227,7 +297,6 @@ export default function DeveloperOnboardPage() {
   if (successData) {
     return (
       <div className="flex flex-col gap-8 max-w-4xl mx-auto w-full py-8 px-4 animate-in fade-in zoom-in-95 duration-300">
-        {/* Navigation back link */}
         <div>
           <Link
             href="/api"
@@ -246,17 +315,20 @@ export default function DeveloperOnboardPage() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full border border-emerald-300 uppercase tracking-wider">
-                Production Workspace Ready
+                {successData.onboardingType === "MERCHANT" ? "Commercial Merchant Active" : "Developer Workspace Ready"}
               </span>
               <span className="text-xs font-semibold text-accent/60 font-mono">
-                Merchant #{successData.merchantId}
+                Workspace #{successData.merchantId}
+              </span>
+              <span className={`px-2.5 py-0.5 rounded text-xs font-bold ${successData.environment === "LIVE" ? "bg-rose-100 text-rose-700" : "bg-sky-100 text-sky-700"}`}>
+                {successData.environment}
               </span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black text-accent tracking-tight">
-              Merchant Provisioned Successfully!
+              {successData.onboardingType === "MERCHANT" ? "Commercial Merchant Provisioned!" : "Developer Credentials Activated!"}
             </h1>
             <p className="text-accent/80 font-medium text-base sm:text-lg">
-              Your settlement ledger, multi-rail payment router, and HMAC API credentials have been activated.
+              Your settlement account has been provisioned, bound to your customer profile, and authenticated for API routing.
             </p>
           </div>
         </div>
@@ -266,37 +338,43 @@ export default function DeveloperOnboardPage() {
           <div className="bg-surface rounded-2xl p-6 border border-secondary/40 flex flex-col gap-3">
             <div className="flex items-center gap-2 text-accent/70 font-bold text-xs uppercase tracking-wider">
               <Building2 className="w-4 h-4 text-sky-600" />
-              Registered Merchant Details
+              Workspace & Identity
             </div>
             <div className="flex flex-col">
               <span className="text-xl font-black text-accent">{legalName}</span>
               <span className="text-sm font-medium text-accent/70 mt-1">
-                BRN: <code className="font-mono font-bold text-accent">{businessRegistrationNumber}</code>
+                BRN / TIN: <code className="font-mono font-bold text-accent">{businessRegistrationNumber || "Auto-assigned (Dev)"}</code>
               </span>
-              <span className="text-xs font-bold text-sky-700 mt-2 bg-sky-100 border border-sky-200 px-2.5 py-1 rounded-md w-fit font-mono">
-                Code: {successData.merchantCode}
-              </span>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-xs font-bold text-sky-700 bg-sky-100 border border-sky-200 px-2.5 py-1 rounded-md font-mono">
+                  Code: {successData.merchantCode}
+                </span>
+                <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md font-mono">
+                  IP: {successData.cidrWhitelist}
+                </span>
+              </div>
             </div>
           </div>
 
           <div className="bg-surface rounded-2xl p-6 border border-secondary/40 flex flex-col gap-3">
             <div className="flex items-center gap-2 text-accent/70 font-bold text-xs uppercase tracking-wider">
               <Server className="w-4 h-4 text-emerald-600" />
-              Core Settlement Ledger
+              Linked Settlement Ledger
             </div>
             <div className="flex flex-col">
+              <span className="text-xs font-bold text-accent/60 uppercase">Settlement Account Number</span>
               <span className="text-xs font-bold text-accent/60 uppercase">System-Provisioned Settlement Account No.</span>
-              <code className="text-2xl font-black text-emerald-800 font-mono tracking-tight mt-1">
+              <code className="text-xl sm:text-2xl font-black text-emerald-800 font-mono tracking-tight mt-1">
                 {successData.settlementAccountNumber}
               </code>
               <span className="text-xs font-medium text-accent/60 mt-2">
-                Created and linked automatically during merchant onboarding.
+                Visible in your accounts list for direct transfer and VAM sub-account scoping.
               </span>
             </div>
           </div>
         </div>
 
-        {/* API Key Box with Warning */}
+        {/* API Key Box with Security Details */}
         <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 flex flex-col gap-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -304,9 +382,9 @@ export default function DeveloperOnboardPage() {
                 <Lock className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">Your Production Secret API Key</h2>
+                <h2 className="text-lg font-bold text-white">Your Secret API Key</h2>
                 <p className="text-slate-400 text-xs font-medium">
-                  Use this key to authenticate HMAC request headers for core banking endpoints.
+                  Use this HMAC key in header <code className="text-sky-300 font-mono">X-API-Key</code> for authenticated core banking calls.
                 </p>
               </div>
             </div>
@@ -316,7 +394,7 @@ export default function DeveloperOnboardPage() {
           <div className="p-4 bg-amber-500/15 border border-amber-500/30 rounded-xl text-amber-200 text-xs font-medium flex items-center gap-3">
             <ShieldCheck className="w-5 h-5 text-amber-400 shrink-0" />
             <span>
-              <strong>Crucial Security Notice:</strong> Store this key securely now. For security purposes, full raw API keys are never stored in plain text and <strong>cannot be retrieved after leaving this page</strong>.
+              <strong>Crucial Security Notice:</strong> Store this key now. Raw API keys are never stored in plain text and <strong>cannot be retrieved after leaving this page</strong>.
             </span>
           </div>
 
@@ -352,9 +430,21 @@ export default function DeveloperOnboardPage() {
             </div>
           </div>
 
+          {/* Granted Scopes Chips */}
+          <div className="flex flex-col gap-2 pt-2 border-t border-slate-800/80">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Granted Action Limits / Scopes</span>
+            <div className="flex flex-wrap gap-2">
+              {successData.scopes.map((scope) => (
+                <span key={scope} className="px-2.5 py-1 bg-slate-800 text-sky-300 rounded-md text-xs font-mono font-bold border border-slate-700">
+                  {scope}
+                </span>
+              ))}
+            </div>
+          </div>
+
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-800/80">
             <span className="text-xs text-slate-400">
-              Default granted scopes: <code className="text-slate-300 font-mono">accounts:read, treasury:read, treasury:write</code>
+              Environment: <strong className="text-white">{successData.environment}</strong> (TTL: {successData.environment === "LIVE" ? "90 days" : "365 days"})
             </span>
             <Link
               href="/api"
@@ -389,15 +479,15 @@ export default function DeveloperOnboardPage() {
             <div className="flex items-center gap-2.5">
               <span className="px-3 py-1 bg-sky-100 text-sky-800 text-xs font-bold rounded-full border border-sky-200 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
-                Developer Portal
+                Developer Gateway
               </span>
-              <span className="text-xs font-semibold text-accent/60">Fast-Track Setup</span>
+              <span className="text-xs font-semibold text-accent/60">Unified Credential Setup</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black text-accent tracking-tight">
-              Developer & Merchant Onboarding
+              Developer & Merchant Setup
             </h1>
             <p className="text-accent/80 font-medium max-w-2xl text-base sm:text-lg leading-relaxed">
-              Provision your merchant identity, generate your isolated settlement account, and activate live API access.
+              Configure your API access credentials, choose your environment and permission scopes, and optionally register commercial merchant checkout.
             </p>
           </div>
         </div>
@@ -407,7 +497,42 @@ export default function DeveloperOnboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Main Form Container */}
         <div className="lg:col-span-2 bg-white rounded-3xl p-6 sm:p-8 border border-secondary/40 shadow-sm flex flex-col gap-6">
-          {/* Error Alert Container (WCAG 2.2 Accessible Alert) */}
+          {/* Tier Switcher Tabs */}
+          <div className="flex flex-col gap-2 bg-surface p-1.5 rounded-2xl border border-secondary/30">
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setOnboardingType("DEVELOPER")}
+                className={`py-3 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
+                  onboardingType === "DEVELOPER"
+                    ? "bg-white text-accent shadow-sm border border-secondary/30"
+                    : "text-accent/60 hover:text-accent"
+                }`}
+              >
+                <Sparkles className="w-4 h-4 text-sky-600" />
+                Developer Quickstart
+              </button>
+              <button
+                type="button"
+                onClick={() => setOnboardingType("MERCHANT")}
+                className={`py-3 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
+                  onboardingType === "MERCHANT"
+                    ? "bg-white text-accent shadow-sm border border-secondary/30"
+                    : "text-accent/60 hover:text-accent"
+                }`}
+              >
+                <Building2 className="w-4 h-4 text-emerald-600" />
+                Commercial Merchant
+              </button>
+            </div>
+            <p className="text-[11px] text-accent/60 px-3 py-1 font-medium">
+              {onboardingType === "DEVELOPER"
+                ? "Fast-track API key creation for account automation & VAM sub-accounts. Business registration number (BIR/BRN) is optional."
+                : "Full payment gateway setup with automated card processing & QR Ph settlement. Legal Entity Name and BIR/BRN tax ID are required."}
+            </p>
+          </div>
+
+          {/* Error Alert Container */}
           {error && (
             <div
               role="alert"
@@ -434,7 +559,7 @@ export default function DeveloperOnboardPage() {
           )}
 
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
-            {/* Legal Business Name */}
+            {/* Workspace / Legal Business Name */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <label
@@ -442,7 +567,8 @@ export default function DeveloperOnboardPage() {
                   className="text-xs font-extrabold text-accent uppercase tracking-wider flex items-center gap-1.5"
                 >
                   <Building2 className="w-3.5 h-3.5 text-sky-600" />
-                  Legal Business Name
+                  {onboardingType === "MERCHANT" ? "Legal Business Name" : "Workspace / Team Name"}
+                  {onboardingType === "MERCHANT" ? "Legal Business Name" : "Legal Business Name / Workspace Name"}
                   <span className="text-rose-600 font-bold" title="Required">*</span>
                 </label>
                 <span className="text-[11px] font-semibold text-accent/60">Required</span>
@@ -458,7 +584,7 @@ export default function DeveloperOnboardPage() {
                 value={legalName}
                 onChange={(e) => setLegalName(e.target.value)}
                 onBlur={() => handleBlur("legalName")}
-                placeholder="e.g. Acme Financial Technologies Inc."
+                placeholder={onboardingType === "MERCHANT" ? "e.g. Acme Financial Technologies Inc." : "e.g. My App Dev Workspace"}
                 className={`px-4 py-3.5 bg-surface border-2 rounded-xl text-accent font-medium transition-all text-sm min-h-[44px] ${
                   isLegalNameInvalid
                     ? "border-rose-400 focus:border-rose-600 focus:ring-2 focus:ring-rose-200"
@@ -467,7 +593,9 @@ export default function DeveloperOnboardPage() {
               />
 
               <p id={legalNameHelpId} className="text-xs text-accent/60 font-medium">
-                Official entity name as recorded on government incorporation tax filings.
+                {onboardingType === "MERCHANT"
+                  ? "Official entity name as recorded on government tax filings and incorporation certificates."
+                  : "Friendly name identifying your application or development team workspace."}
               </p>
 
               {isLegalNameInvalid && (
@@ -478,7 +606,7 @@ export default function DeveloperOnboardPage() {
               )}
             </div>
 
-            {/* Business Registration Number (BRN) */}
+            {/* Business Registration Number (BRN / BIR) */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <label
@@ -486,23 +614,27 @@ export default function DeveloperOnboardPage() {
                   className="text-xs font-extrabold text-accent uppercase tracking-wider flex items-center gap-1.5"
                 >
                   <FileText className="w-3.5 h-3.5 text-sky-600" />
-                  Business Registration Number (BRN)
-                  <span className="text-rose-600 font-bold" title="Required">*</span>
+                  Business Registration Number (BRN / BIR TIN)
+                  {onboardingType === "MERCHANT" && (
+                    <span className="text-rose-600 font-bold" title="Required">*</span>
+                  )}
                 </label>
-                <span className="text-[11px] font-semibold text-accent/60">Required</span>
+                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
+                  onboardingType === "MERCHANT" ? "text-rose-700 bg-rose-50" : "text-accent/60 bg-secondary/10"
+                }`}>
+                  {onboardingType === "MERCHANT" ? "Required for Merchants" : "Optional"}
+                </span>
               </div>
 
               <input
                 id={brnId}
                 type="text"
-                required
-                aria-required="true"
                 aria-describedby={`${brnHelpId} ${isBrnInvalid ? brnErrorId : ""}`}
                 aria-invalid={isBrnInvalid}
                 value={businessRegistrationNumber}
                 onChange={(e) => setBusinessRegistrationNumber(e.target.value)}
                 onBlur={() => handleBlur("brn")}
-                placeholder="e.g. BRN-2026-987654"
+                placeholder={onboardingType === "MERCHANT" ? "e.g. 000-123-456-000 or BRN-2026-987654" : "Optional for developer testing"}
                 className={`px-4 py-3.5 bg-surface border-2 rounded-xl text-accent font-medium transition-all text-sm min-h-[44px] ${
                   isBrnInvalid
                     ? "border-rose-400 focus:border-rose-600 focus:ring-2 focus:ring-rose-200"
@@ -511,7 +643,9 @@ export default function DeveloperOnboardPage() {
               />
 
               <p id={brnHelpId} className="text-xs text-accent/60 font-medium">
-                Unique regulatory identification code, tax EIN, or commercial registration number.
+                {onboardingType === "MERCHANT"
+                  ? "Government-issued BIR TIN, SEC registration, or DTI business certificate number."
+                  : "Optional for internal testing. Leave blank to automatically assign a developer sandbox identifier."}
               </p>
 
               {isBrnInvalid && (
@@ -574,38 +708,31 @@ export default function DeveloperOnboardPage() {
                   className="text-xs font-extrabold text-accent uppercase tracking-wider flex items-center gap-1.5"
                 >
                   <Hash className="w-3.5 h-3.5 text-sky-600" />
-                  Preferred Merchant Code
+                  Preferred Routing Code
                 </label>
                 <span className="text-[11px] font-semibold text-accent/50 bg-secondary/10 px-2 py-0.5 rounded border border-secondary/20">
                   Optional
                 </span>
               </div>
 
-              <div className="relative flex items-center">
-                <input
-                  id={merchantCodeId}
-                  type="text"
-                  aria-describedby={`${merchantCodeHelpId} ${isMerchantCodeInvalid ? merchantCodeErrorId : ""}`}
-                  aria-invalid={isMerchantCodeInvalid}
-                  value={merchantCode}
-                  onChange={(e) => setMerchantCode(e.target.value.toUpperCase())}
-                  onBlur={() => handleBlur("merchantCode")}
-                  placeholder="e.g. M-ACME"
-                  className={`w-full px-4 py-3.5 bg-surface border-2 rounded-xl text-accent font-mono font-bold transition-all text-sm min-h-[44px] ${
-                    isMerchantCodeInvalid
-                      ? "border-rose-400 focus:border-rose-600 focus:ring-2 focus:ring-rose-200"
-                      : "border-secondary/40 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-                  } outline-none placeholder:text-accent/30 placeholder:font-sans uppercase`}
-                />
-              </div>
+              <input
+                id={merchantCodeId}
+                type="text"
+                aria-describedby={`${merchantCodeHelpId} ${isMerchantCodeInvalid ? merchantCodeErrorId : ""}`}
+                aria-invalid={isMerchantCodeInvalid}
+                value={merchantCode}
+                onChange={(e) => setMerchantCode(e.target.value.toUpperCase())}
+                onBlur={() => handleBlur("merchantCode")}
+                placeholder="e.g. M-ACME"
+                className={`w-full px-4 py-3.5 bg-surface border-2 rounded-xl text-accent font-mono font-bold transition-all text-sm min-h-[44px] ${
+                  isMerchantCodeInvalid
+                    ? "border-rose-400 focus:border-rose-600 focus:ring-2 focus:ring-rose-200"
+                    : "border-secondary/40 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                } outline-none placeholder:text-accent/30 placeholder:font-sans uppercase`}
+              />
 
               <div id={merchantCodeHelpId} className="flex items-center justify-between text-xs text-accent/60 font-medium">
-                <span>Custom short code used in routing prefixes. Uppercase letters & numbers only.</span>
-                {!merchantCode.trim() && (
-                  <span className="text-[10px] font-mono text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded font-bold shrink-0">
-                    Auto-generated if empty
-                  </span>
-                )}
+                <span>Routing prefix for internal transactions. Auto-generated if left empty.</span>
               </div>
 
               {isMerchantCodeInvalid && (
@@ -616,6 +743,86 @@ export default function DeveloperOnboardPage() {
               )}
             </div>
 
+            {/* Security Controls Divider */}
+            <div className="border-t border-secondary/30 pt-4 flex flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-sky-600" />
+                <h3 className="text-sm font-extrabold text-accent uppercase tracking-wider">
+                  Initial Credential Security Policies
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Environment */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-accent uppercase tracking-wider">Environment</label>
+                  <select
+                    value={environment}
+                    onChange={(e) => setEnvironment(e.target.value as "LIVE" | "SANDBOX")}
+                    className="px-3.5 py-3 bg-surface border border-secondary/40 rounded-xl text-accent font-bold text-sm"
+                  >
+                    <option value="SANDBOX">Sandbox (365d)</option>
+                    <option value="LIVE">Live Production (90d)</option>
+                  </select>
+                </div>
+
+                {/* IP Whitelist (CIDR notation) */}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor={cidrId} className="text-xs font-bold text-accent uppercase tracking-wider flex items-center gap-1">
+                    <Network className="w-3 h-3 text-sky-600" />
+                    IP Whitelist (CIDR)
+                  </label>
+                  <input
+                    id={cidrId}
+                    type="text"
+                    placeholder="0.0.0.0/0 (Allow All)"
+                    value={ipWhitelist}
+                    onChange={(e) => setIpWhitelist(e.target.value)}
+                    onBlur={() => handleBlur("cidr")}
+                    className={`px-3.5 py-3 bg-surface border rounded-xl font-mono text-sm ${
+                      isCidrInvalid ? "border-rose-400" : "border-secondary/40"
+                    }`}
+                  />
+                  {isCidrInvalid && (
+                    <p id={cidrErrorId} className="text-xs font-bold text-rose-600 mt-0.5">
+                      {getCidrError()}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Limits / Scopes Grid */}
+              <div className="flex flex-col gap-2 mt-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-accent uppercase tracking-wider">Initial Granted Scopes</label>
+                  <span className="text-[10px] text-accent/60 font-bold bg-secondary/10 px-2 py-0.5 rounded">Action Limits</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {SCOPE_GROUPS.map((group) => (
+                    <div key={group.domain} className="bg-surface p-3 rounded-xl border border-secondary/30 flex flex-col gap-2">
+                      <span className="text-[11px] font-extrabold text-sky-700">{group.domain}</span>
+                      <div className="flex flex-col gap-1.5">
+                        {group.scopes.map((scope) => (
+                          <label key={scope.id} className="flex items-center gap-2 text-xs font-bold text-accent cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedScopes.includes(scope.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) setSelectedScopes([...selectedScopes, scope.id]);
+                                else setSelectedScopes(selectedScopes.filter((s) => s !== scope.id));
+                              }}
+                              className="rounded border-secondary w-4 h-4 text-sky-600 focus:ring-sky-500"
+                            />
+                            {scope.label} <span className="text-[9px] text-accent/40 font-mono">({scope.id})</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Action Buttons & System Status */}
             <div className="pt-4 flex flex-col gap-4 border-t border-secondary/30">
               {/* Submission Step Indicator */}
@@ -623,12 +830,12 @@ export default function DeveloperOnboardPage() {
                 <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl flex flex-col gap-3">
                   <div className="flex items-center gap-3 text-sky-900 font-bold text-sm">
                     <Loader2 className="w-5 h-5 text-sky-600 animate-spin shrink-0" aria-hidden="true" />
-                    <span>Provisioning Merchant Infrastructure...</span>
+                    <span>Provisioning Infrastructure & Ledger...</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs font-semibold text-slate-600">
                     <div className={`p-2 rounded flex items-center gap-1.5 ${submittingStep >= 1 ? "bg-sky-200/60 text-sky-900" : "bg-slate-100"}`}>
                       <Check className="w-3.5 h-3.5 text-sky-700" />
-                      1. Verify BRN
+                      1. Verify Profile
                     </div>
                     <div className={`p-2 rounded flex items-center gap-1.5 ${submittingStep >= 2 ? "bg-sky-200/60 text-sky-900" : "bg-slate-100"}`}>
                       <Check className="w-3.5 h-3.5 text-sky-700" />
@@ -636,7 +843,7 @@ export default function DeveloperOnboardPage() {
                     </div>
                     <div className={`p-2 rounded flex items-center gap-1.5 ${submittingStep >= 3 ? "bg-sky-200/60 text-sky-900" : "bg-slate-100"}`}>
                       <Check className="w-3.5 h-3.5 text-sky-700" />
-                      3. Issue Keys
+                      3. Issue HMAC Key
                     </div>
                   </div>
                 </div>
@@ -651,12 +858,12 @@ export default function DeveloperOnboardPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-                      Initializing Merchant Workspace...
+                      Initializing Workspace...
                     </>
                   ) : (
                     <>
                       <Zap className="w-5 h-5 text-sky-400" />
-                      Initialize Merchant Workspace
+                      {onboardingType === "MERCHANT" ? "Initialize Merchant Workspace" : "Generate Developer Credentials"}
                     </>
                   )}
                 </button>
@@ -672,12 +879,12 @@ export default function DeveloperOnboardPage() {
           </form>
         </div>
 
-        {/* Guidance & Value Sidebar */}
+        {/* Guidance & Architecture Sidebar */}
         <div className="lg:col-span-1 flex flex-col gap-6">
           <div className="bg-surface rounded-3xl p-6 border border-secondary/30 flex flex-col gap-5">
             <h2 className="text-base font-extrabold text-accent flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-emerald-600" />
-              What Happens Next?
+              How It Works
             </h2>
 
             <div className="flex flex-col gap-4 text-xs">
@@ -686,9 +893,9 @@ export default function DeveloperOnboardPage() {
                   1
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="font-bold text-accent">System-Provisioned Settlement Account</span>
+                  <span className="font-bold text-accent">Auto-Provisioned Settlement Account</span>
                   <span className="text-accent/70 leading-relaxed font-medium">
-                    A dedicated settlement account is dynamically created and bound in the core ledger automatically.
+                    A dedicated settlement ledger account is created and bound to both your customer profile and merchant identity.
                   </span>
                 </div>
               </div>
@@ -700,7 +907,7 @@ export default function DeveloperOnboardPage() {
                 <div className="flex flex-col gap-0.5">
                   <span className="font-bold text-accent">HMAC Key Generation</span>
                   <span className="text-accent/70 leading-relaxed font-medium">
-                    Your initial API key is derived and assigned default scopes for sandbox & live routing.
+                    Your key is derived with SHA-256 hashing, scoped to the specified CIDR whitelist and selected permission scopes.
                   </span>
                 </div>
               </div>
@@ -710,9 +917,9 @@ export default function DeveloperOnboardPage() {
                   3
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="font-bold text-accent">Multi-Rail Activation</span>
+                  <span className="font-bold text-accent">VAM & Multi-Rail Ready</span>
                   <span className="text-accent/70 leading-relaxed font-medium">
-                    Unlock immediate access to VAM sub-accounts, payroll dispatch, and payment intents.
+                    Use your keys immediately on core banking endpoints, VAM virtual accounts, and payment checkouts.
                   </span>
                 </div>
               </div>
@@ -723,9 +930,9 @@ export default function DeveloperOnboardPage() {
           <div className="bg-sky-50/70 rounded-2xl p-5 border border-sky-200 flex items-start gap-3">
             <HelpCircle className="w-5 h-5 text-sky-700 shrink-0 mt-0.5" />
             <div className="flex flex-col gap-1 text-xs text-sky-900">
-              <span className="font-bold">Need assistance with onboarding?</span>
+              <span className="font-bold">Need assistance?</span>
               <span className="text-sky-800/80 font-medium leading-relaxed">
-                Contact your enterprise integration manager or check the live API reference after provisioning.
+                Check our live API reference or contact developer support for custom high-volume CIDR whitelist configurations.
               </span>
             </div>
           </div>
@@ -734,4 +941,3 @@ export default function DeveloperOnboardPage() {
     </div>
   );
 }
-

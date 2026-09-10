@@ -48,6 +48,7 @@ describe('QrPhTransferPage State Machine', () => {
 
     // Fast-forward timeout
     vi.runAllTimers();
+    vi.useRealTimers();
 
     // Now in Review Step
     await waitFor(() => {
@@ -61,9 +62,6 @@ describe('QrPhTransferPage State Machine', () => {
     );
 
     fireEvent.click(screen.getByText(/Simulate Passkey Success/i));
-
-    // Restore timers
-    vi.useRealTimers();
 
     await waitFor(() => {
       expect(screen.getByText(/Transfer Failed/i)).toBeInTheDocument();
