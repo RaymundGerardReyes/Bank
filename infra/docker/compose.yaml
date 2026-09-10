@@ -125,7 +125,12 @@ services:
       ENABLE_PASSKEY_AUTH: ${ENABLE_PASSKEY_AUTH}
       ENABLE_DEV_API_DOCS: ${ENABLE_DEV_API_DOCS}
       INTERNAL_BFF_API_KEY: ${INTERNAL_BFF_API_KEY}
-      NEXT_PUBLIC_WEBAUTHN_RP_ID: ${NEXT_PUBLIC_WEBAUTHN_RP_ID}
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --quiet --tries=1 -O /dev/null http://127.0.0.1:3000/api/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - frontend-net
       - api-net
