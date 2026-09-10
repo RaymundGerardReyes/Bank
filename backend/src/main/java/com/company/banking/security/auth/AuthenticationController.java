@@ -46,6 +46,7 @@ public class AuthenticationController {
     private final PasswordResetTokenService passwordResetTokenService;
     private final CustomerPersistencePort customerPersistencePort;
     private final PasswordEncoder passwordEncoder;
+    private final com.company.banking.security.jwt.TokenBlacklistService tokenBlacklistService;
 
     @Value("${NEXT_PUBLIC_APP_URL:http://localhost:3000}")
     private String frontendUrl;
@@ -71,16 +72,22 @@ public class AuthenticationController {
         return ResponseEntity.ok(ApiResponse.success(response, "Biometric authentication successful", correlationId));
     }
 
-    // NEW: Endpoint to generate and email the OTP
+    // NEW: Endpoint to generate and email the OTP with deduplication and cooldown guards
     @PostMapping("/otp/send")
     public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody OtpRequest request) {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        String email = request.getEmail().trim().toLowerCase();
         
-        // Generate the 6-digit code linked to the user's email
-        String code = otpService.generateOtp(request.getEmail());
+        // Generate the 6-digit code with idempotency deduplication and resend cooldown
+        Optional<String> codeOpt = otpService.generateOtpIfAllowed(email);
         
-        // Dispatch via Google SMTP
-        sendOtpNotificationService.sendOtp(request.getEmail(), code);
+        // Dispatch via Google SMTP only if newly generated (suppressing duplicate SMTP sends for rapid re-triggers)
+        if (codeOpt.isPresent()) {
+            sendOtpNotificationService.sendOtp(email, codeOpt.get());
+            log.info("[OTP] Verification code dispatched successfully via SMTP to {}", email);
+        } else {
+            log.info("[OTP] Active OTP already dispatched for {} within idempotent window. Handled cleanly without duplicate SMTP dispatch.", email);
+        }
         
         return ResponseEntity.ok(ApiResponse.success(null, "OTP sent to your email", correlationId));
     }
@@ -117,23 +124,28 @@ public class AuthenticationController {
 
         // FIX: Extract the guaranteed-correct email string directly from the database entity
         String exactDbEmail = customerOpt.get().getEmail();
-        log.info("[FORGOT-PASSWORD] Account found for '{}'. Generating reset token and dispatching email.", exactDbEmail);
+        log.info("[FORGOT-PASSWORD] Account found for '{}'. Checking cooldown and dispatching email.", exactDbEmail);
         
-        String token = passwordResetTokenService.generateResetToken(exactDbEmail);
-        String resetUrl = frontendUrl + "/reset-password?token=" + token;
+        Optional<String> tokenOpt = passwordResetTokenService.generateResetTokenIfAllowed(exactDbEmail);
+        if (tokenOpt.isPresent()) {
+            String token = tokenOpt.get();
+            String resetUrl = frontendUrl + "/reset-password?token=" + token;
+            
+            String subject = "NovaBank Security: Password Reset Link";
+            String message = "Hello,\n\n" +
+                             "We received a request to reset your NovaBank account password.\n\n" +
+                             "Please click the secure link below to reset your password:\n" +
+                             resetUrl + "\n\n" +
+                             "This link will expire in 15 minutes. If you did not request a password reset, please ignore this email.";
+            
+            // Dispatch the email using the exact database email
+            emailPort.sendEmail(exactDbEmail, subject, message);
+            log.info("[FORGOT-PASSWORD] emailPort.sendEmail() dispatched (async) to: {}", exactDbEmail);
+        } else {
+            log.info("[FORGOT-PASSWORD] Reset email cooldown active for '{}'. Suppressing duplicate SMTP dispatch.", exactDbEmail);
+        }
         
-        String subject = "NovaBank Security: Password Reset Link";
-        String message = "Hello,\n\n" +
-                         "We received a request to reset your NovaBank account password.\n\n" +
-                         "Please click the secure link below to reset your password:\n" +
-                         resetUrl + "\n\n" +
-                         "This link will expire in 15 minutes. If you did not request a password reset, please ignore this email.";
-        
-        // 2. Dispatch the email using the exact database email
-        emailPort.sendEmail(exactDbEmail, subject, message);
-        log.info("[FORGOT-PASSWORD] emailPort.sendEmail() dispatched (async) to: {}", exactDbEmail);
-        
-        // 3. Return the EXACT SAME standard message for successful dispatches
+        // Return the EXACT SAME standard message for successful dispatches
         return ResponseEntity.ok(ApiResponse.success(null, standardMessage, correlationId));
     }
 
@@ -156,19 +168,19 @@ public class AuthenticationController {
         
         return ResponseEntity.ok(ApiResponse.success(null, "Password reset successfully", correlationId));
     }
-    // NEW: Endpoint to handle session logout
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout() {
-        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        return ResponseEntity.ok(ApiResponse.success(null, "Logout successful", correlationId));
-    }
 
-    // DEBUG ENDPOINT: To prove to the user exactly what emails are in the DB
-    @GetMapping("/debug/emails")
-    public ResponseEntity<java.util.List<String>> debugListEmails(
-            @org.springframework.beans.factory.annotation.Autowired com.company.banking.customer.infrastructure.CustomerJpaRepository repo) {
-        // We will fetch all customers and return their exact email strings directly from the DB
-        java.util.List<String> emails = repo.findAll().stream().map(Customer::getEmail).toList();
-        return ResponseEntity.ok(emails);
+    // Endpoint to handle session logout and blacklist JWT
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(jakarta.servlet.http.HttpServletRequest request) {
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7).trim();
+            if (!token.isEmpty()) {
+                tokenBlacklistService.blacklistToken(token);
+                log.info("[AUTH] Token revoked and blacklisted on logout.");
+            }
+        }
+        return ResponseEntity.ok(ApiResponse.success(null, "Logout successful", correlationId));
     }
 }

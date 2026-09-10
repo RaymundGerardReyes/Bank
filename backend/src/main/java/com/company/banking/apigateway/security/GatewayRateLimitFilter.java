@@ -71,6 +71,18 @@ public class GatewayRateLimitFilter extends OncePerRequestFilter {
 
     private boolean isRateLimited(String key, int limit) {
         long now = System.currentTimeMillis();
+
+        if (windowStartTimes.size() > 5000) {
+            long threshold = now - WINDOW_SIZE_MS * 2;
+            windowStartTimes.entrySet().removeIf(entry -> {
+                if (entry.getValue() < threshold) {
+                    requestCounts.remove(entry.getKey());
+                    return true;
+                }
+                return false;
+            });
+        }
+
         windowStartTimes.putIfAbsent(key, now);
         
         if (now - windowStartTimes.get(key) > WINDOW_SIZE_MS) {

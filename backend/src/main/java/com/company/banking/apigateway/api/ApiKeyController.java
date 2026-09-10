@@ -2,16 +2,16 @@ package com.company.banking.apigateway.api;
 
 import com.company.banking.apigateway.api.dto.ApiKeyResponse;
 import com.company.banking.apigateway.api.dto.CreateApiKeyRequest;
-import com.company.banking.apigateway.application.CreateApiKeyService;
-import com.company.banking.apigateway.infrastructure.ApiKeyJpaEntity;
-import com.company.banking.apigateway.infrastructure.ApiKeyJpaRepository;
+import com.company.banking.apigateway.application.port.in.CreateApiKeyUseCase;
+import com.company.banking.apigateway.application.port.out.ApiKeyPersistencePort;
+import com.company.banking.apigateway.domain.ApiKey;
 import com.company.banking.common.exception.ForbiddenException;
 import com.company.banking.common.exception.NotFoundException;
 import com.company.banking.common.response.ApiResponse;
 import com.company.banking.customer.application.port.out.CustomerPersistencePort;
 import com.company.banking.customer.domain.Customer;
+import com.company.banking.merchant.application.port.out.MerchantPersistencePort;
 import com.company.banking.merchant.domain.Merchant;
-import com.company.banking.merchant.infrastructure.MerchantJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,16 +19,17 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/apikeys")
 @RequiredArgsConstructor
 public class ApiKeyController {
 
-    private final ApiKeyJpaRepository apiKeyRepository;
-    private final CreateApiKeyService apiKeyService;
+    private final ApiKeyPersistencePort apiKeyPersistencePort;
+    private final CreateApiKeyUseCase apiKeyUseCase;
     private final CustomerPersistencePort customerPersistencePort;
-    private final MerchantJpaRepository merchantRepository;
+    private final MerchantPersistencePort merchantPersistencePort;
 
     private Long resolveCustomerId(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -50,9 +51,22 @@ public class ApiKeyController {
 
     private List<Merchant> resolveOwnedMerchants(Authentication authentication) {
         Long customerId = resolveCustomerId(authentication);
-        List<Merchant> merchants = merchantRepository.findByOwnerId(customerId);
+        List<Merchant> merchants = merchantPersistencePort.findByOwnerId(customerId);
         if (merchants == null || merchants.isEmpty()) {
-            throw new NotFoundException("User is not a registered merchant");
+            Customer customer = customerPersistencePort.findById(customerId).orElse(null);
+            String ownerName = (customer != null && customer.getFirstName() != null)
+                    ? (customer.getFirstName() + " " + customer.getLastName()).trim()
+                    : "Developer " + customerId;
+            String devCode = "DEV-" + customerId;
+            Merchant defaultWorkspace = Merchant.builder()
+                    .legalName(ownerName + " Workspace")
+                    .merchantCode(devCode)
+                    .businessRegistrationNumber("DEV-REG-" + customerId + "-" + System.currentTimeMillis())
+                    .ownerId(customerId)
+                    .status("ACTIVE")
+                    .build();
+            defaultWorkspace = merchantPersistencePort.save(defaultWorkspace);
+            return List.of(defaultWorkspace);
         }
         return merchants;
     }
@@ -62,14 +76,14 @@ public class ApiKeyController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<java.util.List<ApiKeyResponse>>> getApiKeys(Authentication authentication) {
+    public ResponseEntity<ApiResponse<List<ApiKeyResponse>>> getApiKeys(Authentication authentication) {
         List<Merchant> ownedMerchants = resolveOwnedMerchants(authentication);
         
         // Fetch API keys for ALL merchants owned by this customer
         List<Long> merchantIds = ownedMerchants.stream().map(Merchant::getId).toList();
         
-        java.util.List<ApiKeyResponse> responses = merchantIds.stream()
-                .flatMap(merchantId -> apiKeyRepository.findByMerchantId(merchantId).stream())
+        List<ApiKeyResponse> responses = merchantIds.stream()
+                .flatMap(merchantId -> apiKeyPersistencePort.findByMerchantId(merchantId).stream())
                 .map(key -> ApiKeyResponse.builder()
                         .id(key.getId())
                         .name(key.getName())
@@ -79,10 +93,12 @@ public class ApiKeyController {
                                 ? key.getKeyHash().substring(0, 8) + "..." : null)
                         .rawKey(null) // Security: never return raw keys on GET
                         .cidrWhitelist(key.getCidrWhitelist())
-                        .scopes(key.getScopes() != null && !key.getScopes().isBlank() 
-                                ? new java.util.HashSet<>(java.util.Arrays.asList(key.getScopes().split(","))) 
-                                : new java.util.HashSet<>())
+                        .scopes(key.getScopes())
                         .linkedAccountId(key.getLinkedAccountId())
+                        .applicationId(key.getApplicationId())
+                        .applicationName(key.getApplicationName())
+                        .perTransactionLimit(key.getPerTransactionLimit())
+                        .dailyLimit(key.getDailyLimit())
                         .expiresAt(key.getExpiresAt())
                         .revokedAt(key.getRevokedAt())
                         .lastUsedAt(key.getLastUsedAt())
@@ -90,6 +106,31 @@ public class ApiKeyController {
                         .build())
                 .toList();
         return ResponseEntity.ok(ApiResponse.success(responses, "API Keys retrieved successfully"));
+    }
+
+    @GetMapping("/merchant-status")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getMerchantStatus(Authentication authentication) {
+        Long customerId = resolveCustomerId(authentication);
+        List<Merchant> merchants = merchantPersistencePort.findByOwnerId(customerId);
+
+        // Find primary verified merchant or default
+        Merchant primary = (merchants != null && !merchants.isEmpty()) ? merchants.get(0) : null;
+        boolean hasVerifiedMerchant = primary != null 
+                && "ACTIVE".equalsIgnoreCase(primary.getStatus())
+                && primary.getBusinessRegistrationNumber() != null
+                && !primary.getBusinessRegistrationNumber().startsWith("DEV-REG-")
+                && !primary.getBusinessRegistrationNumber().startsWith("DEV-");
+
+        Map<String, Object> statusMap = Map.of(
+                "hasMerchant", primary != null,
+                "isVerified", hasVerifiedMerchant,
+                "merchantId", primary != null ? primary.getId() : 0,
+                "legalName", primary != null ? primary.getLegalName() : "",
+                "businessRegistrationNumber", (primary != null && primary.getBusinessRegistrationNumber() != null) ? primary.getBusinessRegistrationNumber() : "",
+                "settlementAccount", (primary != null && primary.getSettlementAccount() != null) ? primary.getSettlementAccount() : "",
+                "status", primary != null ? primary.getStatus() : "NOT_REGISTERED"
+        );
+        return ResponseEntity.ok(ApiResponse.success(statusMap, "Merchant status resolved"));
     }
 
     @PostMapping
@@ -100,7 +141,7 @@ public class ApiKeyController {
         // By default, create the key for the primary (first) merchant workspace
         Merchant primaryMerchant = resolveOwnedMerchants(authentication).get(0);
         
-        ApiKeyResponse response = apiKeyService.createApiKey(primaryMerchant.getId(), request);
+        ApiKeyResponse response = apiKeyUseCase.createApiKey(primaryMerchant.getId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "API Key created successfully"));
     }
 
@@ -108,7 +149,7 @@ public class ApiKeyController {
     public ResponseEntity<ApiResponse<Void>> revokeApiKey(@PathVariable Long keyId, Authentication authentication) {
         List<Merchant> ownedMerchants = resolveOwnedMerchants(authentication);
         
-        ApiKeyJpaEntity key = apiKeyRepository.findById(keyId)
+        ApiKey key = apiKeyPersistencePort.findById(keyId)
                 .orElseThrow(() -> new NotFoundException("API Key not found"));
         
         // Enforce Server-Side Object-Level Authorization
@@ -116,7 +157,7 @@ public class ApiKeyController {
             throw new NotFoundException("API Key not found"); // Prevents revealing existence to attackers
         }
         
-        apiKeyService.revokeApiKey(key.getMerchantId(), keyId);
+        apiKeyUseCase.revokeApiKey(key.getMerchantId(), keyId);
         return ResponseEntity.ok(ApiResponse.success(null, "API Key revoked", null));
     }
 
@@ -124,7 +165,7 @@ public class ApiKeyController {
     public ResponseEntity<ApiResponse<ApiKeyResponse>> rotateApiKey(@PathVariable Long keyId, Authentication authentication) {
         List<Merchant> ownedMerchants = resolveOwnedMerchants(authentication);
         
-        ApiKeyJpaEntity key = apiKeyRepository.findById(keyId)
+        ApiKey key = apiKeyPersistencePort.findById(keyId)
                 .orElseThrow(() -> new NotFoundException("API Key not found"));
         
         // Enforce Server-Side Object-Level Authorization
@@ -132,7 +173,7 @@ public class ApiKeyController {
             throw new NotFoundException("API Key not found");
         }
         
-        ApiKeyResponse newKey = apiKeyService.rotateApiKey(key.getMerchantId(), keyId);
+        ApiKeyResponse newKey = apiKeyUseCase.rotateApiKey(key.getMerchantId(), keyId);
         return ResponseEntity.ok(ApiResponse.success(newKey, "API Key rotated"));
     }
 
@@ -140,7 +181,7 @@ public class ApiKeyController {
     public ResponseEntity<Void> deleteApiKey(@PathVariable Long keyId, Authentication authentication) {
         List<Merchant> ownedMerchants = resolveOwnedMerchants(authentication);
 
-        ApiKeyJpaEntity key = apiKeyRepository.findById(keyId)
+        ApiKey key = apiKeyPersistencePort.findById(keyId)
                 .orElseThrow(() -> new NotFoundException("API Key not found"));
 
         // Enforce Server-Side Object-Level Authorization
@@ -148,7 +189,7 @@ public class ApiKeyController {
             throw new NotFoundException("API Key not found");
         }
         
-        apiKeyRepository.delete(key);
+        apiKeyPersistencePort.deleteById(keyId);
         return ResponseEntity.noContent().build();
     }
 }

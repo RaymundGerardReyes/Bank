@@ -10,4 +10,5 @@ public interface ApiKeyPersistencePort {
     Optional<ApiKey> findById(Long id);
     Optional<ApiKey> findByKeyHash(String keyHash);
     List<ApiKey> findByMerchantId(Long merchantId);
+    void deleteById(Long id);
 }

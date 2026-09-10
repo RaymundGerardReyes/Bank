@@ -37,6 +37,11 @@ public class ApiKeyJpaAdapter implements ApiKeyPersistencePort {
         return repository.findByMerchantId(merchantId).stream().map(this::mapToDomain).toList();
     }
 
+    @Override
+    public void deleteById(Long id) {
+        repository.deleteById(id);
+    }
+
     private ApiKeyJpaEntity mapToEntity(ApiKey domain) {
         String scopesStr = domain.getScopes() != null ? String.join(",", domain.getScopes()) : "";
         return ApiKeyJpaEntity.builder()
@@ -49,6 +54,11 @@ public class ApiKeyJpaAdapter implements ApiKeyPersistencePort {
                 .cidrWhitelist(domain.getCidrWhitelist())
                 .scopes(scopesStr)
                 .linkedAccountId(domain.getLinkedAccountId()) // <-- MAP IT
+                .linkedAccountId(domain.getLinkedAccountId())
+                .applicationId(domain.getApplicationId())
+                .applicationName(domain.getApplicationName())
+                .perTransactionLimit(domain.getPerTransactionLimit())
+                .dailyLimit(domain.getDailyLimit())
                 .expiresAt(domain.getExpiresAt())
                 .revokedAt(domain.getRevokedAt())
                 .lastUsedAt(domain.getLastUsedAt())
@@ -71,6 +81,11 @@ public class ApiKeyJpaAdapter implements ApiKeyPersistencePort {
                 .cidrWhitelist(entity.getCidrWhitelist())
                 .scopes(scopesSet)
                 .linkedAccountId(entity.getLinkedAccountId()) // <-- MAP IT BACK
+                .linkedAccountId(entity.getLinkedAccountId())
+                .applicationId(entity.getApplicationId())
+                .applicationName(entity.getApplicationName())
+                .perTransactionLimit(entity.getPerTransactionLimit())
+                .dailyLimit(entity.getDailyLimit())
                 .expiresAt(entity.getExpiresAt())
                 .revokedAt(entity.getRevokedAt())
                 .lastUsedAt(entity.getLastUsedAt())

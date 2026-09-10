@@ -25,6 +25,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     // Removed shouldNotFilter to allow BFF frontend to access gateway endpoints using JWT
 
@@ -58,6 +59,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (jwt == null || jwt.trim().isEmpty() || jwt.startsWith("sk_")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Enforce token revocation check
+        if (tokenBlacklistService.isBlacklisted(jwt.trim())) {
+            log.warn("[JWT FILTER] Rejected blacklisted/revoked token.");
             filterChain.doFilter(request, response);
             return;
         }

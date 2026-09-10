@@ -12,6 +12,9 @@ import org.springframework.security.core.Authentication;
 import com.company.banking.customer.application.port.out.CustomerPersistencePort;
 import com.company.banking.customer.domain.Customer;
 
+import com.company.banking.common.exception.ForbiddenException;
+import com.company.banking.common.exception.NotFoundException;
+
 @RestController
 @RequestMapping("/api/v1/developer/setup")
 @RequiredArgsConstructor
@@ -21,7 +24,9 @@ public class DeveloperSetupController {
     private final CustomerPersistencePort customerPersistencePort;
 
     private Long resolveCustomerId(Authentication authentication) {
-        if (authentication == null) return 1L;
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ForbiddenException("Authentication required to onboard developer");
+        }
         Object principal = authentication.getPrincipal();
         if (principal instanceof Long) {
             return (Long) principal;
@@ -32,7 +37,7 @@ public class DeveloperSetupController {
         } catch (Exception e) {
             return customerPersistencePort.findByEmail(name)
                     .map(Customer::getId)
-                    .orElse(1L);
+                    .orElseThrow(() -> new NotFoundException("Customer profile not found for user: " + name));
         }
     }
 

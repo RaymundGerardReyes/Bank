@@ -54,10 +54,10 @@ dependencies {
     implementation 'org.flywaydb:flyway-database-postgresql'
 
     // Lombok
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    testCompileOnly 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
+    compileOnly 'org.projectlombok:lombok:1.18.36'
+    annotationProcessor 'org.projectlombok:lombok:1.18.36'
+    testCompileOnly 'org.projectlombok:lombok:1.18.36'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.36'
 
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -66,10 +66,14 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
-    jvmArgs('-XX:+EnableDynamicAgentLoading')
-    
-    // FIX: Prevent Gradle from eating all your RAM and crashing the JVM
+    jvmArgs(
+        '-XX:+EnableDynamicAgentLoading',
+        '-Djdk.attach.allowAttachSelf=true',
+        '-XX:+UseSerialGC',
+        '-XX:TieredStopAtLevel=1'
+    )// FIX: Prevent Gradle from eating all your RAM and crashing the JVM
     maxParallelForks = 1
     forkEvery = 0
-    maxHeapSize = "1G"
+    maxHeapSize = "384m"
+    maxHeapSize = "192m"
 }

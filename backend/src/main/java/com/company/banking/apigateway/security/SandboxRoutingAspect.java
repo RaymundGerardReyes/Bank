@@ -70,7 +70,7 @@ public class SandboxRoutingAspect {
     private boolean isTestEnvironment() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth instanceof ApiKeyAuthenticationToken apiToken) {
-            return "TEST".equalsIgnoreCase(apiToken.getEnvironment());
+            return apiToken.isSandbox();
         }
         return false;
     }

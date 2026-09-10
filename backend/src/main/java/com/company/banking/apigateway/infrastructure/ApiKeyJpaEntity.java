@@ -40,7 +40,19 @@ public class ApiKeyJpaEntity {
     private String scopes;
 
     @Column(name = "linked_account_id")
-    private String linkedAccountId; // <-- NEW
+    private String linkedAccountId;
+
+    @Column(name = "application_id")
+    private String applicationId;
+
+    @Column(name = "application_name")
+    private String applicationName;
+
+    @Column(name = "per_transaction_limit")
+    private java.math.BigDecimal perTransactionLimit;
+
+    @Column(name = "daily_limit")
+    private java.math.BigDecimal dailyLimit;
 
     @Column(nullable = false)
     private LocalDateTime expiresAt;

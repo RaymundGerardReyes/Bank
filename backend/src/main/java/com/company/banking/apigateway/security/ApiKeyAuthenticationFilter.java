@@ -65,6 +65,9 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             request.setAttribute("GATEWAY_API_KEY_ID", apiKey.getId());
             request.setAttribute("GATEWAY_LINKED_ACCOUNT_ID", apiKey.getLinkedAccountId());
             request.setAttribute("GATEWAY_MERCHANT_ID", apiKey.getMerchantId());
+            request.setAttribute("GATEWAY_APPLICATION_ID", apiKey.getApplicationId());
+            request.setAttribute("GATEWAY_APPLICATION_NAME", apiKey.getApplicationName());
+            request.setAttribute("GATEWAY_ENVIRONMENT", apiKey.getEnvironment());
 
             // 1. Validate CIDR Whitelist
             String clientIp = resolveClientIp(request);
@@ -95,6 +98,21 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             }
 
             // VULN 6: Use strongly-typed Authentication Token
+            // 3. Enforce Server-Side Account-Level Access Gate (BSP Invariant)
+            String targetAccount = extractTargetAccount(request);
+            if (targetAccount != null && !apiKey.canAccessAccount(targetAccount)) {
+                request.setAttribute("GATEWAY_AUTH_STAGE", "ACCOUNT_REJECTED");
+                request.setAttribute("GATEWAY_AUTH_FAILURE_REASON", "ACCOUNT_NOT_AUTHORIZED");
+                String authorizedBoundary = apiKey.getLinkedAccountId() != null 
+                        ? apiKey.getLinkedAccountId() 
+                        : (apiKey.getMerchantId() != null ? "MERCHANT-SETTLEMENT-" + apiKey.getMerchantId() : "NONE");
+                sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN, ErrorCode.ACCOUNT_NOT_AUTHORIZED.getCode(),
+                        String.format("This API credential is not authorized to access account '%s'. Authorized account scope: %s",
+                                targetAccount, authorizedBoundary));
+                return;
+            }
+
+            // VULN 6: Use strongly-typed Authentication Token with full Security Policy
             ApiKeyAuthenticationToken auth = new ApiKeyAuthenticationToken(
                     apiKeyHeader,
                     apiKey.getMerchantId(),
@@ -102,6 +120,10 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                     apiKey.getId(),
                     apiKey.getLinkedAccountId(),
                     apiKey.getScopes(),
+                    apiKey.getApplicationId(),
+                    apiKey.getApplicationName(),
+                    apiKey.getPerTransactionLimit(),
+                    apiKey.getDailyLimit(),
                     Collections.singletonList(new SimpleGrantedAuthority("ROLE_MERCHANT_API"))
             );
             SecurityContextHolder.getContext().setAuthentication(auth);
@@ -182,9 +204,25 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private String resolveClientIp(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.trim().isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
+            String candidate = xForwardedFor.split(",")[0].trim();
+            if (isValidIp(candidate)) {
+                return candidate;
+            }
         }
         return request.getRemoteAddr();
+    }
+
+    private boolean isValidIp(String ip) {
+        if (ip == null || ip.isBlank() || ip.length() > 45) return false;
+        if (ip.indexOf('\r') != -1 || ip.indexOf('\n') != -1 || ip.indexOf(';') != -1 || ip.indexOf(' ') != -1) {
+            return false;
+        }
+        try {
+            java.net.InetAddress.getByName(ip);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private String resolveRequiredScope(String path, String method) {
@@ -226,6 +264,33 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         // FAIL-CLOSED: If it's an API route and didn't match the above map, completely block it.
         if (path.startsWith("/api/v1/")) {
             return "UNMAPPED_ENDPOINT";
+        }
+        return null;
+    }
+
+    private String extractTargetAccount(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        // Path pattern: /api/v1/accounts/{accountNumber}...
+        if (path.startsWith("/api/v1/accounts/")) {
+            String sub = path.substring("/api/v1/accounts/".length());
+            int slashIdx = sub.indexOf('/');
+            String candidate = (slashIdx == -1) ? sub : sub.substring(0, slashIdx);
+            if (!candidate.isBlank() && !candidate.equalsIgnoreCase("settings") && !candidate.equalsIgnoreCase("number")) {
+                return candidate.trim();
+            }
+        }
+        // Path pattern: /api/v1/gateway/accounts/{accountNumber}...
+        if (path.startsWith("/api/v1/gateway/accounts/")) {
+            String sub = path.substring("/api/v1/gateway/accounts/".length());
+            int slashIdx = sub.indexOf('/');
+            String candidate = (slashIdx == -1) ? sub : sub.substring(0, slashIdx);
+            if (!candidate.isBlank()) {
+                return candidate.trim();
+            }
+        }
+        String headerTarget = request.getHeader("X-Target-Account");
+        if (headerTarget != null && !headerTarget.isBlank()) {
+            return headerTarget.trim();
         }
         return null;
     }

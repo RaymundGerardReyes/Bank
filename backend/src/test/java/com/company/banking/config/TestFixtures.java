@@ -32,16 +32,16 @@ public class TestFixtures {
         if (!merchantJpaRepository.existsById(999L)) {
             log.info("Seeding test Merchant 999");
             entityManager.createNativeQuery(
-                "INSERT INTO merchants (id, merchant_code, legal_name, business_registration_number, status, owner_id, created_at) " +
-                "VALUES (999, 'M-DEFAULT', 'Fallback Default Merchant', 'BRN-999999', 'ACTIVE', 1, CURRENT_TIMESTAMP)"
+                "INSERT INTO merchants (id, merchant_code, legal_name, business_registration_number, status, owner_id, settlement_account, created_at) " +
+                "VALUES (999, 'M-DEFAULT', 'Fallback Default Merchant', 'BRN-999999', 'ACTIVE', 1, '4859220013371001', CURRENT_TIMESTAMP)"
             ).executeUpdate();
         }
         
         if (!merchantJpaRepository.existsById(1001L)) {
             log.info("Seeding test Merchant 1001");
             entityManager.createNativeQuery(
-                "INSERT INTO merchants (id, merchant_code, legal_name, business_registration_number, status, owner_id, created_at) " +
-                "VALUES (1001, 'M-1001', 'Test Client Merchant', 'BRN-100100', 'ACTIVE', 1, CURRENT_TIMESTAMP)"
+                "INSERT INTO merchants (id, merchant_code, legal_name, business_registration_number, status, owner_id, settlement_account, created_at) " +
+                "VALUES (1001, 'M-1001', 'Test Client Merchant', 'BRN-100100', 'ACTIVE', 1, '4859220013371001', CURRENT_TIMESTAMP)"
             ).executeUpdate();
         }
 
@@ -51,8 +51,10 @@ public class TestFixtures {
             log.info("Seeding test API key for gateway integration tests");
             entityManager.createNativeQuery(
                 "INSERT INTO api_keys (key_prefix, key_hash, merchant_id, name, environment, cidr_whitelist, scopes, linked_account_id, expires_at, created_at) " +
-                "VALUES ('sk_test_', :keyHash, 999, 'Default Integration Test Key', 'TEST', '0.0.0.0/0', 'payments:write,payments:read,accounts:write,accounts:read,payroll:write,payroll:read,routing:write,routing:read', 'MERCHANT-SETTLEMENT-123', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
-            ).setParameter("keyHash", mockKeyHash).executeUpdate();
+                "VALUES ('sk_test_', :keyHash, 999, 'Default Integration Test Key', 'TEST', '0.0.0.0/0', 'payments:write,payments:read,accounts:write,accounts:read,payroll:write,payroll:read,routing:write,routing:read', 'MERCHANT-SETTLEMENT-123', :expiresAt, CURRENT_TIMESTAMP)"
+            ).setParameter("keyHash", mockKeyHash)
+             .setParameter("expiresAt", java.time.LocalDateTime.now().plusYears(5))
+             .executeUpdate();
         }
     }
 }

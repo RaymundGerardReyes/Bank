@@ -8,6 +8,8 @@ import com.company.banking.apigateway.application.port.out.ApiKeyPersistencePort
 import com.company.banking.apigateway.domain.ApiKey;
 import com.company.banking.common.exception.ForbiddenException;
 import com.company.banking.common.exception.NotFoundException;
+import com.company.banking.merchant.application.port.out.MerchantPersistencePort;
+import com.company.banking.merchant.domain.Merchant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,18 +35,31 @@ class CreateApiKeyServiceTest {
     @Mock
     private AccountPersistencePort accountPersistencePort;
 
+    @Mock
+    private com.company.banking.merchant.infrastructure.MerchantJpaRepository merchantRepository;
+    private MerchantPersistencePort merchantPersistencePort;
+
     @InjectMocks
     private CreateApiKeyService createApiKeyService;
 
     private final Long VALID_MERCHANT_ID = 200L;
     private final String VALID_ACCOUNT_ID = "ACC-1234";
     private Account mockAuthorizedAccount;
+    private Merchant mockMerchant;
 
     @BeforeEach
     void setUp() {
         mockAuthorizedAccount = Account.builder()
                 .accountNumber(VALID_ACCOUNT_ID)
                 .merchantId(VALID_MERCHANT_ID)
+                .build();
+
+        mockMerchant = Merchant.builder()
+                .id(VALID_MERCHANT_ID)
+                .ownerId(100L)
+                .status("ACTIVE")
+                .businessRegistrationNumber("BRN-999-VERIFIED")
+                .settlementAccount(VALID_ACCOUNT_ID)
                 .build();
     }
 
@@ -60,6 +75,8 @@ class CreateApiKeyServiceTest {
         request.setEnvironment("SANDBOX");
         request.setLinkedAccountId(VALID_ACCOUNT_ID);
         
+        when(merchantPersistencePort.findById(VALID_MERCHANT_ID))
+                .thenReturn(Optional.of(mockMerchant));
         when(accountPersistencePort.findByAccountNumber(VALID_ACCOUNT_ID))
                 .thenReturn(Optional.of(mockAuthorizedAccount));
         when(apiKeyPersistencePort.save(any(ApiKey.class)))
@@ -91,6 +108,8 @@ class CreateApiKeyServiceTest {
                 .merchantId(300L) // Different merchant
                 .build();
                 
+        when(merchantPersistencePort.findById(VALID_MERCHANT_ID))
+                .thenReturn(Optional.of(mockMerchant));
         when(accountPersistencePort.findByAccountNumber("ACC-9999"))
                 .thenReturn(Optional.of(unownedAccount));
 
@@ -98,7 +117,49 @@ class CreateApiKeyServiceTest {
                 () -> createApiKeyService.createApiKey(VALID_MERCHANT_ID, request));
         
         assertTrue(ex.getMessage().contains("Not authorized to bind API key to this account"));
+        assertTrue(ex.getMessage().contains("Not authorized to bind API key to account"));
         verify(apiKeyPersistencePort, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("03 Customer-owned account without merchantId -> authorized via merchant owner boundary")
+    void createKey_WithCustomerOwnedAccount_SavesSuccessfully() {
+        CreateApiKeyRequest request = new CreateApiKeyRequest();
+        request.setName("Personal Dev Key");
+        request.setEnvironment("SANDBOX");
+        request.setLinkedAccountId("ACC-CUSTOMER-1");
+
+        Long ownerCustomerId = 888L;
+        Merchant customerOwnedMerchant = Merchant.builder()
+                .id(VALID_MERCHANT_ID)
+                .ownerId(ownerCustomerId)
+                .status("ACTIVE")
+                .businessRegistrationNumber("BRN-CUSTOMER")
+                .build();
+
+        Account customerAccount = Account.builder()
+                .accountNumber("ACC-CUSTOMER-1")
+                .customerId(ownerCustomerId) // Owned by same customer
+                .merchantId(null) // No merchantId directly on personal account
+                .build();
+
+        when(merchantPersistencePort.findById(VALID_MERCHANT_ID))
+                .thenReturn(Optional.of(customerOwnedMerchant));
+        when(accountPersistencePort.findByAccountNumber("ACC-CUSTOMER-1"))
+                .thenReturn(Optional.of(customerAccount));
+        when(merchantRepository.findById(VALID_MERCHANT_ID))
+                .thenReturn(Optional.of(mockMerchant));
+        when(apiKeyPersistencePort.save(any(ApiKey.class)))
+                .thenAnswer(invocation -> {
+                    ApiKey key = invocation.getArgument(0);
+                    key.setId(1001L);
+                    return key;
+                });
+
+        ApiKeyResponse response = createApiKeyService.createApiKey(VALID_MERCHANT_ID, request);
+
+        assertNotNull(response);
+        assertEquals("ACC-CUSTOMER-1", response.getLinkedAccountId());
     }
 
     // ==========================================
@@ -118,6 +179,7 @@ class CreateApiKeyServiceTest {
                 .build();
 
         when(apiKeyPersistencePort.findById(existingKeyId)).thenReturn(Optional.of(oldKey));
+        when(merchantPersistencePort.findById(VALID_MERCHANT_ID)).thenReturn(Optional.of(mockMerchant));
         when(accountPersistencePort.findByAccountNumber(VALID_ACCOUNT_ID))
                 .thenReturn(Optional.of(mockAuthorizedAccount));
         when(apiKeyPersistencePort.save(any(ApiKey.class)))

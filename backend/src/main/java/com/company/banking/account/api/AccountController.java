@@ -7,6 +7,9 @@ import com.company.banking.account.api.dto.OpenAccountRequest;
 import jakarta.validation.Valid;
 import com.company.banking.account.application.port.in.GetAccountDetailsUseCase;
 import com.company.banking.account.application.port.in.ListCustomerAccountsUseCase;
+import com.company.banking.account.application.port.out.AccountPersistencePort;
+import com.company.banking.account.domain.Account;
+import com.company.banking.common.exception.ForbiddenException;
 import com.company.banking.common.exception.NotFoundException;
 import com.company.banking.common.response.ApiResponse;
 import com.company.banking.customer.application.port.out.CustomerPersistencePort;
@@ -34,6 +37,7 @@ public class AccountController {
     
     // Inject the customer port so we can resolve the JWT email to a Customer ID
     private final CustomerPersistencePort customerPersistencePort;
+    private final AccountPersistencePort accountPersistencePort;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<AccountSummaryResponse>>> getCustomerAccounts() {
@@ -56,6 +60,31 @@ public class AccountController {
     @GetMapping("/{accountNumber}")
     public ResponseEntity<ApiResponse<AccountResponse>> getAccountDetails(@PathVariable String accountNumber) {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            if (authentication instanceof com.company.banking.apigateway.security.ApiKeyAuthenticationToken apiToken) {
+                if (!apiToken.canAccessAccount(accountNumber)) {
+                    throw new ForbiddenException(com.company.banking.common.exception.ErrorCode.ACCOUNT_NOT_AUTHORIZED,
+                            "API Key Policy: Not authorized to access account [" + accountNumber + "]. Bound account scope: " + apiToken.getLinkedAccountId());
+                }
+            } else {
+                boolean isPrivileged = authentication.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") 
+                                || a.getAuthority().equals("ROLE_TELLER"));
+                if (!isPrivileged) {
+                    String email = authentication.getName();
+                    Customer customer = customerPersistencePort.findByEmail(email)
+                            .orElseThrow(() -> new NotFoundException("Authenticated user profile not found"));
+                    Account account = accountPersistencePort.findByAccountNumber(accountNumber)
+                            .orElseThrow(() -> new NotFoundException("Account not found: " + accountNumber));
+                    if (!customer.getId().equals(account.getCustomerId())) {
+                        throw new ForbiddenException("Access denied: You do not own this account");
+                    }
+                }
+            }
+        }
+
         AccountResponse response = getAccountDetailsUseCase.getAccountDetails(accountNumber);
         return ResponseEntity.ok(ApiResponse.success(response, "Account details retrieved successfully", correlationId));
     }

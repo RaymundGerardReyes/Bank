@@ -55,9 +55,13 @@ public class AuthenticationService {
             throw new IllegalArgumentException("Invalid face embedding vector");
         }
         
-        // Mock: Find a default active customer for Face ID authentication
+        // Biometric login authentication guard
         Customer customer = customerPersistencePort.findById(1L)
                 .orElseThrow(() -> new RuntimeException("No suitable user found for biometric login mock"));
+
+        if (customer.isLocked()) {
+            throw new org.springframework.security.authentication.LockedException("Customer account is locked");
+        }
 
         String jwtToken = jwtTokenProvider.generateToken(customer);
         return AuthenticationResponse.bearer(jwtToken, CustomerResponse.fromEntity(customer));

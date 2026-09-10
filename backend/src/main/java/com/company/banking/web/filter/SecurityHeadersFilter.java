@@ -28,13 +28,16 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
         response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
 
         String dynamicConnectSrc = (platformDomain != null && !platformDomain.isBlank())
-                ? "connect-src 'self' wss: ws: https://" + platformDomain + " http://" + platformDomain + " *; "
-                : "connect-src 'self' wss: ws: https: http: *; ";
+                ? "connect-src 'self' wss: ws: https://" + platformDomain + " http://" + platformDomain + "; "
+                : "connect-src 'self' wss: ws:; ";
 
         response.setHeader("Content-Security-Policy", 
-            "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: http: data:; " +
+            "default-src 'self'; " +
+            "script-src 'self'; " +
+            "style-src 'self' 'unsafe-inline'; " +
             dynamicConnectSrc +
-            "img-src 'self' data: https: http:;"
+            "img-src 'self' data:; " +
+            "frame-ancestors 'none';"
         );
 
         filterChain.doFilter(request, response);

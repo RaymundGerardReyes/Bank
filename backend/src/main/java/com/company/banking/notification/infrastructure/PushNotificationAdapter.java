@@ -18,12 +18,21 @@ public class PushNotificationAdapter implements PushNotificationPort {
 
     @Override
     public void sendPush(String deviceOrCustomerId, String title, String body) {
+        sendPush(deviceOrCustomerId, title, body, "/transactions/history", null);
+    }
+
+    @Override
+    public void sendPush(String deviceOrCustomerId, String title, String body, String route, Map<String, Object> data) {
         // Construct the standardized WebSocket (STOMP) payload
         Map<String, Object> payload = new HashMap<>();
         payload.put("title", title);
         payload.put("body", body);
         payload.put("click_action", "FLUTTER_NOTIFICATION_CLICK"); // Preserved from previous logic
         payload.put("route", "/transactions/history");
+        payload.put("route", route != null ? route : "/transactions/history");
+        if (data != null && !data.isEmpty()) {
+            payload.put("data", data);
+        }
 
         String destination = "/topic/user_" + deviceOrCustomerId;
         

@@ -1,10 +1,18 @@
 package com.company.banking.apigateway.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.Set;
 
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CreateApiKeyRequest {
 
     @NotBlank(message = "Key name is required")
@@ -16,20 +24,13 @@ public class CreateApiKeyRequest {
 
     private Set<String> scopes;
 
-    private String linkedAccountId; // <-- NEW
-    
-    public String getLinkedAccountId() { return linkedAccountId; }
-    public void setLinkedAccountId(String linkedAccountId) { this.linkedAccountId = linkedAccountId; }
+    private String linkedAccountId;
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    private String applicationId;
 
-    public String getEnvironment() { return environment; }
-    public void setEnvironment(String environment) { this.environment = environment; }
+    private String applicationName;
 
-    public String getCidrWhitelist() { return cidrWhitelist; }
-    public void setCidrWhitelist(String cidrWhitelist) { this.cidrWhitelist = cidrWhitelist; }
+    private BigDecimal perTransactionLimit;
 
-    public Set<String> getScopes() { return scopes; }
-    public void setScopes(Set<String> scopes) { this.scopes = scopes; }
+    private BigDecimal dailyLimit;
 }

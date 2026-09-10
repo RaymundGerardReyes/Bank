@@ -2,14 +2,13 @@ package com.company.banking.apigateway.api;
 
 import com.company.banking.apigateway.api.dto.ApiKeyResponse;
 import com.company.banking.apigateway.api.dto.CreateApiKeyRequest;
-import com.company.banking.apigateway.application.CreateApiKeyService;
-import com.company.banking.apigateway.infrastructure.ApiKeyJpaEntity;
-import com.company.banking.apigateway.infrastructure.ApiKeyJpaRepository;
+import com.company.banking.apigateway.application.port.in.CreateApiKeyUseCase;
+import com.company.banking.apigateway.application.port.out.ApiKeyPersistencePort;
+import com.company.banking.apigateway.domain.ApiKey;
 import com.company.banking.common.response.ApiResponse;
 import com.company.banking.customer.application.port.out.CustomerPersistencePort;
-import com.company.banking.customer.domain.Customer;
+import com.company.banking.merchant.application.port.out.MerchantPersistencePort;
 import com.company.banking.merchant.domain.Merchant;
-import com.company.banking.merchant.infrastructure.MerchantJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,16 +33,16 @@ import static org.mockito.Mockito.*;
 class ApiKeyControllerTest {
 
     @Mock
-    private CreateApiKeyService createApiKeyService;
+    private CreateApiKeyUseCase apiKeyUseCase;
 
     @Mock
-    private ApiKeyJpaRepository apiKeyRepository;
+    private ApiKeyPersistencePort apiKeyPersistencePort;
 
     @Mock
     private CustomerPersistencePort customerPersistencePort;
 
     @Mock
-    private MerchantJpaRepository merchantRepository;
+    private MerchantPersistencePort merchantPersistencePort;
 
     @InjectMocks
     private ApiKeyController apiKeyController;
@@ -61,40 +60,39 @@ class ApiKeyControllerTest {
         );
         
         Merchant mockMerchant = Merchant.builder().id(MERCHANT_ID).build();
-        when(merchantRepository.findByOwnerId(CUSTOMER_ID)).thenReturn(List.of(mockMerchant));
+        when(merchantPersistencePort.findByOwnerId(CUSTOMER_ID)).thenReturn(List.of(mockMerchant));
     }
 
     @Test
-    @DisplayName("31 & 32 Controller delegates creation payload and principal ID unchanged")
+    @DisplayName("Controller delegates creation payload and principal ID unchanged")
     void create_DelegatesCorrectlyToUseCase() {
         CreateApiKeyRequest request = new CreateApiKeyRequest();
         request.setLinkedAccountId("ACC-123");
         
         ApiKeyResponse mockResponse = ApiKeyResponse.builder().id(999L).build();
         
-        when(createApiKeyService.createApiKey(eq(MERCHANT_ID), any())).thenReturn(mockResponse);
+        when(apiKeyUseCase.createApiKey(eq(MERCHANT_ID), any())).thenReturn(mockResponse);
 
         ResponseEntity<ApiResponse<ApiKeyResponse>> response = apiKeyController.createApiKey(request, mockAuthentication);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        verify(createApiKeyService, times(1)).createApiKey(MERCHANT_ID, request);
+        verify(apiKeyUseCase, times(1)).createApiKey(MERCHANT_ID, request);
     }
 
     @Test
-    @DisplayName("34 & 35 Controller delegates rotation keyId and principal ID (ignoring bodies)")
+    @DisplayName("Controller delegates rotation keyId and principal ID")
     void rotate_DelegatesCorrectlyToUseCase() {
         Long keyId = 777L;
         ApiKeyResponse mockResponse = ApiKeyResponse.builder().id(888L).build();
         
-        ApiKeyJpaEntity mockEntity = new ApiKeyJpaEntity();
-        mockEntity.setMerchantId(MERCHANT_ID);
+        ApiKey mockKey = ApiKey.builder().id(keyId).merchantId(MERCHANT_ID).build();
         
-        when(apiKeyRepository.findById(keyId)).thenReturn(Optional.of(mockEntity));
-        when(createApiKeyService.rotateApiKey(eq(MERCHANT_ID), eq(keyId))).thenReturn(mockResponse);
+        when(apiKeyPersistencePort.findById(keyId)).thenReturn(Optional.of(mockKey));
+        when(apiKeyUseCase.rotateApiKey(eq(MERCHANT_ID), eq(keyId))).thenReturn(mockResponse);
 
         ResponseEntity<ApiResponse<ApiKeyResponse>> response = apiKeyController.rotateApiKey(keyId, mockAuthentication);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(createApiKeyService, times(1)).rotateApiKey(MERCHANT_ID, keyId);
+        verify(apiKeyUseCase, times(1)).rotateApiKey(MERCHANT_ID, keyId);
     }
 }

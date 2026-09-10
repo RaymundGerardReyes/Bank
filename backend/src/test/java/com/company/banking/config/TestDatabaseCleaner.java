@@ -2,6 +2,7 @@ package com.company.banking.config;
 
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -11,10 +12,12 @@ public class TestDatabaseCleaner {
 
     private final EntityManager entityManager;
     private final DataInitializer dataInitializer;
+    private final ObjectProvider<TestFixtures> testFixturesProvider;
 
-    public TestDatabaseCleaner(EntityManager entityManager, DataInitializer dataInitializer) {
+    public TestDatabaseCleaner(EntityManager entityManager, DataInitializer dataInitializer, ObjectProvider<TestFixtures> testFixturesProvider) {
         this.entityManager = entityManager;
         this.dataInitializer = dataInitializer;
+        this.testFixturesProvider = testFixturesProvider;
     }
 
     @Transactional
@@ -34,5 +37,9 @@ public class TestDatabaseCleaner {
 
         entityManager.createNativeQuery("SET REFERENTIAL_INTEGRITY TRUE").executeUpdate();
         dataInitializer.run();
+        TestFixtures fixtures = testFixturesProvider.getIfAvailable();
+        if (fixtures != null) {
+            fixtures.seedTestFixtures();
+        }
     }
 }

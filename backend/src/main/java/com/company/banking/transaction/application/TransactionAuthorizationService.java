@@ -22,6 +22,7 @@ import org.springframework.security.web.webauthn.api.Bytes;
 import org.springframework.security.web.webauthn.api.UserVerificationRequirement;
 import java.util.List;
 import java.math.BigDecimal;
+import com.company.banking.notification.application.port.out.PushNotificationPort;
 import java.util.Optional;
 
 @Service
@@ -31,6 +32,7 @@ public class TransactionAuthorizationService {
     private final TransactionIntentJpaRepository intentRepository;
     private final AuthorizationAttemptJpaRepository attemptRepository;
     private final TransactionUseCase transactionUseCase;
+    private final PushNotificationPort pushNotificationPort;
     // Inject ExternalPaymentUseCase, etc. as needed
 
     @Transactional
@@ -200,7 +202,32 @@ public class TransactionAuthorizationService {
         intent.setStatus(TransactionIntentStatus.AUTHENTICATING);
         intentRepository.save(intent);
 
-        return attemptRepository.save(attempt);
+        AuthorizationAttempt savedAttempt = attemptRepository.save(attempt);
+
+        // Instantly notify mobile app via real-time WebSocket / push notification
+        if (pushNotificationPort != null) {
+            String notificationTitle = "Authorize Transfer Request";
+            String notificationBody = String.format("A transfer of ₱%.2f from %s was requested from IP %s. Tap to authorize.",
+                    amount != null ? amount : BigDecimal.ZERO,
+                    sourceAccount != null ? sourceAccount : "Account",
+                    ipAddress != null ? ipAddress : "Web Portal");
+            
+            java.util.Map<String, Object> metadata = new java.util.HashMap<>();
+            metadata.put("intentId", intentId);
+            metadata.put("amount", amount);
+            metadata.put("sourceAccount", sourceAccount);
+            metadata.put("destinationAccount", destinationAccount);
+            metadata.put("ipAddress", ipAddress);
+            metadata.put("authType", "OOB_MOBILE");
+
+            try {
+                pushNotificationPort.sendPush(userId.toString(), notificationTitle, notificationBody, "/authorizations/pending", metadata);
+            } catch (Exception e) {
+                // Ignore failure to prevent blocking the authorization creation
+            }
+        }
+
+        return savedAttempt;
     }
 
     @Transactional(readOnly = true)
@@ -246,6 +273,28 @@ public class TransactionAuthorizationService {
         attemptRepository.save(attempt);
 
         intent.setStatus(TransactionIntentStatus.AUTHORIZED);
+        intentRepository.save(intent);
+    }
+
+    @Transactional
+    public void denyMobileAuthorization(Long intentId, Long userId) {
+        TransactionIntent intent = intentRepository.findById(intentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Intent not found"));
+
+        if (!intent.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "Cannot access this intent");
+        }
+
+        AuthorizationAttempt attempt = attemptRepository.findAll().stream()
+                .filter(a -> a.getTransactionIntentId().equals(intentId) && "PENDING".equals(a.getStatus()) && "OOB_MOBILE".equals(a.getAuthType()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "No pending mobile authorization found"));
+
+        attempt.setStatus("DENIED");
+        attempt.setVerifiedAt(LocalDateTime.now());
+        attemptRepository.save(attempt);
+
+        intent.setStatus(TransactionIntentStatus.FAILED);
         intentRepository.save(intent);
     }
 

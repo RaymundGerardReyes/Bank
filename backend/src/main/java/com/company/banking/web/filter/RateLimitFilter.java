@@ -27,6 +27,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         
+        if (rateLimitMap.size() > 5000) {
+            rateLimitMap.entrySet().removeIf(entry -> entry.getValue().availablePermits() >= 100);
+        }
+
         String ip = request.getRemoteAddr();
         Semaphore semaphore = rateLimitMap.computeIfAbsent(ip, k -> new Semaphore(100)); // 100 concurrent req per IP
 

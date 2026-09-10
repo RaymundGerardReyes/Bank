@@ -31,4 +31,11 @@ public class MobileAuthorizationController {
         authorizationService.approveMobileAuthorization(intentId, userId);
         return ResponseEntity.ok(ApiResponse.success(null, "Authorization approved via mobile device", null));
     }
+
+    @PostMapping("/{intentId}/deny")
+    public ResponseEntity<ApiResponse<Void>> denyAuthorization(@PathVariable Long intentId, Authentication authentication) {
+        Long userId = ((Customer) authentication.getPrincipal()).getId();
+        authorizationService.denyMobileAuthorization(intentId, userId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Authorization denied via mobile device", null));
+    }
 }

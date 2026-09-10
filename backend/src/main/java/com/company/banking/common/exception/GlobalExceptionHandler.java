@@ -45,7 +45,15 @@ public class GlobalExceptionHandler {
         if (ex.getErrorCode() == ErrorCode.NOT_FOUND || ex.getErrorCode() == ErrorCode.RESOURCE_NOT_FOUND) mappedErrorCode = "ERR_404";
         if (ex.getErrorCode() == ErrorCode.CONFLICT || ex.getErrorCode() == ErrorCode.DUPLICATE_TRANSACTION) mappedErrorCode = "ERR_409";
         
+        String correlationId = org.slf4j.MDC.get(com.company.banking.web.filter.CorrelationIdFilter.MDC_KEY);
         return ResponseEntity.status(status)
-                .body(ApiResponse.error(mappedErrorCode, ex.getMessage()));
+                .body(ApiResponse.error(ex.getMessage(), mappedErrorCode, correlationId));
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(org.springframework.security.access.AccessDeniedException ex) {
+        String correlationId = org.slf4j.MDC.get(com.company.banking.web.filter.CorrelationIdFilter.MDC_KEY);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage() != null ? ex.getMessage() : "Access denied", "FORBIDDEN", correlationId));
     }
 }

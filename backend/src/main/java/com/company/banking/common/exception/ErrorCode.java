@@ -21,6 +21,8 @@ public enum ErrorCode {
     IP_NOT_WHITELISTED("ERR_GATEWAY_001", "IP address not allowed by API key CIDR whitelist", HttpStatus.FORBIDDEN),
     INSUFFICIENT_API_SCOPE("ERR_GATEWAY_002", "API key lacks required scope for endpoint", HttpStatus.FORBIDDEN),
     ENDPOINT_NOT_SCOPED("ERR_GATEWAY_003", "Endpoint not mapped to a required scope", HttpStatus.FORBIDDEN),
+    ACCOUNT_NOT_AUTHORIZED("ERR_GATEWAY_004", "This API credential is not authorized to access the requested account", HttpStatus.FORBIDDEN),
+    ENVIRONMENT_MISMATCH("ERR_GATEWAY_005", "Credential environment does not match the target execution environment", HttpStatus.FORBIDDEN),
     VAM_DESTINATION_NOT_PERMITTED("ERR_BANK_007", "Destination account is outside the permitted VAM hierarchy", HttpStatus.FORBIDDEN),
     NOT_FOUND("ERR_NF_001", "Requested resource was not found", HttpStatus.NOT_FOUND),
     CONFLICT("ERR_409", "Resource already exists or is in a conflicting state", HttpStatus.CONFLICT),
@@ -34,6 +36,7 @@ public enum ErrorCode {
     FX_PROVIDER_INVALID_RESPONSE("ERR_BANK_014", "External FX provider returned an invalid or missing rate", HttpStatus.BAD_GATEWAY),
     FX_QUOTE_INVALID("ERR_BANK_015", "Invalid or non-positive FX rate received", HttpStatus.BAD_REQUEST),
     METHOD_NOT_ALLOWED("ERR_405", "HTTP method not supported", HttpStatus.METHOD_NOT_ALLOWED),
+    RATE_LIMIT_EXCEEDED("ERR_429", "Rate limit exceeded. Please wait before retrying.", HttpStatus.TOO_MANY_REQUESTS),
     SYSTEM_ERROR("ERR_SYS_001", "System configuration or administrative error", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;
