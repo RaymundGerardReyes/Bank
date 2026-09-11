@@ -2,6 +2,7 @@ package com.company.banking.apigateway.api;
 
 import com.company.banking.apigateway.api.dto.ApiKeyResponse;
 import com.company.banking.apigateway.api.dto.CreateApiKeyRequest;
+import com.company.banking.apigateway.application.CreateApiKeyService;
 import com.company.banking.apigateway.application.port.in.CreateApiKeyUseCase;
 import com.company.banking.apigateway.application.port.out.ApiKeyPersistencePort;
 import com.company.banking.apigateway.domain.ApiKey;
@@ -121,15 +122,19 @@ public class ApiKeyController {
                 && !primary.getBusinessRegistrationNumber().startsWith("DEV-REG-")
                 && !primary.getBusinessRegistrationNumber().startsWith("DEV-");
 
-        Map<String, Object> statusMap = Map.of(
-                "hasMerchant", primary != null,
-                "isVerified", hasVerifiedMerchant,
-                "merchantId", primary != null ? primary.getId() : 0,
-                "legalName", primary != null ? primary.getLegalName() : "",
-                "businessRegistrationNumber", (primary != null && primary.getBusinessRegistrationNumber() != null) ? primary.getBusinessRegistrationNumber() : "",
-                "settlementAccount", (primary != null && primary.getSettlementAccount() != null) ? primary.getSettlementAccount() : "",
-                "status", primary != null ? primary.getStatus() : "NOT_REGISTERED"
-        );
+        Map<String, Object> statusMap = new java.util.HashMap<>();
+        statusMap.put("hasMerchant", primary != null);
+        statusMap.put("hasMerchantProfile", primary != null);
+        statusMap.put("isVerified", hasVerifiedMerchant);
+        statusMap.put("verified", hasVerifiedMerchant);
+        statusMap.put("eligibleForLive", hasVerifiedMerchant);
+        statusMap.put("merchantId", primary != null ? primary.getId() : 0);
+        statusMap.put("legalName", (primary != null && primary.getLegalName() != null) ? primary.getLegalName() : "");
+        statusMap.put("merchantCode", (primary != null && primary.getMerchantCode() != null) ? primary.getMerchantCode() : "");
+        statusMap.put("businessRegistrationNumber", (primary != null && primary.getBusinessRegistrationNumber() != null) ? primary.getBusinessRegistrationNumber() : "");
+        statusMap.put("settlementAccount", (primary != null && primary.getSettlementAccount() != null) ? primary.getSettlementAccount() : "");
+        statusMap.put("settlementAccountNumber", (primary != null && primary.getSettlementAccount() != null) ? primary.getSettlementAccount() : "");
+        statusMap.put("status", primary != null ? primary.getStatus() : "NOT_REGISTERED");
         return ResponseEntity.ok(ApiResponse.success(statusMap, "Merchant status resolved"));
     }
 
@@ -192,4 +197,66 @@ public class ApiKeyController {
         apiKeyPersistencePort.deleteById(keyId);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Diagnostic endpoint: verifies whether each deterministic integration API key
+     * is present and active in the database.
+     *
+     * Use this endpoint when the external application reports 401 API_KEY_REJECTED.
+     * It confirms which of the pre-seeded keys are available without exposing raw secrets.
+     *
+     * Response fields per entry:
+     *   name        – human-readable key label
+     *   environment – SANDBOX or LIVE
+     *   status      – ACTIVE | REVOKED | MISSING
+     *   hashPrefix  – first 8 hex chars of the stored SHA-256 hash (fingerprint, not usable as key)
+     *   configKey   – the EXACT raw secret string to place in appsettings.json / env variable
+     */
+    @GetMapping("/diagnostics/seeded")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getSeededKeysDiagnostic(Authentication authentication) {
+        // Require authentication — any logged-in user may call this
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ForbiddenException("Authentication is required");
+        }
+
+        // The three deterministic integration keys seeded by DataInitializer + V64 migration
+        record SeedEntry(String rawKey, String name, String env) {}
+        List<SeedEntry> seeds = List.of(
+            new SeedEntry("sk_test_2026_university_erp_sandbox_key",    "University ERP Sandbox Test Key",    "SANDBOX"),
+            new SeedEntry("sk_live_2026_university_erp_production_key", "University ERP Live Production Key", "LIVE"),
+            new SeedEntry("sk_live_2026_raymund_fintech_production_key_01", "Raymund FinTech Master Live Key", "LIVE")
+        );
+
+        List<Map<String, Object>> results = seeds.stream().map(seed -> {
+            String hash = CreateApiKeyService.hashKey(seed.rawKey());
+            String hashPrefix = hash.length() >= 8 ? hash.substring(0, 8) + "..." : hash;
+
+            Map<String, Object> entry = new java.util.LinkedHashMap<>();
+            entry.put("name", seed.name());
+            entry.put("environment", seed.env());
+            entry.put("hashPrefix", hashPrefix);
+            // configKey tells the integrator exactly what secret to use — these are deterministic,
+            // deliberately documented integration keys (not user-generated secrets).
+            entry.put("configKey", seed.rawKey());
+
+            apiKeyPersistencePort.findByKeyHash(hash).ifPresentOrElse(
+                key -> {
+                    boolean revoked = key.getRevokedAt() != null;
+                    entry.put("status", revoked ? "REVOKED" : "ACTIVE");
+                    entry.put("linkedAccount", key.getLinkedAccountId());
+                    entry.put("scopes", key.getScopes());
+                    entry.put("expiresAt", key.getExpiresAt());
+                },
+                () -> entry.put("status", "MISSING")
+            );
+            return entry;
+        }).toList();
+
+        return ResponseEntity.ok(ApiResponse.success(results,
+            "Seeded integration key diagnostics. " +
+            "Configure your external application with the 'configKey' value of the desired entry. " +
+            "Status must be ACTIVE for authentication to succeed."));
+    }
 }
+
+

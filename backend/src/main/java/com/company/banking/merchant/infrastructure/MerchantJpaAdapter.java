@@ -38,5 +38,10 @@ public class MerchantJpaAdapter implements MerchantPersistencePort {
     public Optional<Merchant> findByBusinessRegistrationNumber(String brn) {
         return repository.findByBusinessRegistrationNumber(brn);
     }
+
+    @Override
+    public Optional<Merchant> findByMerchantCode(String merchantCode) {
+        return repository.findByMerchantCode(merchantCode);
+    }
 }
 

@@ -159,6 +159,10 @@ public class TransactionAuthorizationService {
             } else {
                 throw new UnsupportedOperationException("Rail not supported in this example");
             }
+        } catch (BusinessException be) {
+            intent.setStatus(TransactionIntentStatus.FAILED);
+            intentRepository.save(intent);
+            throw be;
         } catch (Exception e) {
             intent.setStatus(TransactionIntentStatus.UNKNOWN);
             intentRepository.save(intent);

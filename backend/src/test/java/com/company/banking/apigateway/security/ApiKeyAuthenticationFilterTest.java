@@ -105,6 +105,42 @@ class ApiKeyAuthenticationFilterTest {
         }
     }
 
+    @Test
+    void staleXApiKeyWithValidAuthorizationHeaderAuthenticatesSuccessfully() throws Exception {
+        String staleKey = "sk_live_stale_from_old_client";
+        String validSandboxKey = "sk_test_valid_new_sandbox_key";
+        ApiKeyAuthenticationFilter filter = new ApiKeyAuthenticationFilter(apiKeyPersistencePort, cidrValidator);
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/gateway/payments/intents");
+        request.setRequestURI("/api/v1/gateway/payments/intents");
+        request.addHeader("X-API-Key", staleKey);
+        request.addHeader("Authorization", "Bearer " + validSandboxKey);
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        // Stale key is not found in database
+        when(apiKeyPersistencePort.findByKeyHash(eq(CreateApiKeyService.hashKey(staleKey))))
+                .thenReturn(Optional.empty());
+        // Valid sandbox key is found in database
+        when(apiKeyPersistencePort.findByKeyHash(eq(CreateApiKeyService.hashKey(validSandboxKey))))
+                .thenReturn(Optional.of(apiKeyWithScopes(validSandboxKey, Set.of("payments:write", "payments:read"))));
+        when(cidrValidator.isIpWhitelisted(anyString(), eq("0.0.0.0/0"))).thenReturn(true);
+
+        try {
+            filter.doFilter(request, response, chain);
+
+            assertEquals(200, response.getStatus());
+            assertEquals("API_KEY_AUTHENTICATED", request.getAttribute("GATEWAY_AUTH_STAGE"));
+            assertInstanceOf(ApiKeyAuthenticationToken.class, SecurityContextHolder.getContext().getAuthentication());
+            ApiKeyAuthenticationToken auth = (ApiKeyAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+            assertEquals(validSandboxKey, auth.getCredentials());
+            assertTrue(auth.getScopes().contains("payments:write"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
     private ApiKey apiKeyWithScopes(String rawKey, Set<String> scopes) {
         return ApiKey.builder()
                 .id(42L)

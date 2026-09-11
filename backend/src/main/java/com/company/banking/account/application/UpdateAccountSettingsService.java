@@ -25,19 +25,25 @@ public class UpdateAccountSettingsService implements UpdateAccountSettingsUseCas
             throw new com.company.banking.common.exception.ForbiddenException("Not authorized to access this account");
         }
 
-        if (request != null) {
-            if (request.getFrozen() != null) {
-                account.setFrozen(request.getFrozen());
-            }
-            if (request.getAllowIncoming() != null) {
-                account.setAllowIncoming(request.getAllowIncoming());
-            }
-            if (request.getAllowOutgoing() != null) {
-                account.setAllowOutgoing(request.getAllowOutgoing());
-            }
-            if (request.getRequireDualApproval() != null) {
-                account.setRequireDualApproval(request.getRequireDualApproval());
-            }
+        if (request == null || (request.getFrozen() == null && request.getAllowIncoming() == null 
+                && request.getAllowOutgoing() == null && request.getRequireDualApproval() == null)) {
+            throw new com.company.banking.common.exception.BusinessException(
+                com.company.banking.common.exception.ErrorCode.INVALID_REQUEST, 
+                "At least one setting must be provided for update."
+            );
+        }
+
+        if (request.getFrozen() != null) {
+            account.setFrozen(request.getFrozen());
+        }
+        if (request.getAllowIncoming() != null) {
+            account.setAllowIncoming(request.getAllowIncoming());
+        }
+        if (request.getAllowOutgoing() != null) {
+            account.setAllowOutgoing(request.getAllowOutgoing());
+        }
+        if (request.getRequireDualApproval() != null) {
+            account.setRequireDualApproval(request.getRequireDualApproval());
         }
         
         account = accountPersistencePort.save(account);

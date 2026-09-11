@@ -37,6 +37,7 @@ public class BffIdentityFilter extends OncePerRequestFilter {
                 || path.startsWith("/api/v1/checkout/sessions/")
                 || path.startsWith("/ws/")
                 || path.equals("/status")
+                || path.startsWith("/api/v1/health")
                 || path.equals("/error")
                 || path.startsWith("/api/v1/gateway/")
                 || hasApiKeyCredential(request)) {
@@ -51,6 +52,9 @@ public class BffIdentityFilter extends OncePerRequestFilter {
         }
 
         String providedKey = request.getHeader(BFF_HEADER_NAME);
+        if (providedKey == null) {
+            providedKey = request.getHeader("X-BFF-Key");
+        }
 
         if (providedKey == null || !providedKey.equals(expectedBffSecret)) {
             log.warn("[SECURITY] Blocked direct API access attempt to {} - Invalid or missing BFF key.", path);

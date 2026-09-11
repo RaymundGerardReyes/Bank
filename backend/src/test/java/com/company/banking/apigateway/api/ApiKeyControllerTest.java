@@ -24,7 +24,7 @@ import org.springframework.security.core.Authentication;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -94,5 +94,60 @@ class ApiKeyControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(apiKeyUseCase, times(1)).rotateApiKey(MERCHANT_ID, keyId);
+    }
+
+    @Test
+    @DisplayName("getMerchantStatus: Verified active merchant returns eligibleForLive=true and all normalized fields")
+    void getMerchantStatus_VerifiedActiveMerchant_ReturnsEligibleForLiveTrue() {
+        Merchant verifiedMerchant = Merchant.builder()
+                .id(500L)
+                .ownerId(CUSTOMER_ID)
+                .legalName("Acme Global Corp")
+                .merchantCode("M-ACME-500")
+                .businessRegistrationNumber("000-123-456-789")
+                .settlementAccount("MERCHANT-SETTLEMENT-500")
+                .status("ACTIVE")
+                .build();
+
+        when(merchantPersistencePort.findByOwnerId(CUSTOMER_ID)).thenReturn(List.of(verifiedMerchant));
+
+        ResponseEntity<ApiResponse<java.util.Map<String, Object>>> response = apiKeyController.getMerchantStatus(mockAuthentication);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        java.util.Map<String, Object> data = response.getBody().getData();
+        assertEquals(true, data.get("hasMerchant"));
+        assertEquals(true, data.get("hasMerchantProfile"));
+        assertEquals(true, data.get("isVerified"));
+        assertEquals(true, data.get("verified"));
+        assertEquals(true, data.get("eligibleForLive"));
+        assertEquals("Acme Global Corp", data.get("legalName"));
+        assertEquals("M-ACME-500", data.get("merchantCode"));
+        assertEquals("000-123-456-789", data.get("businessRegistrationNumber"));
+        assertEquals("MERCHANT-SETTLEMENT-500", data.get("settlementAccountNumber"));
+        assertEquals("ACTIVE", data.get("status"));
+    }
+
+    @Test
+    @DisplayName("getMerchantStatus: Temporary dev workspace returns eligibleForLive=false")
+    void getMerchantStatus_TemporaryDevWorkspace_ReturnsEligibleForLiveFalse() {
+        Merchant tempMerchant = Merchant.builder()
+                .id(500L)
+                .ownerId(CUSTOMER_ID)
+                .legalName("Developer 101 Workspace")
+                .merchantCode("DEV-101")
+                .businessRegistrationNumber("DEV-REG-101-99999999")
+                .status("ACTIVE")
+                .build();
+
+        when(merchantPersistencePort.findByOwnerId(CUSTOMER_ID)).thenReturn(List.of(tempMerchant));
+
+        ResponseEntity<ApiResponse<java.util.Map<String, Object>>> response = apiKeyController.getMerchantStatus(mockAuthentication);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        java.util.Map<String, Object> data = response.getBody().getData();
+        assertEquals(true, data.get("hasMerchant"));
+        assertEquals(false, data.get("isVerified"));
+        assertEquals(false, data.get("eligibleForLive"));
     }
 }

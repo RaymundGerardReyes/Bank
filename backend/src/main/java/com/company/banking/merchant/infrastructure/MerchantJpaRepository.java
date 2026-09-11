@@ -10,6 +10,7 @@ import java.util.Optional;
 @Repository
 public interface MerchantJpaRepository extends JpaRepository<Merchant, Long> {
     Optional<Merchant> findByBusinessRegistrationNumber(String brn);
+    Optional<Merchant> findByMerchantCode(String merchantCode);
     
     // PHASE 5: Explicitly resolve multiple merchants by their owner
     List<Merchant> findByOwnerId(Long ownerId);

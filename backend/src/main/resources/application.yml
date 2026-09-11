@@ -21,8 +21,14 @@ spring:
   output:
     ansi:
       enabled: always
+  jpa:
+    open-in-view: false
   main:
     allow-bean-definition-overriding: false
+
+logging:
+  level:
+    org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer: ERROR
 
 server:
   port: ${PORT:8080}

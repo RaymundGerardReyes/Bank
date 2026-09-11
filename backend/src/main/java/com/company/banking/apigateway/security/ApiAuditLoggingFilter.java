@@ -108,8 +108,8 @@ public class ApiAuditLoggingFilter extends OncePerRequestFilter {
                         .build();
 
                 apiAuditEventJpaRepository.save(auditEvent);
-                log.info("[API AUDIT] {} {} → {} | stage={} | keyId={} | acct={} | latency={}ms", 
-                         request.getMethod(), request.getRequestURI(), status, requestStage, apiKeyId, linkedAcctId, latencyMs);
+                log.info("[API AUDIT] {} {} → {} | stage={} | reason={} | keyId={} | acct={} | latency={}ms", 
+                         request.getMethod(), request.getRequestURI(), status, requestStage, failureReason, apiKeyId, linkedAcctId, latencyMs);
             } catch (Exception e) {
                 log.error("[API AUDIT] Failed to save audit log: {}", e.getMessage());
             }

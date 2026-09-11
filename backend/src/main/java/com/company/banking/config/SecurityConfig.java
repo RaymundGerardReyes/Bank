@@ -45,6 +45,7 @@ public class SecurityConfig {
                         "/v3/api-docs/developer-gateway", 
                         "/v3/api-docs/developer-gateway/**", 
                         "/actuator/health",
+                        "/api/v1/health",
                         "/ws/**",
                         "/status",
                         "/error"

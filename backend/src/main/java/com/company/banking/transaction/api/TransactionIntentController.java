@@ -80,6 +80,20 @@ public class TransactionIntentController {
         return ResponseEntity.ok(ApiResponse.success(Map.of("status", status), "Status retrieved", null));
     }
 
+    @PostMapping("/{intentId}/authorization/approve")
+    public ResponseEntity<ApiResponse<Void>> approvePushAuth(@PathVariable Long intentId, Authentication authentication) {
+        Long userId = ((Customer) authentication.getPrincipal()).getId();
+        authorizationService.approveMobileAuthorization(intentId, userId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Authorization approved successfully", null));
+    }
+
+    @PostMapping("/{intentId}/authorization/deny")
+    public ResponseEntity<ApiResponse<Void>> denyPushAuth(@PathVariable Long intentId, Authentication authentication) {
+        Long userId = ((Customer) authentication.getPrincipal()).getId();
+        authorizationService.denyMobileAuthorization(intentId, userId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Authorization denied successfully", null));
+    }
+
     @PostMapping("/{intentId}/execute")
     public ResponseEntity<ApiResponse<TransactionResponse>> executeIntent(@PathVariable Long intentId, Authentication authentication) {
         Long userId = ((Customer) authentication.getPrincipal()).getId();

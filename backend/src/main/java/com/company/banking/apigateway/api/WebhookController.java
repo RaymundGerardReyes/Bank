@@ -85,7 +85,19 @@ public class WebhookController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> createWebhook(@RequestBody Map<String, String> request, Authentication authentication) {
         Merchant primaryMerchant = resolveOwnedMerchants(authentication).get(0);
         WebhookEndpoint endpoint = webhookService.createEndpoint(primaryMerchant.getId(), request.get("url"), request.get("environment"), request.get("events"));
-        return ResponseEntity.ok(ApiResponse.success(Map.of("id", endpoint.getId()), "Webhook registered successfully"));
+        
+        Map<String, Object> map = new java.util.HashMap<>();
+        map.put("id", endpoint.getId());
+        map.put("merchantId", endpoint.getMerchantId());
+        map.put("url", endpoint.getUrl());
+        map.put("environment", endpoint.getEnvironment());
+        map.put("status", endpoint.getStatus());
+        map.put("events", endpoint.getEvents());
+        map.put("secretHash", endpoint.getSecretHash());
+        map.put("createdAt", endpoint.getCreatedAt());
+        map.put("updatedAt", endpoint.getUpdatedAt());
+
+        return ResponseEntity.ok(ApiResponse.success(map, "Webhook registered successfully"));
     }
 
     @DeleteMapping("/{webhookId}")

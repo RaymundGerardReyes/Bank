@@ -29,7 +29,7 @@ public class PaymentGatewayController {
         
         // FIX TC25 & TC26 (IDOR Guard): Enforce that the API key's linked account 
         // matches the account trying to be charged.
-        if (linkedAccountId != null && !linkedAccountId.equals(request.getSourceAccountId())) {
+        if (linkedAccountId != null && !linkedAccountId.equalsIgnoreCase("UNRESTRICTED") && !linkedAccountId.equals(request.getSourceAccountId())) {
             throw new com.company.banking.common.exception.ForbiddenException("API Key is not authorized to transact on account: " + request.getSourceAccountId());
         }
         

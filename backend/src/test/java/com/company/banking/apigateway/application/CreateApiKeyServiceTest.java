@@ -36,7 +36,6 @@ class CreateApiKeyServiceTest {
     private AccountPersistencePort accountPersistencePort;
 
     @Mock
-    private com.company.banking.merchant.infrastructure.MerchantJpaRepository merchantRepository;
     private MerchantPersistencePort merchantPersistencePort;
 
     @InjectMocks
@@ -116,7 +115,6 @@ class CreateApiKeyServiceTest {
         ForbiddenException ex = assertThrows(ForbiddenException.class, 
                 () -> createApiKeyService.createApiKey(VALID_MERCHANT_ID, request));
         
-        assertTrue(ex.getMessage().contains("Not authorized to bind API key to this account"));
         assertTrue(ex.getMessage().contains("Not authorized to bind API key to account"));
         verify(apiKeyPersistencePort, never()).save(any());
     }
@@ -147,8 +145,6 @@ class CreateApiKeyServiceTest {
                 .thenReturn(Optional.of(customerOwnedMerchant));
         when(accountPersistencePort.findByAccountNumber("ACC-CUSTOMER-1"))
                 .thenReturn(Optional.of(customerAccount));
-        when(merchantRepository.findById(VALID_MERCHANT_ID))
-                .thenReturn(Optional.of(mockMerchant));
         when(apiKeyPersistencePort.save(any(ApiKey.class)))
                 .thenAnswer(invocation -> {
                     ApiKey key = invocation.getArgument(0);

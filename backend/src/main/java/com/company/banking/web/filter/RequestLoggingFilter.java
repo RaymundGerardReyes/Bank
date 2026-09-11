@@ -30,6 +30,10 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             long duration = System.currentTimeMillis() - startTime;
             int status = response.getStatus();
             log.info("[HTTP LOG] {} {} - Status: {} - Duration: {}ms", method, uri, status, duration);
+            boolean isHealthCheck = uri.endsWith("/health") || uri.startsWith("/actuator/health");
+            if (!isHealthCheck || status >= 400) {
+                log.info("[HTTP LOG] {} {} - Status: {} - Duration: {}ms", method, uri, status, duration);
+            }
         }
     }
 }

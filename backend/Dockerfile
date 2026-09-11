@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # ============================================================
 # 1. BUILD STAGE
 # ============================================================
@@ -12,15 +10,18 @@ COPY gradlew .
 COPY gradle gradle
 COPY build.gradle .
 COPY settings.gradle .
+COPY gradle.properties* .
 
-# Ensure wrapper is executable and pre-fetch dependencies (cache layer)
-RUN chmod +x ./gradlew && ./gradlew build -x test --no-daemon 2>/dev/null || true
+# Ensure wrapper is executable and pre-fetch dependencies using BuildKit persistent cache
+RUN --mount=type=cache,target=/root/.gradle \
+    chmod +x ./gradlew && ./gradlew dependencies --no-daemon || true
 
 # Now copy the actual source code
 COPY src src
 
-# Build the final fat JAR
-RUN ./gradlew bootJar -x test --no-daemon
+# Build the final fat JAR with BuildKit cache and Gradle build cache
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew bootJar -x test --no-daemon --build-cache
 
 # ============================================================
 # 2. RUNTIME STAGE
@@ -47,4 +48,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget --quiet --tries=1 --spider http://127.0.0.1:8080/actuator/health || exit 1
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:+UseSerialGC", "-XX:TieredStopAtLevel=1", "-Xmx512m", "-jar", "app.jar"]

@@ -71,9 +71,8 @@ tasks.named('test') {
         '-Djdk.attach.allowAttachSelf=true',
         '-XX:+UseSerialGC',
         '-XX:TieredStopAtLevel=1'
-    )// FIX: Prevent Gradle from eating all your RAM and crashing the JVM
+    )
     maxParallelForks = 1
-    forkEvery = 0
-    maxHeapSize = "384m"
-    maxHeapSize = "192m"
+    forkEvery = 20
+    maxHeapSize = "1024m"
 }

@@ -14,9 +14,12 @@ public class TransactionAccountResolver {
     private final TransferPolicy transferPolicy;
 
     public Account resolveAndAuthorizeSource(String accountNumber) {
+        // Fast-path VAM authorization: reject unauthorized source accounts before DB lookup
+        transferPolicy.validateApiKeyVamBinding(accountNumber);
+
         Account account = accountPersistencePort.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new NotFoundException("Transfer failed: Source account '" + accountNumber + "' does not exist."));
-        // Unavoidable VAM source check
+        // Unavoidable VAM source check (e.g. root account restriction for unrestricted keys)
         transferPolicy.validateApiKeyVamBinding(account);
         return account;
     }

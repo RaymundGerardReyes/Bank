@@ -15,6 +15,21 @@ import java.util.List;
 public class TransferPolicy {
 
     // VULN 5: Null means "Root Account Only"
+    public void validateApiKeyVamBinding(String requestedSourceAccountNumber) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (auth instanceof ApiKeyAuthenticationToken) {
+            String restrictedVamAccountId = ((ApiKeyAuthenticationToken) auth).getLinkedAccountId();
+            
+            if (restrictedVamAccountId != null && !restrictedVamAccountId.trim().isEmpty()) {
+                if (!restrictedVamAccountId.equals(requestedSourceAccountNumber)) {
+                    throw new BusinessException(ErrorCode.FORBIDDEN, 
+                        "API Key Policy: This key is strictly bound to VAM Sub-Account [" + restrictedVamAccountId + "].");
+                }
+            }
+        }
+    }
+
     public void validateApiKeyVamBinding(Account requestedSourceAccount) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         

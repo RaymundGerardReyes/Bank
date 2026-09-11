@@ -13,41 +13,41 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleValidationErrors(MethodArgumentNotValidException ex) {
+        String correlationId = org.slf4j.MDC.get(com.company.banking.web.filter.CorrelationIdFilter.MDC_KEY);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("status", 400, "message", "Missing or invalid required fields"));
+                .body(ApiResponse.error(400, "Missing or invalid required fields", "ERR_400_VALIDATION", correlationId));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<Map<String, Object>> handleTypeConfusion(HttpMessageNotReadableException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleTypeConfusion(HttpMessageNotReadableException ex) {
+        String correlationId = org.slf4j.MDC.get(com.company.banking.web.filter.CorrelationIdFilter.MDC_KEY);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("status", 400, "message", "Malformed JSON payload or type mismatch"));
+                .body(ApiResponse.error(400, "Malformed JSON payload or type mismatch", "ERR_400_MALFORMED", correlationId));
     }
 
     @ExceptionHandler(org.springframework.web.servlet.NoHandlerFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNoHandlerFoundException(org.springframework.web.servlet.NoHandlerFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error("Route not found", "ERR_404", null));
+                .body(ApiResponse.error(404, "Route not found", "ERR_404", null));
     }
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException ex) {
-        HttpStatus status = switch (ex.getErrorCode()) {
-            case NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case RESOURCE_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case FORBIDDEN -> HttpStatus.FORBIDDEN;
-            case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
-            case CONFLICT -> HttpStatus.CONFLICT;
-            default -> HttpStatus.BAD_REQUEST;
-        };
-        
-        String mappedErrorCode = ex.getErrorCode().name();
-        if (ex.getErrorCode() == ErrorCode.NOT_FOUND || ex.getErrorCode() == ErrorCode.RESOURCE_NOT_FOUND) mappedErrorCode = "ERR_404";
-        if (ex.getErrorCode() == ErrorCode.CONFLICT || ex.getErrorCode() == ErrorCode.DUPLICATE_TRANSACTION) mappedErrorCode = "ERR_409";
+        HttpStatus status = (ex.getErrorCode() != null && ex.getErrorCode().getHttpStatus() != null)
+                ? ex.getErrorCode().getHttpStatus()
+                : HttpStatus.BAD_REQUEST;
+
+        String mappedErrorCode = ex.getErrorCode() != null ? ex.getErrorCode().name() : "ERROR";
+        if (ex.getErrorCode() == ErrorCode.NOT_FOUND || ex.getErrorCode() == ErrorCode.RESOURCE_NOT_FOUND) {
+            mappedErrorCode = "ERR_404";
+        } else if (ex.getErrorCode() == ErrorCode.CONFLICT || ex.getErrorCode() == ErrorCode.DUPLICATE_TRANSACTION) {
+            mappedErrorCode = "ERR_409";
+        }
         
         String correlationId = org.slf4j.MDC.get(com.company.banking.web.filter.CorrelationIdFilter.MDC_KEY);
         return ResponseEntity.status(status)
-                .body(ApiResponse.error(ex.getMessage(), mappedErrorCode, correlationId));
+                .body(ApiResponse.error(status.value(), ex.getMessage(), mappedErrorCode, correlationId));
     }
 
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
@@ -55,5 +55,21 @@ public class GlobalExceptionHandler {
         String correlationId = org.slf4j.MDC.get(com.company.banking.web.filter.CorrelationIdFilter.MDC_KEY);
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.error(ex.getMessage() != null ? ex.getMessage() : "Access denied", "FORBIDDEN", correlationId));
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolationException(org.springframework.dao.DataIntegrityViolationException ex) {
+        String correlationId = org.slf4j.MDC.get(com.company.banking.web.filter.CorrelationIdFilter.MDC_KEY);
+        String message = "A database constraint violation occurred (resource already exists).";
+        String rootMsg = ex.getRootCause() != null ? ex.getRootCause().getMessage() : ex.getMessage();
+        if (rootMsg != null) {
+            if (rootMsg.contains("merchants_merchant_code_key")) {
+                message = "The preferred routing code / merchant code is already in use. Please choose a different code or leave empty to auto-generate.";
+            } else if (rootMsg.contains("merchants_business_registration_number_key")) {
+                message = "The Business Registration Number is already registered.";
+            }
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message, "ERR_409", correlationId));
     }
 }

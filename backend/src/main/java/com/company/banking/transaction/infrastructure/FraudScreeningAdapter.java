@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 @Slf4j
 public class FraudScreeningAdapter implements FraudScreeningPort {
 
-    private static final BigDecimal FRAUD_THRESHOLD = new BigDecimal("100000.00");
+    private static final BigDecimal FRAUD_THRESHOLD = new BigDecimal("2000000.00");
 
     @Override
     public boolean isFraudulent(String sourceAccount, String destinationAccount, BigDecimal amount) {

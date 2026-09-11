@@ -1,28 +1,20 @@
-.git
+# Git & VCS
+.git/
 .gitignore
+.gitattributes
 
-.env
-.env.*
-!.env.example
+# Gradle Build & Cache Artifacts
+.gradle/
+build/
+bin/
+out/
 
-.gradle
-build
-bin
-out
-
-.idea
-.vscode
+# IDE & Editor Configs
+.idea/
+.vscode/
+*.ipr
+*.iws
 *.iml
 
+# Logs
 *.log
-
-Dockerfile*
-docker-compose*.yml
-compose*.yml
-
-README*
-docs/
-tests/
-
-.DS_Store
-Thumbs.db
