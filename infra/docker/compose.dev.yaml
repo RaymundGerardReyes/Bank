@@ -4,38 +4,68 @@ services:
     ports:
       - "${NGINX_HTTP_PORT:-80}:80"
 
+  # ==========================================================
+  # BACKEND (Java Spring Boot) — DEV FAST MODE
+  # -------------------------------------------------------
+  # Uses Dockerfile.dev which is a ~10s pure JRE runtime image.
+  # The fat JAR is pre-built on the HOST via Gradle (much faster
+  # on Windows NTFS than inside a Docker overlay2 layer) and
+  # injected at container startup via a read-only volume mount.
+  #
+  # Workflow:
+  #   1) First time or after source changes: run `npm run dev:jar`
+  #      (runs: cd backend && ./gradlew bootJar -x test)
+  #   2) Then: npm run docker:up:dev
+  #
+  # This cuts backend Docker build time from 10+ min to ~10 seconds.
+  # ==========================================================
   backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile.dev
     environment:
       APP_ENV: development
       SPRING_PROFILES_ACTIVE: dev
+      JAVA_OPTS: >-
+        -XX:+UseSerialGC
+        -XX:TieredStopAtLevel=1
+        -Xmx512m
+        -XX:MaxMetaspaceSize=256m
+        -Djdk.attach.allowAttachSelf=true
+    volumes:
+      # Mount the pre-built host JAR directory (read-only) into the container
+      # Build the JAR first with: npm run dev:jar
+      - ../../backend/build/libs:/app/libs:ro
     # Publish the backend port to the Windows host so the native Next.js dev server can reach it.
     # As per PORT_REGISTRY.md: host 8086 -> container 8080
     ports:
       - "127.0.0.1:${PORT:-8086}:8080"
-    # Locally, we can bind-mount the src directory if using hot-reload tools like Devtools
-    volumes:
-      - ../../backend/src:/app/src
 
   # ==========================================================
-  # FRONTEND (Next.js)
+  # FRONTEND (Next.js) — DEV HOT-RELOAD MODE
   # ==========================================================
   web-app:
     environment:
       NODE_ENV: development
-      # Explicitly force the port so it never tries to read an encrypted string
       PORT: 3000
-      # Marker so env.ts knows NOT to rewrite backend:8080 to 127.0.0.1
-      # (inside Docker, 'backend' resolves via Docker's internal DNS)
       RUNTIME_ENV: docker
-    # Bypass the missing dotenvx container dependency and run Next.js natively
-    command: sh -c "node scripts/clean.mjs && npx next dev -p 3000 -H 0.0.0.0"
+    # Run Next.js dev server directly without cleaning first —
+    # the volume-excluded /app/.next means there's nothing to clean inside the container.
+    command: sh -c "npx next dev -p 3000 -H 0.0.0.0"
     volumes:
       # Mount the entire web-app directory for hot-reloading
       - ../../web-app:/app
-      # Exclude node_modules to avoid cross-OS compilation issues
+      # Exclude node_modules to avoid cross-OS compilation issues (Linux vs Windows)
       - /app/node_modules
       # Exclude .next directory to avoid Windows vs Linux permission conflicts in Turbopack
       - /app/.next
+    # Override the production healthcheck: dev cold compilation takes up to 120s
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --quiet --tries=1 -O /dev/null http://127.0.0.1:3000/api/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 120s
     ports:
       - "127.0.0.1:${WEB_APP_DEBUG_PORT:-3001}:3000"
 
@@ -45,4 +75,3 @@ services:
   cloudflared:
     profiles:
       - tunnel
-

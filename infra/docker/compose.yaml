@@ -23,7 +23,7 @@ services:
       backend:
         condition: service_healthy
       web-app:
-        condition: service_started
+        condition: service_healthy
     networks:
       frontend-net:
         aliases:
@@ -86,6 +86,7 @@ services:
       PASSKEY_RP_ID: ${PASSKEY_RP_ID}
       PASSKEY_RP_NAME: ${PASSKEY_RP_NAME}
       PASSKEY_RP_ORIGIN: ${PASSKEY_RP_ORIGIN}
+      INTERNAL_BFF_API_KEY: ${INTERNAL_BFF_API_KEY}
     depends_on:
       database:
         condition: service_healthy
@@ -120,6 +121,8 @@ services:
       BACKEND_API_BASE_URL: ${BACKEND_API_BASE_URL}
       BACKEND_INTERNAL_URL: http://backend:8080
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      NEXT_PUBLIC_PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-localhost}
+      NEXT_PUBLIC_WEBAUTHN_RP_ID: ${NEXT_PUBLIC_WEBAUTHN_RP_ID:-localhost}
       OPENAPI_SPEC_URL: ${OPENAPI_SPEC_URL}
       SESSION_SECRET: ${SESSION_SECRET}
       ENABLE_PASSKEY_AUTH: ${ENABLE_PASSKEY_AUTH}
@@ -129,8 +132,8 @@ services:
       test: [ "CMD-SHELL", "wget --quiet --tries=1 -O /dev/null http://127.0.0.1:3000/api/health || exit 1" ]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 20s
+      retries: 10
+      start_period: 60s
     networks:
       - frontend-net
       - api-net
