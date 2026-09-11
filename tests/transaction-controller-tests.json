@@ -68,8 +68,12 @@
               "    ",
               "    // Automatically set the source account to the logged-in user's first account",
               "    pm.environment.set('sourceAccountNumber', accounts[0].accountNumber);",
+              "    // Automatically set the source account to the logged-in user's funded account",
+              "    let fundedAcc = accounts.find(a => (a.balance && parseFloat(a.balance) >= 500)) || accounts[0];",
+              "    pm.environment.set('sourceAccountNumber', fundedAcc.accountNumber);",
               "    ",
               "    console.log('Successfully configured sourceAccountNumber!');",
+              "    console.log('Successfully configured sourceAccountNumber: ' + fundedAcc.accountNumber);",
               "});"
             ],
             "type": "text/javascript"
@@ -82,6 +86,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "url": {
@@ -136,6 +144,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "body": {
@@ -181,6 +193,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "body": {
@@ -235,6 +251,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "body": {
@@ -294,6 +314,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "body": {
@@ -340,6 +364,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "url": {

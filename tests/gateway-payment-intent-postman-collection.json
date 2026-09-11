@@ -1,0 +1,302 @@
+{
+  "info": {
+    "name": "NovaBank - Gateway Payment Intents Testing Suite",
+    "_postman_id": "novabank-gateway-payment-intents-suite-v1",
+    "description": "Comprehensive Postman test collection for the NovaBank External Gateway Payment Intents endpoint (/api/v1/gateway/payments/intents). Verifies deterministic sandbox keys, live keys, idempotency safety, and dynamic key auto-adoption.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "gatewayApiKey",
+      "value": "sk_test_2026_university_erp_sandbox_key",
+      "type": "string"
+    },
+    {
+      "key": "liveApiKey",
+      "value": "sk_live_2026_university_erp_production_key",
+      "type": "string"
+    },
+    {
+      "key": "sourceAccountId",
+      "value": "4859220013371001",
+      "type": "string"
+    },
+    {
+      "key": "internalBffKey",
+      "value": "WQhQECsf4nIhiZ3H+CQRIaOIOnxbgBmbA9sRHpaKlaM=",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Service Health Check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Service is UP (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "    const jsonData = pm.response.json();",
+              "    if (jsonData.openapi) {",
+              "        pm.expect(jsonData.openapi).to.be.a('string');",
+              "    } else if (jsonData.status) {",
+              "        pm.expect(jsonData.status).to.be.oneOf(['UP', 200]);",
+              "    }",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/v3/api-docs/developer-gateway",
+          "host": ["{{baseUrl}}"],
+          "path": ["v3", "api-docs", "developer-gateway"]
+        }
+      }
+    },
+    {
+      "name": "02 - Create Payment Intent (Sandbox Key)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const randomId = 'idem_sandbox_' + Date.now() + '_' + Math.floor(Math.random() * 1000);",
+              "pm.environment.set('idempotencyKey', randomId);",
+              "if (!pm.environment.get('gatewayApiKey')) {",
+              "    pm.environment.set('gatewayApiKey', 'sk_test_2026_university_erp_sandbox_key');",
+              "}",
+              "if (!pm.environment.get('sourceAccountId')) {",
+              "    pm.environment.set('sourceAccountId', '4859220013371001');",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Payment Intent Created Successfully (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.status).to.eql(200);",
+              "    pm.expect(jsonData.data).to.be.an('object');",
+              "    pm.expect(jsonData.data.paymentIntentId).to.be.a('string');",
+              "    pm.environment.set('lastPaymentIntentId', jsonData.data.paymentIntentId);",
+              "    console.log('Created Payment Intent: ' + jsonData.data.paymentIntentId);",
+              "});",
+              "",
+              "pm.test('Response contains checkout details', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.checkoutUrl).to.be.a('string');",
+              "    if (jsonData.data.provider) {",
+              "        pm.expect(jsonData.data.provider).to.be.a('string');",
+              "    }",
+              "    if (jsonData.data.paymentIntentId) {",
+              "        pm.expect(jsonData.data.paymentIntentId).to.be.a('string');",
+              "    }",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{gatewayApiKey}}"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{idempotencyKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sourceAccountId\": \"{{sourceAccountId}}\",\n  \"merchantReference\": \"ORDER-SBX-{{$timestamp}}\",\n  \"amount\": 500.00,\n  \"currency\": \"PHP\",\n  \"description\": \"University ERP Tuition Payment (Sandbox)\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/gateway/payments/intents",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "gateway", "payments", "intents"]
+        }
+      }
+    },
+    {
+      "name": "03 - Create Payment Intent (Idempotency Replay Check)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Idempotent Replay Returns Same Intent (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.paymentIntentId).to.eql(pm.environment.get('lastPaymentIntentId'));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{gatewayApiKey}}"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{idempotencyKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sourceAccountId\": \"{{sourceAccountId}}\",\n  \"merchantReference\": \"ORDER-SBX-{{$timestamp}}\",\n  \"amount\": 500.00,\n  \"currency\": \"PHP\",\n  \"description\": \"University ERP Tuition Payment (Sandbox)\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/gateway/payments/intents",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "gateway", "payments", "intents"]
+        }
+      }
+    },
+    {
+      "name": "04 - Create Payment Intent (Live Key)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.environment.set('liveIdempotencyKey', 'idem_live_' + Date.now() + '_' + Math.floor(Math.random() * 1000));",
+              "if (!pm.environment.get('liveApiKey')) {",
+              "    pm.environment.set('liveApiKey', 'sk_live_2026_university_erp_production_key');",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Live Payment Intent Created Successfully (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.status).to.eql(200);",
+              "    pm.expect(jsonData.data).to.be.an('object');",
+              "    pm.expect(jsonData.data.paymentIntentId).to.be.a('string');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{liveApiKey}}"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{liveIdempotencyKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sourceAccountId\": \"{{sourceAccountId}}\",\n  \"merchantReference\": \"ORDER-LIVE-{{$timestamp}}\",\n  \"amount\": 1500.00,\n  \"currency\": \"PHP\",\n  \"description\": \"University ERP Live Production Payment\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/gateway/payments/intents",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "gateway", "payments", "intents"]
+        }
+      }
+    },
+    {
+      "name": "05 - Create Payment Intent (Custom or Client-Supplied Key)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.environment.set('adoptIdempotencyKey', 'idem_adopt_' + Date.now() + '_' + Math.floor(Math.random() * 1000));",
+              "const activeToken = pm.environment.get('customApiKey') || pm.environment.get('gatewayApiKey') || 'sk_test_2026_university_erp_sandbox_key';",
+              "pm.environment.set('effectiveToken', activeToken);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Authenticated & Accepted (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.status).to.eql(200);",
+              "    pm.expect(jsonData.data.paymentIntentId).to.be.a('string');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{effectiveToken}}"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{adoptIdempotencyKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sourceAccountId\": \"{{sourceAccountId}}\",\n  \"merchantReference\": \"ORDER-CLIENT-{{$timestamp}}\",\n  \"amount\": 250.00,\n  \"currency\": \"PHP\",\n  \"description\": \"Client Gateway Integration Verification\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/gateway/payments/intents",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "gateway", "payments", "intents"]
+        }
+      }
+    }
+  ]
+}
+

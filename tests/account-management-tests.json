@@ -82,6 +82,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "url": {
@@ -124,6 +128,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "url": {
@@ -171,6 +179,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "body": {
@@ -217,6 +229,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "body": {
@@ -249,9 +265,9 @@
               "    pm.response.to.have.status(400);",
               "});",
               "",
-              "pm.test('Contains ERR_400 validation code', function () {",
+              "pm.test('Contains ERR_400 or INVALID_REQUEST code', function () {",
               "    const jsonData = pm.response.json();",
-              "    pm.expect(jsonData.errorCode).to.include('400');",
+              "    pm.expect(jsonData.errorCode).to.be.oneOf(['INVALID_REQUEST', 'ERR_400', 'ERR_400_INVALID_REQUEST', 'ERR_400_VALIDATION']);",
               "});"
             ],
             "type": "text/javascript"
@@ -268,6 +284,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "body": {

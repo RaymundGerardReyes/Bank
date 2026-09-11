@@ -69,6 +69,16 @@
               "    // Automatically set the source account to the logged-in user's first account",
               "    if (accounts.length > 0 && !pm.environment.get('sourceAccountNumber')) {",
               "        pm.environment.set('sourceAccountNumber', accounts[0].accountNumber);",
+              "    // Find a funded PHP account pair for PHP transaction intent",
+              "    let phpAcc = accounts.find(a => a.currency === 'PHP' && a.balance && parseFloat(a.balance) >= 1500);",
+              "    if (phpAcc) {",
+              "        pm.environment.set('sourceAccountNumber', phpAcc.accountNumber);",
+              "        let destAcc = accounts.find(a => a.accountNumber !== phpAcc.accountNumber && a.currency === 'PHP');",
+              "        pm.environment.set('destinationAccountNumber', destAcc ? destAcc.accountNumber : '4859220013372002');",
+              "    } else {",
+              "        let firstAcc = accounts[0];",
+              "        pm.environment.set('sourceAccountNumber', firstAcc ? firstAcc.accountNumber : '4859220013372001');",
+              "        pm.environment.set('destinationAccountNumber', '4859220013372002');",
               "    }",
               "    ",
               "    // Set destination account dynamically from second account if available, or fallback to environment",
@@ -89,6 +99,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "url": {
@@ -145,6 +159,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "body": {
@@ -195,6 +213,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "body": {
@@ -239,6 +261,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "url": {
@@ -259,15 +285,14 @@
       }
     },
     {
-      "name": "05 - Execute Intent",
+      "name": "04.5 - Approve Push Authorization",
       "event": [
         {
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Execution Validated', function () {",
-              "    // Pure API tests without out-of-band approval will return 403 Forbidden per P03 tests",
-              "    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
+              "pm.test('Push Authorization Approved (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
               "});"
             ],
             "type": "text/javascript"
@@ -280,6 +305,55 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/transactions/intents/{{intentId}}/authorization/approve",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "transactions",
+            "intents",
+            "{{intentId}}",
+            "authorization",
+            "approve"
+          ]
+        }
+      }
+    },
+    {
+      "name": "05 - Execute Intent",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Execution Validated', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 403]);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "url": {
@@ -337,6 +411,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "url": {
@@ -393,6 +471,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "url": {

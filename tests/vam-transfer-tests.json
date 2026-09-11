@@ -67,15 +67,18 @@
               "    pm.expect(accounts).to.be.an('array').that.is.not.empty;",
               "    ",
               "    // Automatically set the source account to the logged-in user's first account",
-              "    if (accounts.length > 0 && !pm.environment.get('sourceAccountNumber')) {",
+              "    if (accounts.length > 0) {",
               "        pm.environment.set('sourceAccountNumber', accounts[0].accountNumber);",
               "    }",
               "    ",
               "    // Set destination account dynamically from second account if available, or fallback to environment",
-              "    if (accounts.length > 1 && !pm.environment.get('destinationAccountNumber')) {",
+              "    if (accounts.length > 1) {",
               "        pm.environment.set('destinationAccountNumber', accounts[1].accountNumber);",
+              "    } else {",
+              "        pm.environment.set('destinationAccountNumber', '4859220013371002');",
               "    }",
               "    ",
+              "    pm.environment.set('invalidSourceAccountNumber', '4859220013379999');",
               "    console.log('Successfully configured account variables dynamically from environment payload!');",
               "});"
             ],
@@ -89,6 +92,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "url": {
@@ -134,6 +141,10 @@
           {
             "key": "Authorization",
             "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
           }
         ],
         "body": {
