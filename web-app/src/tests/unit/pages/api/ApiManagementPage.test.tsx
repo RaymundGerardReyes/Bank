@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import OnboardingPage from '@/app/(portals)/(dashboard)/api/onboard/page';
+import { MerchantOnboardingForm as OnboardingPage } from '@/components/features/api/ApiKeyManager';
 import { merchantService } from '@/services/gateway/merchantService';
 import { useRouter } from 'next/navigation';
 import { vi } from 'vitest';

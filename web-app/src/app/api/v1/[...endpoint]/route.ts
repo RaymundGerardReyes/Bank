@@ -30,11 +30,23 @@ function buildForwardHeaders(request: NextRequest): Headers {
   copyHeader(request.headers, headers, "idempotency-key");
   copyHeader(request.headers, headers, "authorization");
   copyHeader(request.headers, headers, "x-api-key");
+  copyHeader(request.headers, headers, "x-client-id");
+  copyHeader(request.headers, headers, "x-linked-account");
+  copyHeader(request.headers, headers, "x-target-account");
   copyHeader(request.headers, headers, "x-real-ip");
   copyHeader(request.headers, headers, "x-forwarded-for");
   copyHeader(request.headers, headers, "x-forwarded-proto");
   copyHeader(request.headers, headers, "cf-connecting-ip");
   copyHeader(request.headers, headers, "cf-ray");
+
+  const sessionToken = request.cookies.get("bank_session")?.value;
+  if (!headers.has("authorization") && sessionToken) {
+    headers.set("authorization", `Bearer ${sessionToken}`);
+  }
+
+  if (env.internalBffApiKey) {
+    headers.set("X-Internal-BFF-Key", env.internalBffApiKey);
+  }
 
   headers.set("x-request-id", request.headers.get("x-request-id") ?? crypto.randomUUID());
 

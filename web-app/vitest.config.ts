@@ -8,12 +8,7 @@ export default defineConfig({
     setupFiles: ['./src/tests/setup.ts'],
     include: ['src/tests/**/*.{test,spec}.{ts,tsx}', 'tests/unit/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**'],
-    pool: 'forks',
-    poolOptions: {
-      forks: {
-        maxForks: 2,
-      },
-    },
+    pool: 'vmThreads',
     env: {
       BACKEND_API_BASE_URL: 'http://localhost:8080/api/v1',
       NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
@@ -21,6 +16,11 @@ export default defineConfig({
       INTERNAL_BFF_API_KEY: 'test-bff-key',
       NEXT_PUBLIC_WEBAUTHN_RP_ID: 'localhost',
       OPENAPI_SPEC_URL: 'http://localhost:8080/v3/api-docs'
+    },
+    server: {
+      deps: {
+        inline: ['@swc/helpers']
+      }
     }
   },
   resolve: {

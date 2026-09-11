@@ -132,7 +132,7 @@ export const WebhookManager: React.FC = () => {
               </p>
             </div>
             <Link
-              href="/api/onboard"
+              href="/api"
               className="mt-2 px-8 py-4 bg-accent hover:bg-accent/90 text-white font-extrabold rounded-xl transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-accent/20 focus:ring-2 focus:ring-sky-500 focus:outline-none min-h-[48px]"
             >
               <Zap className="w-5 h-5 text-sky-400" />
@@ -283,10 +283,10 @@ export const WebhookManager: React.FC = () => {
                       </span>
                     </div>
                     <div className="font-mono text-xs font-bold text-accent/60 mb-3">
-                      Events: {endpoint.events.split(",").join(", ")}
+                      Events: {endpoint.events ? (typeof endpoint.events === "string" ? endpoint.events.split(",").join(", ") : Array.isArray(endpoint.events) ? (endpoint.events as any).join(", ") : String(endpoint.events)) : "All events"}
                     </div>
                     <div className="flex gap-6 text-xs font-bold text-accent/50">
-                      <span>Created: {new Date(endpoint.createdAt).toLocaleDateString()}</span>
+                      <span>Created: {endpoint.createdAt ? new Date(endpoint.createdAt).toLocaleDateString() : "Just now"}</span>
                     </div>
                   </div>
                   <div className="flex md:flex-col gap-2 justify-end">

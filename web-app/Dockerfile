@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # ============================================================
 # 1. DEPENDENCIES STAGE
 # ============================================================
@@ -9,13 +7,13 @@ WORKDIR /src
 # Copy package management files first for optimal layer caching
 COPY package.json package-lock.json ./
 
-# CHANGED: Replaced strict 'npm ci' with 'npm install' to gracefully handle 
-# the picomatch and WebAssembly peer dependency tree resolutions.
-RUN npm install --legacy-peer-deps
+# Cache npm downloads using BuildKit cache mount
+RUN --mount=type=cache,target=/root/.npm \
+    npm install --legacy-peer-deps
 
-# FIX: Strip the invalid 'v' prefix from Upstash package versions that breaks Next.js Webpack resolution
-RUN sed -i 's/"version": "v/"version": "/g' node_modules/@upstash/ratelimit/package.json || true
-RUN sed -i 's/"version": "v/"version": "/g' node_modules/@upstash/core-analytics/package.json || true
+# Strip the invalid 'v' prefix from Upstash package versions if present
+RUN sed -i 's/"version": "v/"version": "/g' node_modules/@upstash/ratelimit/package.json 2>/dev/null || true
+RUN sed -i 's/"version": "v/"version": "/g' node_modules/@upstash/core-analytics/package.json 2>/dev/null || true
 
 # ============================================================
 # 2. BUILD STAGE
@@ -41,7 +39,9 @@ ENV NEXT_PUBLIC_WEBAUTHN_RP_ID=$NEXT_PUBLIC_WEBAUTHN_RP_ID
 # Skip strict Zod validation during the standalone build since secrets are injected at runtime
 ENV SKIP_ENV_VALIDATION=1
 
-RUN node scripts/clean.mjs && npx next build && mkdir -p /src/public
+# Use BuildKit cache for Next.js build cache (.next/cache)
+RUN --mount=type=cache,target=/src/.next/cache \
+    node scripts/clean.mjs && npx next build && mkdir -p /src/public
 
 # ============================================================
 # 3. RUNTIME STAGE
@@ -54,7 +54,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # Create a non-root user specifically for running the web application
 RUN addgroup --system --gid 1001 nodejs && \
-  adduser --system --uid 1001 nextjs
+    adduser --system --uid 1001 nextjs
 
 # Copy over only the necessary artifacts from the build stage
 COPY --from=builder /src/public ./public
@@ -62,6 +62,7 @@ COPY --from=builder --chown=nextjs:nodejs /src/.next ./.next
 COPY --from=builder /src/node_modules ./node_modules
 COPY --from=builder /src/package.json ./package.json
 COPY --from=builder /src/next.config.ts ./next.config.ts   
+
 # Switch to the secure non-root user
 USER nextjs
 

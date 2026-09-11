@@ -57,21 +57,39 @@ function buildForwardHeaders(request: NextRequest, targetUrl: string): Headers {
   const accept = request.headers.get("accept");
   if (accept) headers.set("accept", accept);
 
-  // ── Authentication — extracted from HTTP-only cookie, never from JS ───────
+  // ── Authentication — extracted from HTTP-only cookie, or fallback from client Authorization header ─
   const sessionToken = request.cookies.get("bank_session")?.value;
 
   if (sessionToken) {
     headers.set("authorization", `Bearer ${sessionToken}`);
   } else {
-    // Log at warn level — absence of session is expected on public routes
-    // but should be visible when debugging protected resource failures.
-    console.warn(
-      `[BFF] No bank_session cookie for ${request.method} ${targetUrl}`
-    );
+    const authHeader = request.headers.get("authorization");
+    if (authHeader) {
+      headers.set("authorization", authHeader);
+    } else {
+      console.warn(
+        `[BFF] No bank_session cookie or authorization header for ${request.method} ${targetUrl}`
+      );
+    }
   }
 
+  // ── API Gateway / Merchant Identity Headers ──────────────────────────────
+  const apiKey = request.headers.get("x-api-key");
+  if (apiKey) headers.set("x-api-key", apiKey);
+
+  const clientId = request.headers.get("x-client-id");
+  if (clientId) headers.set("x-client-id", clientId);
+
+  const linkedAccount = request.headers.get("x-linked-account");
+  if (linkedAccount) headers.set("x-linked-account", linkedAccount);
+
+  const targetAccount = request.headers.get("x-target-account");
+  if (targetAccount) headers.set("x-target-account", targetAccount);
+
   // ── BFF Identity — required by Spring Boot's BffIdentityFilter ───────────
-  headers.set("X-Internal-BFF-Key", env.internalBffApiKey);
+  if (env.internalBffApiKey) {
+    headers.set("X-Internal-BFF-Key", env.internalBffApiKey);
+  }
 
   // ── Distributed Tracing & Idempotency ────────────────────────────────────
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
@@ -91,6 +109,12 @@ function buildForwardHeaders(request: NextRequest, targetUrl: string): Headers {
 
   const realIp = request.headers.get("x-real-ip");
   if (realIp) headers.set("x-real-ip", realIp);
+
+  const cfConnectingIp = request.headers.get("cf-connecting-ip");
+  if (cfConnectingIp) headers.set("cf-connecting-ip", cfConnectingIp);
+
+  const cfRay = request.headers.get("cf-ray");
+  if (cfRay) headers.set("cf-ray", cfRay);
 
   return headers;
 }

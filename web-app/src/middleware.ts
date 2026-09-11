@@ -39,7 +39,6 @@ const PROTECTED_ROUTES = [
   "/refunds",
   "/balances",
   "/settlements",
-  "/api/onboard",
 ];
 
 // 2. Protect Internal Next.js Proxies from being abused externally

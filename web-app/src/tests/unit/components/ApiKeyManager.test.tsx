@@ -31,7 +31,6 @@ describe('ApiKeyManager Component', () => {
     // Wait for initial fetch and click the create button to reveal the form
     await waitFor(() => expect(screen.getByRole('button', { name: /\+ Create New Key/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /\+ Create New Key/i }));
-
     await waitFor(() => {
       expect(screen.getByText(/Account Scope/i)).toBeInTheDocument();
       expect(screen.getByText(/VAM-1001/)).toBeInTheDocument();
@@ -78,6 +77,70 @@ describe('ApiKeyManager Component', () => {
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith('/api/proxy/apikeys/123/rotate', { method: 'POST' });
       // Notice: No body is passed. The backend determines the boundary.
+    });
+  });
+
+  it('PT-01: Switching between Sandbox and Live updates environment constraints and policy labels', async () => {
+    render(<ApiKeyManager />);
+    
+    await waitFor(() => expect(screen.getByRole('button', { name: /\+ Create New Key/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /\+ Create New Key/i }));
+
+    // By default Sandbox is selected
+    expect(screen.getByText(/Sandbox Environment/i)).toBeInTheDocument();
+    expect(screen.getByText(/365-Day Rotation/i)).toBeInTheDocument();
+
+    // Switch to Live Production
+    const liveButton = screen.getByRole('button', { name: /Live Production/i });
+    fireEvent.click(liveButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Commercial Profile \(Required for Live\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/90-Day Rotation/i)).toBeInTheDocument();
+    });
+  });
+
+  it('PT-02: Verified merchant displays green verification badge and pre-fills verified profile', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url === '/api/proxy/apikeys/merchant-status') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            data: {
+              hasMerchantProfile: true,
+              verified: true,
+              eligibleForLive: true,
+              legalName: 'Acme Verified Corp',
+              merchantCode: 'M-ACME-VERIFIED',
+              businessRegistrationNumber: '000-123-456-000',
+              settlementAccountNumber: 'VAM-1001',
+              status: 'ACTIVE'
+            }
+          })
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ data: [] })
+      });
+    });
+
+    render(<ApiKeyManager />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Verified Merchant: Acme Verified Corp/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /\+ Create New Key/i }));
+
+    // Switch to Live
+    const liveButton = screen.getByRole('button', { name: /Live Production/i });
+    fireEvent.click(liveButton);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Verified Merchant/i).length).toBeGreaterThan(0);
+      expect(screen.getByDisplayValue('Acme Verified Corp')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('000-123-456-000')).toBeInTheDocument();
     });
   });
 });

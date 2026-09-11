@@ -14,8 +14,15 @@ export default function OtpPage() {
 
   const [loading, setLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   // Automatically trigger the OTP email when the page loads
   useEffect(() => {
@@ -49,6 +56,7 @@ export default function OtpPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to send code");
       setMessage("A new 6-digit code has been sent to your email.");
+      setCooldown(60);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -132,11 +140,15 @@ export default function OtpPage() {
 
           <button
             type="button"
-            onClick={() => email && triggerSendOtp(email)}
-            disabled={isSending || !email}
+            onClick={() => email && cooldown === 0 && triggerSendOtp(email)}
+            disabled={isSending || !email || cooldown > 0}
             className="mt-2 text-sm font-bold text-secondary hover:text-sky-500 transition-colors disabled:opacity-50 cursor-pointer"
           >
-            {isSending ? "Sending..." : "Didn't receive a code? Resend"}
+            {isSending
+              ? "Sending..."
+              : cooldown > 0
+              ? `Resend code in ${cooldown}s`
+              : "Didn't receive a code? Resend"}
           </button>
         </form>
       </Card>
