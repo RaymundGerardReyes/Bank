@@ -16,7 +16,7 @@ set -e
 #   scope|tag_prefix|commit_type|commit_description|path1,path2,...|optional_commit_body
 #
 # Example line:
-#   backend|backend|refactor|harden security filters, fix Lombok AST compilation, and enforce IDOR and API key limits|backend
+#   backend|backend|feat|implement dynamic API key auto-adoption, external transfers, and intent approvals|backend
 #
 # commit_type accepted: feat, feat!, fix, patch, refactor, perf,
 #                        chore, docs, test, major, breaking
