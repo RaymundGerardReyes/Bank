@@ -108,6 +108,8 @@ release_log_*.txt
 /*.js
 /*.sh
 !/isolated_release.sh
+/*.bat
+/*.ps1
 /package.json
 /package-lock.json
 /.port-audit.json

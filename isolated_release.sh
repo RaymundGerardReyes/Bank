@@ -16,7 +16,7 @@ set -e
 #   scope|tag_prefix|commit_type|commit_description|path1,path2,...|optional_commit_body
 #
 # Example line:
-#   backend|backend|feat|implement dynamic API key auto-adoption, external transfers, and intent approvals|backend
+#   backend|backend|refactor|harden gateway security filters, excise API key auto-adoption backdoor, and enforce account IDOR boundaries|backend
 #
 # commit_type accepted: feat, feat!, fix, patch, refactor, perf,
 #                        chore, docs, test, major, breaking
@@ -62,7 +62,12 @@ log "Mode: $([ "$DRY_RUN" = true ] && echo DRY-RUN || echo LIVE) | Auto-confirm:
 log "Config: $CONFIG_FILE"
 log "=============================================================="
 
-# Self-healing: Detect and safely repair 0-byte corrupted Git index before operations
+# Self-healing: Detect and safely repair lingering index locks or 0-byte corrupted Git index before operations
+if [ -f .git/index.lock ]; then
+  log "WARNING: Detected lingering .git/index.lock. Removing stale lock to allow clean git operations..."
+  rm -f .git/index.lock
+fi
+
 if [ -f .git/index ] && [ ! -s .git/index ]; then
   log "WARNING: Detected empty/corrupted 0-byte .git/index. Removing to allow clean self-healing reset..."
   rm -f .git/index
