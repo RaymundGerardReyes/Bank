@@ -11,14 +11,15 @@ export function maskAccountNumber(accountNumber: string): string {
   return `**** ${accountNumber.slice(-4)}`;
 }
 
-export function formatDate(dateString: string): string {
+export function formatDate(dateString: string, timeZone?: string): string {
   const date = new Date(dateString);
   if (isNaN(date.getTime())) return dateString;
   return new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
-    hour: "2-digit",
+    hour: "numeric",
     minute: "2-digit",
+    ...(timeZone ? { timeZone } : {}),
   }).format(date);
 }

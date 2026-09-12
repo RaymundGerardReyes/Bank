@@ -21,11 +21,15 @@ export default function AccountsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Calculate Total Liquidity for the Hero Section
-  const totalLiquidity = useMemo(() => {
+  // Currency-Segregated Portfolio Breakdown
+  const balancesByCurrency = useMemo(() => {
     return accounts
       .filter((acc) => !acc.accountNumber.startsWith("MERCHANT-SETTLEMENT-"))
-      .reduce((sum, account) => sum + (account.balance || 0), 0);
+      .reduce<Record<string, number>>((result, account) => {
+        const curr = account.currency || "PHP";
+        result[curr] = (result[curr] ?? 0) + Number(account.balance || 0);
+        return result;
+      }, {});
   }, [accounts]);
 
   // Enterprise VAM Grouping
@@ -56,11 +60,28 @@ export default function AccountsPage() {
 
         <div className="relative z-10">
           <span className="text-dominant/70 font-bold uppercase tracking-widest text-xs mb-2 block">
-            Total Net Liquidity
+            Liquidity by Currency
           </span>
-          <h2 className="text-4xl md:text-6xl font-black text-dominant tracking-tight">
-            <MaskedBalance amount={totalLiquidity} currency="₱" />
-          </h2>
+          <div className="flex flex-wrap items-baseline gap-6 md:gap-10 mt-2">
+            {Object.entries(balancesByCurrency).map(([currency, total]) => (
+              <div key={currency} className="flex flex-col">
+                <span className="text-[11px] font-bold text-dominant/60 uppercase tracking-widest mb-1">
+                  {currency}
+                </span>
+                <span className="text-3xl md:text-5xl font-black text-dominant tracking-tight">
+                  <MaskedBalance
+                    amount={total}
+                    currency={currency === "PHP" ? "₱" : currency === "USD" ? "$" : currency + " "}
+                  />
+                </span>
+              </div>
+            ))}
+            {Object.keys(balancesByCurrency).length === 0 && (
+              <h2 className="text-3xl md:text-5xl font-black text-dominant tracking-tight">
+                <MaskedBalance amount={0} currency="₱" />
+              </h2>
+            )}
+          </div>
           <div className="mt-4 flex items-center gap-2">
             <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />

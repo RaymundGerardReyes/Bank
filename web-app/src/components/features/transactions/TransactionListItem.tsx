@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowDownLeft, ArrowUpRight, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { TransactionHistoryRecord } from '@/models/TransactionTypes';
+import { formatDate } from '@/utils/formatters';
 
 interface TransactionListItemProps {
   transaction: TransactionHistoryRecord;
@@ -9,9 +10,10 @@ interface TransactionListItemProps {
 export const TransactionListItem: React.FC<TransactionListItemProps> = ({ transaction }) => {
   const isInbound = transaction.entryType === 'CREDIT';
   
-  const formattedDate = new Date(transaction.createdAt).toLocaleString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
-  });
+  const dateToDisplay = transaction.status === 'SCHEDULED' && transaction.scheduledExecutionAt
+    ? transaction.scheduledExecutionAt
+    : transaction.createdAt;
+  const formattedDate = formatDate(dateToDisplay);
 
   return (
     <div className="flex items-center justify-between p-4 bg-white border-b border-slate-100 hover:bg-slate-50 transition-colors duration-150 group first:rounded-t-2xl last:rounded-b-2xl last:border-b-0">
@@ -36,7 +38,7 @@ export const TransactionListItem: React.FC<TransactionListItemProps> = ({ transa
           </p>
           <div className="flex items-center gap-1 mt-1 text-xs text-slate-400">
             <Clock className="w-3 h-3" />
-            <span>{formattedDate}</span>
+            <span>{transaction.status === 'SCHEDULED' ? `Scheduled: ${formattedDate}` : formattedDate}</span>
           </div>
         </div>
       </div>

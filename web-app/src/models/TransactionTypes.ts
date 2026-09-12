@@ -44,5 +44,6 @@ export interface TransactionHistoryRecord {
   status: string;              // e.g., 'COMPLETED', 'PENDING', 'FAILED'
   entryType: 'CREDIT' | 'DEBIT'; // Maps to backend EntryType
   createdAt: string;
+  scheduledExecutionAt?: string;
   description: string;
 }

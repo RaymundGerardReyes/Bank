@@ -28,6 +28,14 @@ export default function PaymentResultFailed({
             <p className="text-gray-500 mb-6">{message}</p>
 
             <div className="flex flex-col gap-3">
+                {intent?.cancelUrl || intent?.returnUrl ? (
+                    <Button 
+                        onClick={() => { window.location.href = intent.cancelUrl || intent.returnUrl; }} 
+                        className="w-full bg-gray-900 hover:bg-black text-white"
+                    >
+                        Return to Application
+                    </Button>
+                ) : null}
                 <Button onClick={() => router.push('/transactions/external-payment')} className="w-full">
                     {isExpired ? 'Start New Payment' : 'Try Again'}
                 </Button>

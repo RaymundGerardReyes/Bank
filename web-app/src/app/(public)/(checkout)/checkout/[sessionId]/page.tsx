@@ -7,13 +7,27 @@ export const metadata: Metadata = {
   description: "Complete your secure payment via Nova Bank.",
 };
 
-export default async function CheckoutPage({ params }: { params: Promise<{ sessionId: string }> }) {
+export default async function CheckoutPage({ 
+  params, 
+  searchParams 
+}: { 
+  params: Promise<{ sessionId: string }>;
+  searchParams?: Promise<{ returnUrl?: string; redirectUrl?: string; cancelUrl?: string }>;
+}) {
   const resolvedParams = await params;
+  const resolvedSearch = await searchParams;
+  const clientReturnUrl = resolvedSearch?.returnUrl || resolvedSearch?.redirectUrl;
+  const clientCancelUrl = resolvedSearch?.cancelUrl;
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
       <div className="max-w-md w-full">
         {/* Render the client-side state machine orchestrator */}
-        <CheckoutOrchestrator sessionId={resolvedParams.sessionId} />
+        <CheckoutOrchestrator 
+          sessionId={resolvedParams.sessionId} 
+          clientReturnUrl={clientReturnUrl}
+          clientCancelUrl={clientCancelUrl}
+        />
       </div>
       
       <div className="mt-8 text-center text-xs text-gray-400 font-medium tracking-wide flex items-center justify-center gap-1">

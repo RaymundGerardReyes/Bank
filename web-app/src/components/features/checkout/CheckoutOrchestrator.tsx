@@ -14,7 +14,15 @@ import { InternalAccountAuthorization } from "./InternalAccountAuthorization";
 import { CheckoutConfirmation } from "./CheckoutConfirmation";
 import { TerminalStateScreen } from "./TerminalStateScreen";
 
-export const CheckoutOrchestrator = ({ sessionId }: { sessionId: string }) => {
+export const CheckoutOrchestrator = ({ 
+  sessionId,
+  clientReturnUrl,
+  clientCancelUrl,
+}: { 
+  sessionId: string;
+  clientReturnUrl?: string;
+  clientCancelUrl?: string;
+}) => {
   // Fetch authoritative state from the secure read model
   const { data: response, isLoading, error, refetch } = useQuery({
     queryKey: ["checkoutSession", sessionId],
@@ -34,6 +42,8 @@ export const CheckoutOrchestrator = ({ sessionId }: { sessionId: string }) => {
   }
 
   const session = response.data;
+  const effectiveReturnUrl = session.returnUrl || clientReturnUrl;
+  const effectiveCancelUrl = session.cancelUrl || clientCancelUrl;
 
   // The Header remains static and read-only, displaying server-derived totals
   const CheckoutHeader = () => (
@@ -52,6 +62,21 @@ export const CheckoutOrchestrator = ({ sessionId }: { sessionId: string }) => {
 
   // STATE MACHINE ROUTER: The UI strictly obeys the backend status
   const renderState = () => {
+    // If the backend has locked the session (or it's terminal), lock the UI immediately
+    if (session.locked && session.status !== "PAID" && session.status !== "PAYMENT_FAILED" && session.status !== "CANCELLED") {
+      return (
+        <TerminalStateScreen
+          type="EXPIRED"
+          message="This checkout session has expired and is locked."
+          reference={session.id}
+          returnUrl={effectiveReturnUrl}
+          cancelUrl={effectiveCancelUrl}
+          merchantName={session.merchantName}
+          locked={true}
+        />
+      );
+    }
+
     switch (session.status) {
       case "ACTIVE":
         return <PaymentMethodSelector sessionId={sessionId} onMethodSelected={refetch} availableMethods={session.paymentMethods || []} />;
@@ -60,13 +85,53 @@ export const CheckoutOrchestrator = ({ sessionId }: { sessionId: string }) => {
       case "AUTHORIZED":
         return <CheckoutConfirmation sessionId={sessionId} onConfirmed={refetch} />;
       case "PAID":
-        return <TerminalStateScreen type="SUCCESS" message="Payment successful" reference={session.id} />;
+        return (
+          <TerminalStateScreen
+            type="SUCCESS"
+            message="Payment completed successfully."
+            reference={session.id}
+            returnUrl={effectiveReturnUrl}
+            cancelUrl={effectiveCancelUrl}
+            merchantName={session.merchantName}
+            locked={session.locked ?? true}
+          />
+        );
       case "PAYMENT_FAILED":
-        return <TerminalStateScreen type="FAILED" message="Payment could not be completed. Please contact support." />;
+        return (
+          <TerminalStateScreen
+            type="FAILED"
+            message="Payment could not be completed. Please contact support."
+            reference={session.id}
+            returnUrl={effectiveReturnUrl}
+            cancelUrl={effectiveCancelUrl}
+            merchantName={session.merchantName}
+            locked={session.locked ?? true}
+          />
+        );
       case "EXPIRED":
-        return <TerminalStateScreen type="EXPIRED" message="This checkout session has expired." />;
+        return (
+          <TerminalStateScreen
+            type="EXPIRED"
+            message="This checkout session has expired."
+            reference={session.id}
+            returnUrl={effectiveReturnUrl}
+            cancelUrl={effectiveCancelUrl}
+            merchantName={session.merchantName}
+            locked={session.locked ?? true}
+          />
+        );
       case "CANCELLED":
-        return <TerminalStateScreen type="CANCELLED" message="This checkout session was cancelled by the merchant." />;
+        return (
+          <TerminalStateScreen
+            type="CANCELLED"
+            message="This checkout session was cancelled by the merchant."
+            reference={session.id}
+            returnUrl={effectiveReturnUrl}
+            cancelUrl={effectiveCancelUrl}
+            merchantName={session.merchantName}
+            locked={session.locked ?? true}
+          />
+        );
       default:
         return <ErrorBanner message={`Unknown session state encountered: ${session.status}`} />;
     }

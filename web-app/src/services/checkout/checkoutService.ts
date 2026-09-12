@@ -32,6 +32,20 @@ export interface PaymentSessionStatusResponse {
     status: string;
 }
 
+export interface PublicCheckoutSession {
+    id: string;
+    status: "ACTIVE" | "PAYMENT_PENDING" | "AUTHORIZED" | "PAID" | "PAYMENT_FAILED" | "EXPIRED" | "CANCELLED" | string;
+    merchantName?: string;
+    amount: number;
+    currency: string;
+    description?: string;
+    paymentMethods?: string[];
+    expiresAt?: string;
+    returnUrl?: string;
+    cancelUrl?: string;
+    locked?: boolean;
+}
+
 export const checkoutService = {
     /**
      * Validates the integrity, expiry, and state of a payment session on page load.
@@ -66,8 +80,8 @@ export const checkoutService = {
 
     // Retrieves the safe, sanitized public session data
     // Calls the Spring Boot API directly via Nginx gateway, bypassing Next.js BFF
-    async getSessionDetails(sessionId: string) {
-        return httpClient.get<ApiResponse<any>>(`/api/v1/checkout/sessions/${sessionId}`);
+    async getSessionDetails(sessionId: string): Promise<ApiResponse<PublicCheckoutSession>> {
+        return httpClient.get<ApiResponse<PublicCheckoutSession>>(`/api/v1/checkout/sessions/${sessionId}`);
     },
 
     // Advances state from ACTIVE -> PAYMENT_PENDING
