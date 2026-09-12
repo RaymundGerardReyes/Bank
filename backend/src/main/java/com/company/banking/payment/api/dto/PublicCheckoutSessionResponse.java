@@ -22,4 +22,7 @@ public class PublicCheckoutSessionResponse {
     private String description;      
     private List<String> paymentMethods; 
     private LocalDateTime expiresAt;
+    private String returnUrl;
+    private String cancelUrl;
+    private boolean locked;
 }

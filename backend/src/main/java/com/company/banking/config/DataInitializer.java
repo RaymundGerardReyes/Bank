@@ -395,6 +395,7 @@ public class DataInitializer implements CommandLineRunner {
                     com.company.banking.apigateway.infrastructure.ApiKeyJpaEntity.builder()
                     .keyPrefix(prefix)
                     .merchantId(merchant.getId())
+                    .customerId(merchant.getOwnerId())
                     .keyHash(keyHash)
                     .name(keyName)
                     .environment(env)

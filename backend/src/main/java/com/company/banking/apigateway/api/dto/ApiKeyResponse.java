@@ -16,6 +16,8 @@ import java.util.Set;
 public class ApiKeyResponse {
 
     private Long id;
+    private Long customerId;
+    private Long merchantId;
     private String name;
     private String environment;
     private String keyPrefix;

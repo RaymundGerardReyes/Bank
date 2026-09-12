@@ -25,6 +25,7 @@ public class CheckoutSessionRequest {
     private List<LineItemDto> lineItems;
 
     @NotBlank
+    @com.fasterxml.jackson.annotation.JsonAlias({"returnUrl", "redirectUrl"})
     private String successUrl;
 
     private String cancelUrl;

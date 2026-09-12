@@ -87,6 +87,8 @@ public class ApiKeyController {
                 .flatMap(merchantId -> apiKeyPersistencePort.findByMerchantId(merchantId).stream())
                 .map(key -> ApiKeyResponse.builder()
                         .id(key.getId())
+                        .customerId(key.getCustomerId())
+                        .merchantId(key.getMerchantId())
                         .name(key.getName())
                         .environment(key.getEnvironment())
                         .keyPrefix(key.getKeyPrefix())

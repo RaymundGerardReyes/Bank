@@ -60,7 +60,27 @@ public class ApiAuditLoggingFilter extends OncePerRequestFilter {
 
                 // Derive authenticationStatus from requestStage
                 if ("API_KEY_AUTHENTICATED".equals(requestStage)) {
-                    requestStage = status >= 500 ? "EXCEPTION" : "COMPLETED";
+                    if (status >= 500) {
+                        requestStage = "EXCEPTION";
+                        if (failureReason == null) failureReason = "INTERNAL_SERVER_ERROR";
+                    } else if (status == 403) {
+                        requestStage = "ACCOUNT_REJECTED";
+                        if (failureReason == null) failureReason = "ACCOUNT_NOT_AUTHORIZED";
+                    } else if (status == 401) {
+                        requestStage = "API_KEY_REJECTED";
+                        if (failureReason == null) failureReason = "UNAUTHORIZED";
+                    } else if (status >= 400) {
+                        requestStage = "CLIENT_ERROR";
+                        if (failureReason == null) failureReason = "BAD_REQUEST";
+                    } else {
+                        requestStage = "COMPLETED";
+                    }
+                } else if (status == 403 && failureReason == null) {
+                    requestStage = "ACCOUNT_REJECTED";
+                    failureReason = "ACCOUNT_NOT_AUTHORIZED";
+                } else if (status == 401 && failureReason == null) {
+                    requestStage = "API_KEY_REJECTED";
+                    failureReason = "UNAUTHORIZED";
                 }
                 
                 String authStatus = deriveAuthStatus(requestStage);
@@ -128,7 +148,7 @@ public class ApiAuditLoggingFilter extends OncePerRequestFilter {
     }
 
     private String deriveAuthzStatus(String stage) {
-        if ("IP_REJECTED".equals(stage) || "SCOPE_REJECTED".equals(stage)) return "FAILED";
+        if ("IP_REJECTED".equals(stage) || "SCOPE_REJECTED".equals(stage) || "ACCOUNT_REJECTED".equals(stage) || "FORBIDDEN".equals(stage)) return "FAILED";
         if ("BFF_REJECTED".equals(stage) || "API_KEY_REJECTED".equals(stage)) return "NOT_EVALUATED";
         return "PASSED";
     }

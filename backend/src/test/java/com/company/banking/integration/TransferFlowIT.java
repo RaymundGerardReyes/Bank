@@ -72,6 +72,49 @@ public class TransferFlowIT {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.createdAt").value(org.hamcrest.Matchers.matchesPattern("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$")));
+    }
+
+    @Test
+    @WithMockUser(username = "test@example.com")
+    public void testScheduledTransferFlowWithUtcInstant() throws Exception {
+        Account source = accountPersistencePort.save(Account.builder()
+                .accountNumber("SRC-SCHED-1")
+                .customerId(3L)
+                .balance(new BigDecimal("1000.00"))
+                .currency("PHP")
+                .status(AccountStatus.ACTIVE)
+                .allowIncoming(true)
+                .allowOutgoing(true)
+                .build());
+
+        Account dest = accountPersistencePort.save(Account.builder()
+                .accountNumber("DST-SCHED-2")
+                .customerId(4L)
+                .balance(new BigDecimal("500.00"))
+                .currency("PHP")
+                .status(AccountStatus.ACTIVE)
+                .allowIncoming(true)
+                .allowOutgoing(true)
+                .build());
+
+        InternalTransferRequest request = InternalTransferRequest.builder()
+                .sourceAccountNumber(source.getAccountNumber())
+                .destinationAccountNumber(dest.getAccountNumber())
+                .amount(new BigDecimal("150.00"))
+                .scheduledDate("2026-09-20T10:00:00Z")
+                .idempotencyKey(UUID.randomUUID().toString())
+                .description("Test scheduled transfer")
+                .build();
+
+        mockMvc.perform(post("/api/v1/transfers/internal")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("SCHEDULED"))
+                .andExpect(jsonPath("$.data.createdAt").value(org.hamcrest.Matchers.matchesPattern("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$")))
+                .andExpect(jsonPath("$.data.scheduledExecutionAt").value("2026-09-20T10:00:00Z"));
     }
 }

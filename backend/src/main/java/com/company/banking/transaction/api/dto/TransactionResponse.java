@@ -6,7 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Data
 @Builder
@@ -18,7 +20,8 @@ public class TransactionResponse {
     private String currency;
     private TransactionStatus status;
     private String description;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
+    private Instant scheduledExecutionAt;
     
     // Extra fields for UI History Mapping
     private String senderName;
@@ -34,7 +37,8 @@ public class TransactionResponse {
                 .currency(transaction.getCurrency())
                 .status(transaction.getStatus())
                 .description(transaction.getDescription())
-                .createdAt(transaction.getCreatedAt())
+                .createdAt(transaction.getCreatedAtInstant())
+                .scheduledExecutionAt(transaction.getScheduledExecutionAtInstant())
                 .build();
     }
 }

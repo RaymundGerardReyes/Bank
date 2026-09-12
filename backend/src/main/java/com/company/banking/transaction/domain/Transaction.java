@@ -67,11 +67,22 @@ public class Transaction {
     @Column(name = "settlement_batch_id")
     private Long settlementBatchId;
 
+    @Column(name = "scheduled_execution_at")
+    private LocalDateTime scheduledExecutionAt;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    public java.time.Instant getCreatedAtInstant() {
+        return this.createdAt != null ? this.createdAt.toInstant(java.time.ZoneOffset.UTC) : null;
+    }
+
+    public java.time.Instant getScheduledExecutionAtInstant() {
+        return this.scheduledExecutionAt != null ? this.scheduledExecutionAt.toInstant(java.time.ZoneOffset.UTC) : null;
     }
 }

@@ -18,4 +18,6 @@ public class PaymentSessionResponse {
     private String checkoutUrl;
     private LocalDateTime expiresAt;
     private String transactionReference;
+    private String returnUrl;
+    private String cancelUrl;
 }

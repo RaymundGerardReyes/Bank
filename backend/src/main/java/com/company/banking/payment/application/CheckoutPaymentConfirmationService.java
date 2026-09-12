@@ -41,6 +41,12 @@ public class CheckoutPaymentConfirmationService {
             return mapToResponse(session);
         }
 
+        if (LocalDateTime.now().isAfter(session.getExpiresAt())) {
+            session.setStatus(CheckoutSessionStatus.EXPIRED);
+            sessionRepository.save(session);
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Checkout session has expired");
+        }
+
         // 3. Verify Session Status
         transitionPolicy.validateTransition(session.getStatus(), CheckoutSessionStatus.PAID);
 

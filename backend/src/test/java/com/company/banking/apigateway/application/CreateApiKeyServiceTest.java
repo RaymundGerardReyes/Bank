@@ -94,6 +94,9 @@ class CreateApiKeyServiceTest {
         assertNotNull(response.getId());
         assertEquals(VALID_ACCOUNT_ID, savedKey.getLinkedAccountId());
         assertEquals(VALID_ACCOUNT_ID, response.getLinkedAccountId());
+        assertEquals(100L, savedKey.getCustomerId());
+        assertEquals(100L, response.getCustomerId());
+        assertEquals(VALID_MERCHANT_ID, response.getMerchantId());
     }
 
     @Test

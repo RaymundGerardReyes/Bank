@@ -119,4 +119,48 @@ public class CheckoutSessionIntegrityIT extends BaseIntegrationTest {
 
         assertTrue(sessionRepository.count() >= 1);
     }
+
+    @Test
+    public void getPublicSessionState_ShouldExposeReturnUrlAndLockedState() {
+        CheckoutSession active = sessionRepository.save(CheckoutSession.builder()
+                .sessionId("cs_" + java.util.UUID.randomUUID().toString().replace("-", ""))
+                .merchantId(100L)
+                .idempotencyKey("idem_active_" + java.util.UUID.randomUUID().toString().replace("-", ""))
+                .paymentIntentId("pi_" + java.util.UUID.randomUUID().toString().replace("-", ""))
+                .amount(new BigDecimal("250.00"))
+                .currency("PHP")
+                .status(com.company.banking.payment.domain.CheckoutSessionStatus.ACTIVE)
+                .successUrl("https://merchant.example.com/checkout/complete")
+                .cancelUrl("https://merchant.example.com/checkout/cancel")
+                .createdAt(java.time.LocalDateTime.now())
+                .expiresAt(java.time.LocalDateTime.now().plusHours(1))
+                .build());
+
+        com.company.banking.payment.api.dto.PublicCheckoutSessionResponse activeState = 
+                checkoutSessionService.getPublicSessionState(active.getSessionId());
+        assertFalse(activeState.isLocked());
+        assertEquals("ACTIVE", activeState.getStatus());
+        assertEquals("https://merchant.example.com/checkout/complete", activeState.getReturnUrl());
+        assertEquals("https://merchant.example.com/checkout/cancel", activeState.getCancelUrl());
+
+        // Verify PAID terminal session is locked
+        active.setStatus(com.company.banking.payment.domain.CheckoutSessionStatus.PAID);
+        sessionRepository.save(active);
+
+        com.company.banking.payment.api.dto.PublicCheckoutSessionResponse paidState = 
+                checkoutSessionService.getPublicSessionState(active.getSessionId());
+        assertTrue(paidState.isLocked());
+        assertEquals("PAID", paidState.getStatus());
+        assertEquals("https://merchant.example.com/checkout/complete", paidState.getReturnUrl());
+
+        // Verify time-expired session is locked
+        active.setStatus(com.company.banking.payment.domain.CheckoutSessionStatus.ACTIVE);
+        active.setExpiresAt(java.time.LocalDateTime.now().minusMinutes(10));
+        sessionRepository.save(active);
+
+        com.company.banking.payment.api.dto.PublicCheckoutSessionResponse expiredState = 
+                checkoutSessionService.getPublicSessionState(active.getSessionId());
+        assertTrue(expiredState.isLocked());
+        assertEquals("EXPIRED", expiredState.getStatus());
+    }
 }

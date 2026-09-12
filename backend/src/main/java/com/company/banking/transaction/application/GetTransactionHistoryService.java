@@ -56,7 +56,8 @@ public class GetTransactionHistoryService {
                 .currency(tx.getCurrency())
                 .status(tx.getStatus())
                 .entryType(isInbound ? "CREDIT" : "DEBIT") // Determines the UI color!
-                .createdAt(tx.getCreatedAt())
+                .createdAt(tx.getCreatedAtInstant())
+                .scheduledExecutionAt(tx.getScheduledExecutionAtInstant())
                 .description(tx.getDescription() != null ? tx.getDescription() : (isInbound ? "Incoming Transfer" : "Outgoing Transfer"))
                 .build();
     }

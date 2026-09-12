@@ -11,6 +11,7 @@ public class ApiKeyAuthenticationToken extends AbstractAuthenticationToken {
 
     private final String apiKey;
     private final Long merchantId;
+    private final Long customerId;
     private final String environment; // "LIVE", "SANDBOX", or "TEST"
     private final Long apiKeyId;
     private final String linkedAccountId;
@@ -20,7 +21,7 @@ public class ApiKeyAuthenticationToken extends AbstractAuthenticationToken {
     private final BigDecimal perTransactionLimit;
     private final BigDecimal dailyLimit;
 
-    public ApiKeyAuthenticationToken(String apiKey, Long merchantId, String environment, 
+    public ApiKeyAuthenticationToken(String apiKey, Long merchantId, Long customerId, String environment, 
                                      Long apiKeyId, String linkedAccountId, Set<String> scopes,
                                      String applicationId, String applicationName,
                                      BigDecimal perTransactionLimit, BigDecimal dailyLimit,
@@ -28,6 +29,7 @@ public class ApiKeyAuthenticationToken extends AbstractAuthenticationToken {
         super(authorities);
         this.apiKey = apiKey;
         this.merchantId = merchantId;
+        this.customerId = customerId;
         this.environment = environment;
         this.apiKeyId = apiKeyId;
         this.linkedAccountId = linkedAccountId;
@@ -39,11 +41,19 @@ public class ApiKeyAuthenticationToken extends AbstractAuthenticationToken {
         setAuthenticated(true);
     }
 
+    public ApiKeyAuthenticationToken(String apiKey, Long merchantId, String environment, 
+                                     Long apiKeyId, String linkedAccountId, Set<String> scopes,
+                                     String applicationId, String applicationName,
+                                     BigDecimal perTransactionLimit, BigDecimal dailyLimit,
+                                     Collection<? extends GrantedAuthority> authorities) {
+        this(apiKey, merchantId, null, environment, apiKeyId, linkedAccountId, scopes, applicationId, applicationName, perTransactionLimit, dailyLimit, authorities);
+    }
+
     // Backwards-compatible constructor for existing tests and components
     public ApiKeyAuthenticationToken(String apiKey, Long merchantId, String environment, 
                                      Long apiKeyId, String linkedAccountId, Set<String> scopes,
                                      Collection<? extends GrantedAuthority> authorities) {
-        this(apiKey, merchantId, environment, apiKeyId, linkedAccountId, scopes, null, null, null, null, authorities);
+        this(apiKey, merchantId, null, environment, apiKeyId, linkedAccountId, scopes, null, null, null, null, authorities);
     }
 
     // Unauthenticated constructor
@@ -51,6 +61,7 @@ public class ApiKeyAuthenticationToken extends AbstractAuthenticationToken {
         super(null);
         this.apiKey = apiKey;
         this.merchantId = null;
+        this.customerId = null;
         this.environment = null;
         this.apiKeyId = null;
         this.linkedAccountId = null;
@@ -64,6 +75,10 @@ public class ApiKeyAuthenticationToken extends AbstractAuthenticationToken {
 
     public Long getApiKeyId() {
         return apiKeyId;
+    }
+
+    public Long getCustomerId() {
+        return customerId;
     }
 
     public Set<String> getScopes() {

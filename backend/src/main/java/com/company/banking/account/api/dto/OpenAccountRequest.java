@@ -21,6 +21,7 @@ public class OpenAccountRequest {
     private String currency;
     
     private BigDecimal initialDeposit;
+    private Long merchantId;
 
     // --- NEW ENTERPRISE VAM FIELDS ---
     @NotBlank(message = "Account type/template is required")

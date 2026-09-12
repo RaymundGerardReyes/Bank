@@ -33,6 +33,30 @@ public class MoneyTest {
     }
 
     @Test
+    void add_Phase20_PhpAndUsdSameCurrency_ShouldSucceed() {
+        Money php1 = Money.of(new BigDecimal("100.00"), CurrencyCode.PHP);
+        Money php2 = Money.of(new BigDecimal("200.00"), CurrencyCode.PHP);
+        Money phpSum = php1.add(php2);
+        assertEquals(new BigDecimal("300.00"), phpSum.getAmount());
+        assertEquals(CurrencyCode.PHP, phpSum.getCurrency());
+
+        Money usd1 = Money.of(new BigDecimal("100.00"), CurrencyCode.USD);
+        Money usd2 = Money.of(new BigDecimal("200.00"), CurrencyCode.USD);
+        Money usdSum = usd1.add(usd2);
+        assertEquals(new BigDecimal("300.00"), usdSum.getAmount());
+        assertEquals(CurrencyCode.USD, usdSum.getCurrency());
+    }
+
+    @Test
+    void add_Phase20_CrossCurrencyPhpAndUsd_ShouldReject() {
+        Money php1 = Money.of(new BigDecimal("100.00"), CurrencyCode.PHP);
+        Money usd2 = Money.of(new BigDecimal("200.00"), CurrencyCode.USD);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> php1.add(usd2));
+        assertEquals(ErrorCode.CROSS_CURRENCY_NOT_SUPPORTED, ex.getErrorCode());
+    }
+
+    @Test
     void add_DifferentCurrency_ShouldThrowException() {
         Money m1 = Money.of(new BigDecimal("50.00"), CurrencyCode.USD);
         Money m2 = Money.of(new BigDecimal("25.50"), CurrencyCode.PHP);

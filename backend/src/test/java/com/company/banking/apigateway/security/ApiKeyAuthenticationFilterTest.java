@@ -119,8 +119,8 @@ class ApiKeyAuthenticationFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
-        // Stale key is not found in database
-        when(apiKeyPersistencePort.findByKeyHash(eq(CreateApiKeyService.hashKey(staleKey))))
+        // Stale key is not found in database (lenient as Authorization header takes RFC priority)
+        org.mockito.Mockito.lenient().when(apiKeyPersistencePort.findByKeyHash(eq(CreateApiKeyService.hashKey(staleKey))))
                 .thenReturn(Optional.empty());
         // Valid sandbox key is found in database
         when(apiKeyPersistencePort.findByKeyHash(eq(CreateApiKeyService.hashKey(validSandboxKey))))

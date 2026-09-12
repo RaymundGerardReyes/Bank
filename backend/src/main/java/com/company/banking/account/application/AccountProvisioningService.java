@@ -27,6 +27,7 @@ public class AccountProvisioningService implements OpenAccountUseCase {
 
     private final AccountPersistencePort accountPersistencePort;
     private final AuditEventPublisher auditEventPublisher;
+    private final com.company.banking.merchant.application.port.out.MerchantPersistencePort merchantPersistencePort;
     
     // Injected Provisioning Components
     private final ParentAccountValidator parentAccountValidator;
@@ -44,9 +45,25 @@ public class AccountProvisioningService implements OpenAccountUseCase {
         // 2. Generate Account Number (PAN)
         String generatedPan = accountNumberGenerator.generateIsoPan();
 
-       // 3. Create Base Ledger
+        // 3. Resolve Merchant Association
+        Long resolvedMerchantId = request.getMerchantId();
+        if (resolvedMerchantId == null && request.getParentAccountId() != null) {
+            Account parent = accountPersistencePort.findByAccountNumber(request.getParentAccountId()).orElse(null);
+            if (parent != null) {
+                resolvedMerchantId = parent.getMerchantId();
+            }
+        }
+        if (resolvedMerchantId == null && merchantPersistencePort != null) {
+            var merchants = merchantPersistencePort.findByOwnerId(request.getCustomerId());
+            if (merchants != null && !merchants.isEmpty()) {
+                resolvedMerchantId = merchants.get(0).getId();
+            }
+        }
+
+       // 4. Create Base Ledger
         Account newAccount = Account.builder()
                 .customerId(request.getCustomerId())
+                .merchantId(resolvedMerchantId)
                 .accountNumber(generatedPan)
                 .accountType(request.getAccountType()) // <-- ADD THIS LINE
                 .accountName(request.getAccountName())
@@ -55,11 +72,11 @@ public class AccountProvisioningService implements OpenAccountUseCase {
                 .balance(request.getInitialDeposit() != null ? request.getInitialDeposit() : BigDecimal.ZERO)
                 .status(AccountStatus.ACTIVE)
                 
-                // 4. Limit Provisioner (Direct assignment for brevity)
+                // 5. Limit Provisioner (Direct assignment for brevity)
                 .dailyLimit(request.getDailyLimit())
                 .monthlyLimit(request.getMonthlyLimit())
                 
-                // 5. Permission Provisioner
+                // 6. Permission Provisioner
                 .allowIncoming(request.isAllowIncoming())
                 .allowOutgoing(request.isAllowOutgoing())
                 .requireDualApproval(request.isRequireDualApproval())

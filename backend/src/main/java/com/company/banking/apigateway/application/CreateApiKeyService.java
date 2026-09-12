@@ -83,23 +83,30 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
             }
         }
         final String effectiveLinkedAccount = resolvedAccount;
+        Account boundAccount = null;
 
         if (effectiveLinkedAccount != null && !effectiveLinkedAccount.isEmpty()) {
-            Account account = accountPersistencePort.findByAccountNumber(effectiveLinkedAccount)
+            boundAccount = accountPersistencePort.findByAccountNumber(effectiveLinkedAccount)
                     .orElseThrow(() -> new NotFoundException("Account '" + effectiveLinkedAccount + "' not found."));
 
             // Never permit external binding to system GL accounts
-            if (account.getAccountNumber().startsWith("SYS-") || account.getAccountNumber().startsWith("GL-")) {
+            if (boundAccount.getAccountNumber().startsWith("SYS-") || boundAccount.getAccountNumber().startsWith("GL-")) {
                 throw new ForbiddenException("Cannot bind external API credentials to internal system General Ledger accounts.");
             }
 
-            boolean authorized = merchantId.equals(account.getMerchantId());
-            if (!authorized && account.getCustomerId() != null) {
-                authorized = account.getCustomerId().equals(merchant.getOwnerId());
+            boolean authorized = merchantId.equals(boundAccount.getMerchantId());
+            if (!authorized && boundAccount.getCustomerId() != null) {
+                authorized = boundAccount.getCustomerId().equals(merchant.getOwnerId());
             }
             if (!authorized) {
                 throw new ForbiddenException(ErrorCode.ACCOUNT_NOT_AUTHORIZED, "Not authorized to bind API key to account [" + effectiveLinkedAccount + "].");
             }
+        }
+
+        // Authoritatively resolve customer identity owning this credential
+        Long customerId = merchant.getOwnerId();
+        if (customerId == null && boundAccount != null) {
+            customerId = boundAccount.getCustomerId();
         }
 
         // 5. Cryptographic Key Generation (Entropy: 256-bit SecureRandom CSPRNG)
@@ -135,6 +142,7 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
         ApiKey domain = ApiKey.builder()
                 .keyPrefix(prefix)
                 .merchantId(merchantId)
+                .customerId(customerId)
                 .keyHash(keyHash)
                 .name(request.getName())
                 .environment(env)
@@ -153,6 +161,8 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
 
         return ApiKeyResponse.builder()
                 .id(saved.getId())
+                .customerId(saved.getCustomerId())
+                .merchantId(saved.getMerchantId())
                 .name(saved.getName())
                 .environment(saved.getEnvironment())
                 .keyPrefix(saved.getKeyPrefix())
@@ -178,6 +188,8 @@ public class CreateApiKeyService implements CreateApiKeyUseCase {
         return persistencePort.findByMerchantId(merchantId).stream().map(key ->
             ApiKeyResponse.builder()
                     .id(key.getId())
+                    .customerId(key.getCustomerId())
+                    .merchantId(key.getMerchantId())
                     .name(key.getName())
                     .environment(key.getEnvironment())
                     .keyPrefix(key.getKeyPrefix())

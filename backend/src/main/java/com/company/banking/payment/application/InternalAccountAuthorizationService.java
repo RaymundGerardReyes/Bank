@@ -38,7 +38,22 @@ public class InternalAccountAuthorizationService {
         CheckoutSession session = sessionRepository.findBySessionIdForUpdate(checkoutToken)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Checkout session not found"));
 
-        // 2. Idempotency & State Checks
+        // 2. Terminal State Lock & Expiration Boundary
+        if (session.getStatus() == CheckoutSessionStatus.PAID || 
+            session.getStatus() == CheckoutSessionStatus.PAYMENT_FAILED || 
+            session.getStatus() == CheckoutSessionStatus.EXPIRED || 
+            session.getStatus() == CheckoutSessionStatus.CANCELLED) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, 
+                "Checkout session is locked in terminal state: " + session.getStatus());
+        }
+
+        if (LocalDateTime.now().isAfter(session.getExpiresAt())) {
+            session.setStatus(CheckoutSessionStatus.EXPIRED);
+            sessionRepository.save(session);
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Checkout session has expired");
+        }
+
+        // 3. Idempotency & State Checks
         if (session.getStatus() == CheckoutSessionStatus.AUTHORIZED || authorizationRepository.findByCheckoutSessionId(checkoutToken).isPresent()) {
             log.info("[CHECKOUT AUTHORIZATION] Session {} is already authorized. Idempotent return.", checkoutToken);
             return mapToResponse(session);
@@ -47,12 +62,6 @@ public class InternalAccountAuthorizationService {
         if (session.getStatus() != CheckoutSessionStatus.PAYMENT_PENDING) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, 
                 "Cannot authorize session in state: " + session.getStatus());
-        }
-
-        if (LocalDateTime.now().isAfter(session.getExpiresAt())) {
-            session.setStatus(CheckoutSessionStatus.EXPIRED);
-            sessionRepository.save(session);
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Checkout session has expired");
         }
 
         // 3. Lock and verify authoritative Payment Intent

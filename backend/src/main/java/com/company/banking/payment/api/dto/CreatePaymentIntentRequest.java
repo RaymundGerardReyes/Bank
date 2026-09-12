@@ -12,7 +12,7 @@ public class CreatePaymentIntentRequest {
 
     @NotBlank(message = "sourceAccountId cannot be blank or null")
     @Pattern(regexp = "^(?!null$).*", message = "sourceAccountId cannot be the literal string 'null'")
-    @com.fasterxml.jackson.annotation.JsonAlias({"customerAccountNumber", "accountNumber", "sourceAccount"})
+    @com.fasterxml.jackson.annotation.JsonAlias({"customerAccountNumber", "accountNumber"})
     private String sourceAccountId;
 
     private BigDecimal amount;
@@ -22,4 +22,9 @@ public class CreatePaymentIntentRequest {
     private String description;
     private String merchantReference;
     private String idempotencyKey;
+
+    @com.fasterxml.jackson.annotation.JsonAlias({"redirectUrl", "successUrl", "callbackUrl"})
+    private String returnUrl;
+
+    private String cancelUrl;
 }

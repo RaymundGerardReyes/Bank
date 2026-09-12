@@ -104,15 +104,37 @@ public class CheckoutSessionService {
                     .map(m -> m.getLegalName())
                     .orElse("Nova Bank Merchant");
 
+            boolean isExpired = session.getExpiresAt() != null && LocalDateTime.now().isAfter(session.getExpiresAt());
+            boolean isLocked = isExpired ||
+                    session.getStatus() == CheckoutSessionStatus.PAID ||
+                    session.getStatus() == CheckoutSessionStatus.PAYMENT_FAILED ||
+                    session.getStatus() == CheckoutSessionStatus.EXPIRED ||
+                    session.getStatus() == CheckoutSessionStatus.CANCELLED;
+
+            String statusStr = isExpired && session.getStatus() == CheckoutSessionStatus.ACTIVE 
+                    ? CheckoutSessionStatus.EXPIRED.name() 
+                    : session.getStatus().name();
+
+            String returnUrl = isInternalSelfReferentialUrl(session.getSuccessUrl(), session) 
+                    ? null 
+                    : session.getSuccessUrl();
+
+            String cancelUrl = isInternalSelfReferentialUrl(session.getCancelUrl(), session) 
+                    ? null 
+                    : session.getCancelUrl();
+
             return PublicCheckoutSessionResponse.builder()
                     .id(session.getSessionId())
-                    .status(session.getStatus().name())
+                    .status(statusStr)
                     .amount(session.getAmount())
                     .currency(session.getCurrency())
                     .description(session.getDescription())
                     .merchantName(merchantName)
                     .paymentMethods(List.of("INTERNAL_ACCOUNT"))
                     .expiresAt(session.getExpiresAt())
+                    .returnUrl(returnUrl)
+                    .cancelUrl(cancelUrl)
+                    .locked(isLocked)
                     .build();
         }
 
@@ -123,15 +145,30 @@ public class CheckoutSessionService {
                 .map(m -> m.getLegalName())
                 .orElse("Nova Bank Merchant");
 
+        boolean isTerminal = intent.getStatus() == PaymentIntentStatus.SUCCESS || 
+                             intent.getStatus() == PaymentIntentStatus.CANCELLED ||
+                             intent.getStatus() == PaymentIntentStatus.FAILED;
+
+        String mappedStatus = switch (intent.getStatus()) {
+            case SUCCESS -> "PAID";
+            case FAILED -> "PAYMENT_FAILED";
+            case CANCELLED -> "CANCELLED";
+            case AUTHORIZED -> "AUTHORIZED";
+            default -> "ACTIVE";
+        };
+
         return PublicCheckoutSessionResponse.builder()
                 .id(intent.getIntentId())
-                .status("ACTIVE")
+                .status(mappedStatus)
                 .amount(intent.getAmount())
                 .currency(intent.getCurrency() != null ? intent.getCurrency() : "PHP")
                 .description(intent.getDescription() != null ? intent.getDescription() : "Order Payment")
                 .merchantName(merchantName)
                 .paymentMethods(List.of("INTERNAL_ACCOUNT"))
                 .expiresAt(intent.getCreatedAt() != null ? intent.getCreatedAt().plusHours(1) : LocalDateTime.now().plusHours(1))
+                .returnUrl(null)
+                .cancelUrl(null)
+                .locked(isTerminal)
                 .build();
     }
 
@@ -153,5 +190,17 @@ public class CheckoutSessionService {
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Malformed or unsafe URL provided");
         }
+    }
+
+    private boolean isInternalSelfReferentialUrl(String url, CheckoutSession session) {
+        if (url == null || url.isBlank()) return true;
+        String trimmed = url.trim();
+        if ("NO_RETURN_URL".equalsIgnoreCase(trimmed) || "CLIENT_RETURN_PENDING".equalsIgnoreCase(trimmed)) return true;
+        if (trimmed.equals("/success") || trimmed.equals("/cancel") || trimmed.startsWith("/api/v1/checkout/")) return true;
+        if (session != null) {
+            if (session.getSessionId() != null && trimmed.contains("/checkout/" + session.getSessionId())) return true;
+            if (session.getPaymentIntentId() != null && trimmed.contains("/checkout/" + session.getPaymentIntentId())) return true;
+        }
+        return false;
     }
 }

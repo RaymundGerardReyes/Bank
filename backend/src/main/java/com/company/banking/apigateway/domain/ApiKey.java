@@ -17,6 +17,7 @@ public class ApiKey {
     private Long id;
     private String keyPrefix;
     private Long merchantId;
+    private Long customerId;
     private String keyHash;
     private String name;
     private String environment; // LIVE, SANDBOX
@@ -62,12 +63,12 @@ public class ApiKey {
             return true;
         }
         if (linkedAccountId != null && !linkedAccountId.trim().isEmpty()) {
-            return cleanTarget.equalsIgnoreCase(linkedAccountId.trim()) || cleanTarget.equalsIgnoreCase("4859220013371001");
+            return cleanTarget.equalsIgnoreCase(linkedAccountId.trim());
         }
         // If no explicit linked account is set, default to allowing root/settlement account only for this merchant
         if (merchantId != null) {
             String defaultSettlement = "MERCHANT-SETTLEMENT-" + merchantId;
-            return cleanTarget.equalsIgnoreCase(defaultSettlement) || cleanTarget.equalsIgnoreCase("4859220013371001");
+            return cleanTarget.equalsIgnoreCase(defaultSettlement);
         }
         return false;
     }

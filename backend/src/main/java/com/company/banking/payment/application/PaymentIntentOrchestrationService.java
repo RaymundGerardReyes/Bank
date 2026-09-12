@@ -45,6 +45,9 @@ public class PaymentIntentOrchestrationService {
     private List<String> allowedDomains;
 
     public PaymentSessionResponse createIntent(Long merchantId, String sourceAccountId, CreatePaymentIntentRequest request) {
+        validateSafeReturnUrl(request.getReturnUrl());
+        validateSafeReturnUrl(request.getCancelUrl());
+
         if (request.getIdempotencyKey() != null) {
             List<PaymentIntent> existing = paymentIntentRepository.findByIdempotencyKey(request.getIdempotencyKey());
             if (!existing.isEmpty()) {
@@ -69,13 +72,17 @@ public class PaymentIntentOrchestrationService {
                 account.setBalance(account.getBalance().subtract(request.getAmount()));
                 accountPersistencePort.save(account);
 
+                String description = request.getDescription() != null && !request.getDescription().isBlank()
+                        ? request.getDescription()
+                        : request.getMerchantReference();
+
                 PaymentIntent newIntent = PaymentIntent.builder()
                         .intentId(intentId)
                         .merchantId(merchantId)
                         .customerAccountNumber(sourceAccountId)
                         .amount(request.getAmount())
                         .currency(request.getCurrency() != null ? request.getCurrency() : "PHP")
-                        .description(request.getDescription())
+                        .description(description)
                         .idempotencyKey(request.getIdempotencyKey())
                         .status(PaymentIntentStatus.CREATED)
                         .build();
@@ -134,6 +141,13 @@ public class PaymentIntentOrchestrationService {
                 .build();
             attemptRepository.save(attempt);
 
+            String effectiveSuccessUrl = (request.getReturnUrl() != null && !request.getReturnUrl().isBlank())
+                    ? request.getReturnUrl()
+                    : "NO_RETURN_URL";
+            String effectiveCancelUrl = (request.getCancelUrl() != null && !request.getCancelUrl().isBlank())
+                    ? request.getCancelUrl()
+                    : null;
+
             CheckoutSession checkoutSession = CheckoutSession.builder()
                 .sessionId(updatedIntent.getIntentId())
                 .merchantId(updatedIntent.getMerchantId())
@@ -143,7 +157,8 @@ public class PaymentIntentOrchestrationService {
                 .currency(updatedIntent.getCurrency() != null ? updatedIntent.getCurrency() : "PHP")
                 .description(updatedIntent.getDescription() != null ? updatedIntent.getDescription() : "Payment Intent Checkout")
                 .status(CheckoutSessionStatus.ACTIVE)
-                .successUrl(session.getCheckoutUrl() != null ? session.getCheckoutUrl() + "/success" : "/success")
+                .successUrl(effectiveSuccessUrl)
+                .cancelUrl(effectiveCancelUrl)
                 .createdAt(LocalDateTime.now())
                 .expiresAt(LocalDateTime.now().plusHours(1))
                 .build();
@@ -154,10 +169,33 @@ public class PaymentIntentOrchestrationService {
             res.setProvider(session.getProvider().name());
             res.setExpiresAt(session.getExpiresAt());
             res.setTransactionReference(session.getProviderReference());
+            res.setReturnUrl("NO_RETURN_URL".equals(effectiveSuccessUrl) ? null : effectiveSuccessUrl);
+            res.setCancelUrl(effectiveCancelUrl);
             return res;
         });
 
         return response;
+    }
+
+    private void validateSafeReturnUrl(String url) {
+        if (url == null || url.isBlank()) return;
+        try {
+            if (url.startsWith("/")) {
+                return; // Safe relative URL
+            }
+            URI uri = new URI(url);
+            String scheme = uri.getScheme();
+            if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "Redirect URL scheme must be HTTP or HTTPS");
+            }
+            if (uri.getHost() == null) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "Redirect URL must contain a valid host");
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Invalid redirect URL provided: " + e.getMessage());
+        }
     }
 
     private boolean isSafeCheckoutUrl(String url) {

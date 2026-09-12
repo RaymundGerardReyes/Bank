@@ -39,6 +39,22 @@ public class ScheduledTransferService {
                 ? ((com.company.banking.apigateway.security.ApiKeyAuthenticationToken) auth).getLinkedAccountId() 
                 : null;
 
+        java.time.LocalDateTime scheduledAt = null;
+        if (request.getScheduledDate() != null && !request.getScheduledDate().trim().isEmpty()) {
+            try {
+                String rawDate = request.getScheduledDate().trim();
+                if (rawDate.contains("T")) {
+                    scheduledAt = java.time.OffsetDateTime.parse(rawDate)
+                            .withOffsetSameInstant(java.time.ZoneOffset.UTC)
+                            .toLocalDateTime();
+                } else {
+                    scheduledAt = java.time.LocalDate.parse(rawDate).atStartOfDay();
+                }
+            } catch (Exception e) {
+                log.warn("[SCHEDULED TRANSFER] Could not parse scheduledDate: {}", request.getScheduledDate());
+            }
+        }
+
         Transaction scheduledTx = Transaction.builder()
                 .transactionReference(txRef)
                 .idempotencyKey(request.getIdempotencyKey())
@@ -49,6 +65,7 @@ public class ScheduledTransferService {
                 .status(TransactionStatus.SCHEDULED)
                 .description(request.getDescription())
                 .scheduledVamRestriction(vamRestriction) // Explicitly persist context!
+                .scheduledExecutionAt(scheduledAt)
                 .build();
 
         Transaction savedTx = ledgerPersistencePort.save(scheduledTx);

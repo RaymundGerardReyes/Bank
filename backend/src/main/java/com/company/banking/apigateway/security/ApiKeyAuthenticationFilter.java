@@ -95,26 +95,6 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
 
-            // Self-Healing & Dynamic Auto-Adoption for Gateway Endpoints:
-            // When a client sends a validly structured sk_live_... or sk_test_... key
-            // that is active on the client side but missing in the database (e.g. after container restart),
-            // auto-adopt and persist it with full permissions bound to the designated merchant and account.
-            if (matchingApiKey == null && path.startsWith("/api/v1/gateway/")) {
-                for (KeyCandidate candidate : candidates) {
-                    if (candidate.getRawKey().startsWith("sk_live_") || candidate.getRawKey().startsWith("sk_test_")) {
-                        matchingApiKey = autoAdoptApiKey(candidate);
-                        if (matchingApiKey != null) {
-                            matchedCandidate = candidate;
-                            log.info("[GATEWAY AUTH AUTO-ADOPTED] Dynamically provisioned and adopted valid key candidate [{}] (prefix: {}, hashPrefix: {})",
-                                    candidate.getHeaderName(),
-                                    candidate.getRawKey().length() > 10 ? candidate.getRawKey().substring(0, 10) + "..." : candidate.getRawKey(),
-                                    candidate.getKeyHash().length() > 12 ? candidate.getKeyHash().substring(0, 12) + "..." : candidate.getKeyHash());
-                            break;
-                        }
-                    }
-                }
-            }
-
             if (matchingApiKey == null) {
                 StringBuilder details = new StringBuilder();
                 for (KeyCandidate c : candidates) {
@@ -191,6 +171,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             ApiKeyAuthenticationToken auth = new ApiKeyAuthenticationToken(
                     matchedCandidate.getRawKey(),
                     apiKey.getMerchantId(),
+                    apiKey.getCustomerId(),
                     apiKey.getEnvironment(),
                     apiKey.getId(),
                     apiKey.getLinkedAccountId(),
@@ -208,6 +189,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 @Override
                 public String getHeader(String name) {
                     if ("X-Client-Id".equalsIgnoreCase(name)) return String.valueOf(apiKey.getMerchantId());
+                    if ("X-Customer-Id".equalsIgnoreCase(name) && apiKey.getCustomerId() != null) return String.valueOf(apiKey.getCustomerId());
                     if ("X-Linked-Account".equalsIgnoreCase(name)) return apiKey.getLinkedAccountId();
                     return super.getHeader(name);
                 }
@@ -216,6 +198,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 public java.util.Enumeration<String> getHeaderNames() {
                     java.util.List<String> names = java.util.Collections.list(super.getHeaderNames());
                     if (names.stream().noneMatch("X-Client-Id"::equalsIgnoreCase)) names.add("X-Client-Id");
+                    if (apiKey.getCustomerId() != null && names.stream().noneMatch("X-Customer-Id"::equalsIgnoreCase)) names.add("X-Customer-Id");
                     if (names.stream().noneMatch("X-Linked-Account"::equalsIgnoreCase)) names.add("X-Linked-Account");
                     return java.util.Collections.enumeration(names);
                 }
@@ -274,19 +257,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         boolean isGatewayPath = path.startsWith("/api/v1/gateway/");
 
-        // 1. Check for standard X-API-Key header (case-insensitive)
-        String apiKey = request.getHeader("X-API-Key");
-        if (apiKey == null) {
-            apiKey = request.getHeader("x-api-key");
-        }
-        if (apiKey != null && !apiKey.isBlank()) {
-            String sanitized = sanitizeKey(apiKey);
-            if (sanitized != null && !sanitized.isBlank()) {
-                candidates.add(new KeyCandidate("X-API-Key", sanitized, CreateApiKeyService.hashKey(sanitized)));
-            }
-        }
-
-        // 2. Check for Authorization header (Bearer, ApiKey, or raw)
+        // 1. Check for Authorization header (Bearer, ApiKey, or raw) - RFC standard precedence
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null) {
             authHeader = request.getHeader("authorization");
@@ -300,6 +271,18 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 if (isGatewayPath || sanitized.startsWith("sk_live_") || sanitized.startsWith("sk_test_") || sanitized.startsWith("sk_")) {
                     candidates.add(new KeyCandidate("Authorization", sanitized, CreateApiKeyService.hashKey(sanitized)));
                 }
+            }
+        }
+
+        // 2. Check for standard X-API-Key header (case-insensitive) as fallback
+        String apiKey = request.getHeader("X-API-Key");
+        if (apiKey == null) {
+            apiKey = request.getHeader("x-api-key");
+        }
+        if (apiKey != null && !apiKey.isBlank()) {
+            String sanitized = sanitizeKey(apiKey);
+            if (sanitized != null && !sanitized.isBlank()) {
+                candidates.add(new KeyCandidate("X-API-Key", sanitized, CreateApiKeyService.hashKey(sanitized)));
             }
         }
 
@@ -405,48 +388,6 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    private ApiKey autoAdoptApiKey(KeyCandidate candidate) {
-        try {
-            Long merchantId = 3L;
-            if (merchantPersistencePort != null) {
-                merchantId = merchantPersistencePort.findByMerchantCode("M-UNIV-ERP")
-                        .map(com.company.banking.merchant.domain.Merchant::getId)
-                        .orElse(3L);
-            }
-            String raw = candidate.getRawKey();
-            String prefix = raw.startsWith("sk_live_") ? "sk_live_" : "sk_test_";
-            String env = raw.startsWith("sk_live_") ? "LIVE" : "SANDBOX";
-
-            ApiKey newKey = ApiKey.builder()
-                    .keyPrefix(prefix)
-                    .merchantId(merchantId)
-                    .keyHash(candidate.getKeyHash())
-                    .name("Auto-Adopted Credential (" + (raw.length() > 12 ? raw.substring(0, 10) : raw) + "...)")
-                    .environment(env)
-                    .cidrWhitelist("0.0.0.0/0")
-                    .scopes(java.util.Set.of(
-                            "payments:write", "payments:read",
-                            "accounts:read", "accounts:write",
-                            "treasury:write", "treasury:read",
-                            "payroll:write", "payroll:read",
-                            "routing:write", "routing:read",
-                            "ledger:write", "ledger:read"
-                    ))
-                    .linkedAccountId("4859220013371001")
-                    .applicationId("app_university_erp")
-                    .applicationName("University ERP Gateway Client")
-                    .perTransactionLimit(new java.math.BigDecimal("100000.00"))
-                    .dailyLimit(new java.math.BigDecimal("1000000.00"))
-                    .expiresAt(java.time.LocalDateTime.now().plusYears(10))
-                    .createdAt(java.time.LocalDateTime.now())
-                    .build();
-
-            return apiKeyPersistencePort.save(newKey);
-        } catch (Exception e) {
-            log.error("[GATEWAY AUTO-ADOPT FAILED] Could not auto-adopt candidate {}: {}", candidate.getKeyHash(), e.getMessage());
-            return null;
-        }
-    }
 
     private void sendErrorResponse(HttpServletResponse response, int status, String code, String message) throws IOException {
         response.setStatus(status);
