@@ -24,6 +24,8 @@ export interface Transaction {
   description: string;
   idempotencyKey: string;
   timestamp: string;
+  createdAt?: string;
+  scheduledExecutionAt?: string;
 }
 
 export interface InternalTransferRequest {

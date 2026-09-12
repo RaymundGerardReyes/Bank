@@ -29,10 +29,16 @@ export const AccountListScreen = () => {
     setRefreshing(false);
   };
 
-  const totalBalance = React.useMemo(() => {
-    if (!accounts || accounts.length === 0) return 0;
-    return accounts.reduce((acc, curr) => acc + (curr.balance || 0), 0);
+  const balancesByCurrency = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    (accounts || []).forEach((acc) => {
+      const curr = acc.currency || 'USD';
+      map[curr] = (map[curr] || 0) + (acc.balance || 0);
+    });
+    return map;
   }, [accounts]);
+
+  const currencyEntries = React.useMemo(() => Object.entries(balancesByCurrency), [balancesByCurrency]);
 
   const renderHeader = () => (
     <View style={styles.headerArea}>
@@ -57,8 +63,23 @@ export const AccountListScreen = () => {
       {accounts && accounts.length > 0 && (
         <View style={styles.summaryCard}>
           <View style={styles.summaryLeft}>
-            <Text style={styles.summaryLabel}>Total Net Liquidity</Text>
-            <Text style={styles.summaryAmount}>{formatCurrency(totalBalance, 'USD')}</Text>
+            <Text style={styles.summaryLabel}>
+              {currencyEntries.length > 1 ? 'Liquidity by Currency' : 'Total Net Liquidity'}
+            </Text>
+            {currencyEntries.length <= 1 ? (
+              <Text style={styles.summaryAmount}>
+                {formatCurrency(currencyEntries[0]?.[1] || 0, currencyEntries[0]?.[0] || 'USD')}
+              </Text>
+            ) : (
+              <View style={styles.multiCurrencySummary}>
+                {currencyEntries.map(([currency, amount]) => (
+                  <Text key={currency} style={styles.summaryAmountItem}>
+                    <Text style={styles.currencyTag}>{currency}: </Text>
+                    {formatCurrency(amount, currency)}
+                  </Text>
+                ))}
+              </View>
+            )}
           </View>
           <TouchableOpacity
             style={styles.ratesPill}
@@ -209,6 +230,20 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '900',
     marginTop: 2,
+  },
+  multiCurrencySummary: {
+    marginTop: 4,
+  },
+  summaryAmountItem: {
+    color: colors.accent,
+    fontSize: 15,
+    fontWeight: '800',
+    marginVertical: 1,
+  },
+  currencyTag: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
   },
   ratesPill: {
     flexDirection: 'row',

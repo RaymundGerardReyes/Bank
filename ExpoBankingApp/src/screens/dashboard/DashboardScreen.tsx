@@ -32,10 +32,16 @@ export const DashboardScreen = () => {
 
   const isAdminOrTeller = user?.role === 'ADMIN' || user?.role === 'TELLER';
 
-  const totalNetBalance = React.useMemo(() => {
-    if (!accounts || accounts.length === 0) return 0;
-    return accounts.reduce((acc, current) => acc + (current.balance || 0), 0);
+  const balancesByCurrency = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    (accounts || []).forEach((acc) => {
+      const curr = acc.currency || 'USD';
+      map[curr] = (map[curr] || 0) + (acc.balance || 0);
+    });
+    return map;
   }, [accounts]);
+
+  const currencyEntries = React.useMemo(() => Object.entries(balancesByCurrency), [balancesByCurrency]);
 
   const fetchLiveTransactions = React.useCallback(async () => {
     if (!accounts || accounts.length === 0) return;
@@ -99,12 +105,31 @@ export const DashboardScreen = () => {
 
         <View style={styles.netWorthCard}>
           <View style={styles.netWorthHeader}>
-            <Text style={styles.netWorthLabel}>Total Net Liquidity</Text>
-            <Text style={styles.currencyBadge}>USD</Text>
+            <Text style={styles.netWorthLabel}>
+              {currencyEntries.length > 1 ? 'Liquidity by Currency' : 'Total Net Liquidity'}
+            </Text>
+            {currencyEntries.length === 1 && (
+              <Text style={styles.currencyBadge}>{currencyEntries[0][0]}</Text>
+            )}
           </View>
-          <Text style={styles.netWorthAmount}>
-            {formatCurrency(totalNetBalance, 'USD').replace('$', '')}
-          </Text>
+          {currencyEntries.length <= 1 ? (
+            <Text style={styles.netWorthAmount}>
+              {currencyEntries.length === 1
+                ? formatCurrency(currencyEntries[0][1], currencyEntries[0][0]).replace(/^[^\d]+/, '')
+                : '0.00'}
+            </Text>
+          ) : (
+            <View style={styles.multiCurrencyList}>
+              {currencyEntries.map(([currency, amount]) => (
+                <View key={currency} style={styles.multiCurrencyItem}>
+                  <Text style={styles.multiCurrencyBadge}>{currency}</Text>
+                  <Text style={styles.multiCurrencyAmount}>
+                    {formatCurrency(amount, currency)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
           <View style={styles.netWorthFooter}>
             <Text style={styles.netWorthFooterText}>
               TLS Pinned • Root: PASS • {traceId}
@@ -392,6 +417,32 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: -1,
     marginVertical: spacing.xs,
+  },
+  multiCurrencyList: {
+    marginVertical: spacing.xs,
+  },
+  multiCurrencyItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
+  },
+  multiCurrencyBadge: {
+    backgroundColor: '#F1F5F9',
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '800',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  multiCurrencyAmount: {
+    color: colors.accent,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   netWorthFooter: {
     marginTop: spacing.md,

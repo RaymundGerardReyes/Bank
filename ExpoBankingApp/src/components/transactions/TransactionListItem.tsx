@@ -13,13 +13,17 @@ interface TransactionListItemProps {
 
 export const TransactionListItem = ({ transaction, onPress }: TransactionListItemProps) => {
   const isCredit = transaction.type === TransactionType.DEPOSIT;
+  const isScheduled = (transaction.status as string) === 'SCHEDULED';
+  const displayDate = (isScheduled && transaction.scheduledExecutionAt)
+    ? transaction.scheduledExecutionAt
+    : (transaction.createdAt || transaction.timestamp);
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.left}>
         <Text style={styles.type}>{transaction.type.replace('_', ' ')}</Text>
         <Text style={styles.description}>{transaction.description || 'Banking Transaction'}</Text>
-        <Text style={styles.date}>{formatDate(transaction.timestamp)}</Text>
+        <Text style={styles.date}>{isScheduled ? 'Scheduled: ' : ''}{formatDate(displayDate)}</Text>
       </View>
       <View style={styles.right}>
         <Text style={[styles.amount, isCredit ? styles.credit : styles.debit]}>
