@@ -110,4 +110,45 @@ describe('QrPhCheckoutView Component', () => {
 
     expect(onChangeMethodMock).toHaveBeenCalledTimes(1);
   });
+
+  it('correctly parses LocalDateTime strings without trailing Z without falsely expiring', () => {
+    // Simulating Spring Boot LocalDateTime serialization without 'Z'
+    const futureDate = new Date(Date.now() + 15 * 60 * 1000);
+    const isoWithoutZ = futureDate.toISOString().replace('Z', '');
+
+    const sessionWithIsoWithoutZ = {
+      ...baseSession,
+      qrExpiresAt: isoWithoutZ,
+    };
+
+    render(
+      <QrPhCheckoutView
+        sessionId="cs_test_9999"
+        session={sessionWithIsoWithoutZ as any}
+        onPaid={vi.fn()}
+      />
+    );
+
+    // Should display ~15:00 countdown and NOT show the expired message
+    expect(screen.queryByText(/QR code has expired/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/14:59|15:00/)).toBeInTheDocument();
+  });
+
+  it('renders download QR button when payload is present and handles download click', () => {
+    const downloadMock = vi.fn();
+    HTMLCanvasElement.prototype.toDataURL = vi.fn(() => 'data:image/png;base64,mockPngData');
+
+    render(
+      <QrPhCheckoutView
+        sessionId="cs_test_9999"
+        session={baseSession as any}
+        onPaid={vi.fn()}
+      />
+    );
+
+    const downloadBtn = screen.getByRole('button', { name: /Download QR code as PNG/i });
+    expect(downloadBtn).toBeInTheDocument();
+    fireEvent.click(downloadBtn);
+  });
 });
+
