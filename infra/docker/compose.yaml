@@ -67,6 +67,8 @@ services:
       PAYMENT_WEBHOOK_PUBLIC_URL: ${PAYMENT_WEBHOOK_PUBLIC_URL}
       PAYMENT_WEBHOOK_HOST: ${PAYMENT_WEBHOOK_HOST}
       PAYMENT_ALLOWED_DOMAINS: ${PAYMENT_ALLOWED_DOMAINS}
+      PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-localhost}
+      PAYMENT_CHECKOUT_BASE_URL: ${PAYMENT_CHECKOUT_BASE_URL:-https://${PAYMENT_WEBHOOK_HOST}}
       # Docker Compose acts as the container-runtime boundary override.
       # While native bootRun uses DB_HOST=localhost (via .env), the containerized
       # application MUST use the Docker-internal topology invariant.
@@ -80,7 +82,7 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_FROM: ${MAIL_FROM}
-      FRONTEND_PUBLIC_ORIGIN: ${FRONTEND_PUBLIC_ORIGIN}
+      FRONTEND_PUBLIC_ORIGIN: ${FRONTEND_PUBLIC_ORIGIN:-${UI_PUBLIC_HOST}}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS}
       PASSKEY_RP_ID: ${PASSKEY_RP_ID}
