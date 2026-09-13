@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+export GIT_PAGER=cat
+export PAGER=cat
 
 # ============================================================
 # Supervised, config-driven isolated semantic-commit + tag tool
@@ -82,8 +84,12 @@ if [ "$DRY_RUN" = false ]; then
   fi
 fi
 
-log "Unstaging everything to start from a clean slate..."
-git reset >> "$LOG_FILE" 2>&1 || true
+if [ "$DRY_RUN" = false ]; then
+  log "Unstaging everything to start from a clean slate..."
+  git reset >> "$LOG_FILE" 2>&1 || true
+else
+  log "  (skipped actual unstage in dry-run)"
+fi
 
 log "Fetching remote tags to avoid collisions..."
 if [ "$DRY_RUN" = false ]; then
