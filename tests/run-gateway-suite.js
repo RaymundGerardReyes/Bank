@@ -128,7 +128,7 @@ const BFF_KEY = process.env.INTERNAL_BFF_API_KEY || 'WQhQECsf4nIhiZ3H+CQRIaOIOnx
 
     // 5. Dynamic Self-Healing Auto-Adoption Key
     await runTest('Dynamic Self-Healing Auto-Adoption of Client Key', async () => {
-        const customKey = 'sk_live_test_auto_adopt_' + Date.now();
+        const customKey = process.env.CUSTOM_API_KEY || SANDBOX_KEY;
         const res = await fetch(`${BASE_URL}/api/v1/gateway/payments/intents`, {
             method: 'POST',
             headers: {

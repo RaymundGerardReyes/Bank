@@ -267,7 +267,7 @@
               "",
               "pm.test('Contains ERR_400 or INVALID_REQUEST code', function () {",
               "    const jsonData = pm.response.json();",
-              "    pm.expect(jsonData.errorCode).to.be.oneOf(['INVALID_REQUEST', 'ERR_400', 'ERR_400_INVALID_REQUEST', 'ERR_400_VALIDATION']);",
+              "    pm.expect(jsonData.errorCode).to.be.oneOf(['INVALID_REQUEST', 'ERR_400', 'ERR_400_INVALID_REQUEST', 'ERR_400_VALIDATION', 'ERR_400_MALFORMED']);",
               "});"
             ],
             "type": "text/javascript"
@@ -292,7 +292,65 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{}"
+          "raw": "{\n    \"allowOutgoing\": \"invalid_boolean\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts/{{targetAccountNumber}}/settings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts",
+            "{{targetAccountNumber}}",
+            "settings"
+          ]
+        }
+      }
+    },
+    {
+      "name": "07 - Restore Account Settings (Cleanup)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Settings Restored Successfully (200 OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Settings restored to active and allow outgoing', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const account = jsonData.data;",
+              "    pm.expect(account.allowOutgoing).to.be.true;",
+              "    pm.expect(account.allowIncoming).to.be.true;",
+              "    pm.expect(account.frozen).to.be.false;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          },
+          {
+            "key": "X-Internal-BFF-Key",
+            "value": "{{bffKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"allowOutgoing\": true,\n    \"allowIncoming\": true,\n    \"frozen\": false\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/api/v1/accounts/{{targetAccountNumber}}/settings",

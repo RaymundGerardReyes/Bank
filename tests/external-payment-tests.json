@@ -127,7 +127,7 @@
               "",
               "pm.test('Status is PENDING for Outbox Processing', function () {",
               "    const jsonData = pm.response.json();",
-              "    const status = jsonData.status || (jsonData.data && jsonData.data.status);",
+              "    const status = (jsonData.data && jsonData.data.status) ? jsonData.data.status : jsonData.status;",
               "    pm.expect(status).to.eql('PENDING');",
               "});"
             ],
@@ -391,7 +391,6 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"EXT-999-555\",\n    \"routingNumber\": \"SWIFT123\",\n    \"recipientName\": \"Global Corp\",\n    \"amount\": 150000.00,\n    \"railName\": \"SWIFT\",\n    \"idempotencyKey\": \"{{limitIdemKey}}\"\n}"
           "raw": "{\n    \"sourceAccountNumber\": \"{{sourceAccountNumber}}\",\n    \"destinationAccountNumber\": \"EXT-999-555\",\n    \"routingNumber\": \"SWIFT123\",\n    \"recipientName\": \"Global Corp\",\n    \"amount\": 150000.00,\n    \"railName\": \"INSTAPAY\",\n    \"idempotencyKey\": \"{{limitIdemKey}}\"\n}"
         },
         "url": {

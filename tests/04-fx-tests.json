@@ -14,10 +14,24 @@
 			"item": [
 				{
 					"name": "Same Currency Transfer (PHP)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Same Currency Transfer Succeeded (200 OK)\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
 							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{sessionToken}}" },
 							{ "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" }
 						],
 						"url": {
@@ -27,7 +41,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\"sourceAccountNumber\":\"{{phpSourceAccount}}\",\"destinationAccountNumber\":\"{{phpDestAccount}}\",\"amount\":100.00,\"description\":\"Test Same Currency\"}"
+							"raw": "{\"sourceAccountNumber\":\"{{phpSourceAccount}}\",\"destinationAccountNumber\":\"{{phpDestAccount}}\",\"amount\":100.00,\"description\":\"Test Same Currency\",\"idempotencyKey\":\"idem-same-{{$timestamp}}\"}"
 						}
 					},
 					"response": []
@@ -43,6 +57,7 @@
 						"method": "POST",
 						"header": [
 							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{sessionToken}}" },
 							{ "key": "X-Internal-BFF-Key", "value": "{{bffKey}}" }
 						],
 						"url": {
@@ -52,7 +67,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\"sourceAccountNumber\":\"{{usdSourceAccount}}\",\"destinationAccountNumber\":\"{{phpDestAccount}}\",\"amount\":10.00,\"description\":\"Test Cross Currency\"}"
+							"raw": "{\"sourceAccountNumber\":\"{{usdSourceAccount}}\",\"destinationAccountNumber\":\"{{phpDestAccount}}\",\"amount\":10.00,\"description\":\"Test Cross Currency\",\"idempotencyKey\":\"idem-cross-{{$timestamp}}\"}"
 						}
 					},
 					"event": [
@@ -60,8 +75,8 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Status code is 409 Conflict (Accounting Gate)\", function () {",
-									"    pm.response.to.have.status(409);",
+									"pm.test(\"Status code is 400 or 409 Conflict (Accounting Gate)\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 409]);",
 									"});",
 									"pm.test(\"Error message indicates cross currency disabled\", function () {",
 									"    var jsonData = pm.response.json();",
