@@ -26,6 +26,7 @@ import com.company.banking.merchant.infrastructure.MerchantJpaRepository;
 import com.company.banking.payment.api.dto.PublicCheckoutSessionResponse;
 import com.company.banking.payment.domain.DynamicQrPayment;
 import com.company.banking.payment.infrastructure.DynamicQrPaymentJpaRepository;
+import org.springframework.beans.factory.annotation.Value;
 import java.util.List;
 
 @Service
@@ -37,6 +38,15 @@ public class CheckoutSessionService {
     private final PaymentIntentJpaRepository intentRepository;
     private final MerchantJpaRepository merchantRepository;
     private final DynamicQrPaymentJpaRepository dynamicQrPaymentJpaRepository;
+
+    @Value("${PAYMENT_WEBHOOK_PUBLIC_URL:${payment.webhook-public-url:}}")
+    private String paymentWebhookPublicUrl;
+
+    @Value("${PAYMENT_WEBHOOK_HOST:${payment.webhook-host:}}")
+    private String paymentWebhookHost;
+
+    @Value("${payment.checkout-base-url:${PAYMENT_CHECKOUT_BASE_URL:}}")
+    private String configuredCheckoutBaseUrl;
 
     @Transactional
     public CheckoutSessionResponse createSession(Long merchantId, String idempotencyKey, CheckoutSessionRequest request) {
@@ -219,12 +229,62 @@ public class CheckoutSessionService {
     }
 
     private CheckoutSessionResponse mapToResponse(CheckoutSession session) {
+        String checkoutUrl = resolveCheckoutUrl(session.getSessionId());
+
         return CheckoutSessionResponse.builder()
                 .id(session.getSessionId())
+                .sessionId(session.getSessionId())
+                .paymentIntentId(session.getPaymentIntentId())
+                .checkoutUrl(checkoutUrl)
+                .url(checkoutUrl)
                 .status(session.getStatus().name())
                 .amount(session.getAmount())
                 .currency(session.getCurrency())
+                .clientSecret(session.getSessionId())
                 .build();
+    }
+
+    private String resolveCheckoutBaseUrl() {
+        // 1. External payment gateway public URL (extract scheme + authority, matching DefaultExternalPaymentGateway)
+        if (paymentWebhookPublicUrl != null && !paymentWebhookPublicUrl.isBlank()) {
+            try {
+                URI uri = new URI(paymentWebhookPublicUrl.trim());
+                if (uri.getScheme() != null && uri.getAuthority() != null) {
+                    return uri.getScheme() + "://" + uri.getAuthority();
+                }
+            } catch (Exception e) {
+                log.warn("[CHECKOUT] Could not parse authority from PAYMENT_WEBHOOK_PUBLIC_URL: {}", paymentWebhookPublicUrl);
+            }
+        }
+
+        // 2. Fallback to PAYMENT_WEBHOOK_HOST (external payment gateway virtual host)
+        if (paymentWebhookHost != null && !paymentWebhookHost.isBlank()) {
+            String host = paymentWebhookHost.trim().replaceAll("/+$", "");
+            if (host.startsWith("http://") || host.startsWith("https://")) {
+                return host;
+            }
+            if (host.startsWith("localhost") || host.startsWith("127.0.0.1")) {
+                return "http://" + host;
+            }
+            return "https://" + host;
+        }
+
+        // 3. Fallback to explicitly configured checkout base URL
+        if (configuredCheckoutBaseUrl != null && !configuredCheckoutBaseUrl.isBlank()) {
+            String clean = configuredCheckoutBaseUrl.trim().replaceAll("/+$", "");
+            if (clean.startsWith("http://") || clean.startsWith("https://")) {
+                return clean;
+            }
+            return "https://" + clean;
+        }
+
+        // 4. Default for local standalone development
+        return "http://localhost:3000";
+    }
+
+    private String resolveCheckoutUrl(String sessionId) {
+        String base = resolveCheckoutBaseUrl().replaceAll("/+$", "");
+        return base + "/checkout/" + sessionId;
     }
 
     private void validateUrlSaftey(String urlString) {

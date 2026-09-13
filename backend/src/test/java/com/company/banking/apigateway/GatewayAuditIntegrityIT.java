@@ -72,7 +72,7 @@ public class GatewayAuditIntegrityIT {
                 .header("X-Request-Id", correlationId)
                 .header("Idempotency-Key", "idem-" + UUID.randomUUID().toString())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"amount\": 100, \"currency\": \"PHP\", \"customerAccountNumber\": \"ACC123\"}"))
+                .content("{\"amount\": 100, \"currency\": \"PHP\", \"customerAccountNumber\": \"VA-001-SL-002\"}"))
                 .andReturn();
 
         List<ApiAuditEvent> audits = auditRepository.findByRequestId(correlationId);

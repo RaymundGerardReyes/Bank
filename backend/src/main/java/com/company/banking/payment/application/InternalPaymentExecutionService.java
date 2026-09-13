@@ -155,11 +155,11 @@ public class InternalPaymentExecutionService {
 
         Account firstLock, secondLock;
         if (clearingAccount.compareTo(merchantSettlement) < 0) {
-            firstLock = getOrCreateAccount(clearingAccount, 0L, intent.getCurrency());
+            firstLock = getOrCreateAccount(clearingAccount, null, intent.getCurrency());
             secondLock = getOrCreateAccount(merchantSettlement, merchantId, intent.getCurrency());
         } else {
             firstLock = getOrCreateAccount(merchantSettlement, merchantId, intent.getCurrency());
-            secondLock = getOrCreateAccount(clearingAccount, 0L, intent.getCurrency());
+            secondLock = getOrCreateAccount(clearingAccount, null, intent.getCurrency());
         }
 
         Account debitAcc = clearingAccount.equals(firstLock.getAccountNumber()) ? firstLock : secondLock;
@@ -441,16 +441,21 @@ public class InternalPaymentExecutionService {
                     }
                     return acc;
                 })
-                .orElseGet(() -> accountPersistencePort.save(Account.builder()
-                        .accountNumber(accountNumber)
-                        // PHASE 10 FIX: Correctly maps ownership to the domain boundary
-                        .merchantId(merchantId)
-                        .balance(BigDecimal.ZERO)
-                        .currency(currency)
-                        .status(com.company.banking.common.enums.AccountStatus.ACTIVE)
-                        .allowIncoming(true)
-                        .allowOutgoing(true)
-                        .frozen(false)
-                        .build()));
+                .orElseGet(() -> {
+                    Long safeMerchantId = (accountNumber.startsWith("MERCHANT-SETTLEMENT-") && merchantId != null && merchantId > 0L)
+                            ? merchantId
+                            : null;
+                    return accountPersistencePort.save(Account.builder()
+                            .accountNumber(accountNumber)
+                            // Correctly maps ownership to domain boundary (null for system clearing accounts)
+                            .merchantId(safeMerchantId)
+                            .balance(BigDecimal.ZERO)
+                            .currency(currency)
+                            .status(com.company.banking.common.enums.AccountStatus.ACTIVE)
+                            .allowIncoming(true)
+                            .allowOutgoing(true)
+                            .frozen(false)
+                            .build());
+                });
     }
 }

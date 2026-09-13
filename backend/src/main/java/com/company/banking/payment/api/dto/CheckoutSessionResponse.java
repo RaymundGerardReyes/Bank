@@ -14,7 +14,12 @@ import java.math.BigDecimal;
 public class CheckoutSessionResponse {
 
     private String id;
+    private String sessionId;
+    private String paymentIntentId;
+    private String checkoutUrl;
+    private String url;
     private String status;
     private BigDecimal amount;
     private String currency;
+    private String clientSecret;
 }

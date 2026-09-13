@@ -43,6 +43,7 @@ logging:
 
 payment:
   provider: ${PAYMENT_PROVIDER:paymongo}
+  checkout-base-url: ${PAYMENT_CHECKOUT_BASE_URL:${app.frontend.public-origin:${FRONTEND_PUBLIC_ORIGIN:http://localhost:3000}}}
 
   reconciliation:
     cron: ${PAYMENT_RECONCILIATION_CRON:0 0/15 * * * ?}

@@ -45,6 +45,11 @@ server:
 platform:
   domain: ${PLATFORM_DOMAIN:}
 
+payment:
+  checkout-base-url: ${PAYMENT_CHECKOUT_BASE_URL:}
+  webhook-public-url: ${PAYMENT_WEBHOOK_PUBLIC_URL:}
+  webhook-host: ${PAYMENT_WEBHOOK_HOST:}
+
 fx:
   provider:
     type: ${FX_PROVIDER_TYPE:fake}

@@ -15,6 +15,7 @@ import java.util.List;
 @AllArgsConstructor
 public class PublicCheckoutSessionResponse {
     private String id;               // e.g., cs_01K8XYZ...
+    private String sessionId;        // e.g., cs_01K8XYZ...
     private String status;           // ACTIVE, PAYMENT_PENDING, AUTHORIZED, PAID, EXPIRED, CANCELLED
     private String merchantName;     // Display name only, NO internal merchantId
     private BigDecimal amount;

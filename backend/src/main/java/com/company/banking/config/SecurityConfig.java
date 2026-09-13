@@ -42,6 +42,8 @@ public class SecurityConfig {
                         "/api/v1/auth/**", 
                         "/api/v1/webhooks/payment/**",
                         "/api/v1/checkout/sessions/**",
+                        "/api/v1/payment-sessions/**",
+                        "/payment-sessions/**",
                         "/api/v1/fx/**",
                         "/v3/api-docs/developer-gateway", 
                         "/v3/api-docs/developer-gateway/**", 
