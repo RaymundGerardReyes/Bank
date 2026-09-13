@@ -73,6 +73,10 @@ public class ApiKeyAuthenticationToken extends AbstractAuthenticationToken {
         setAuthenticated(false);
     }
 
+    public Long getMerchantId() {
+        return merchantId;
+    }
+
     public Long getApiKeyId() {
         return apiKeyId;
     }

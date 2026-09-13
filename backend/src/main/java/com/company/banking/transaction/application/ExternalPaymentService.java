@@ -65,6 +65,9 @@ public class ExternalPaymentService implements ExternalPaymentUseCase {
         
         // VULN 1 FIX: Safely resolves and automatically runs the VAM security checks!
         Account source = accountResolver.resolveAndAuthorizeSource(request.getSourceAccountNumber());
+        if (!source.canDebit()) {
+            throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Source account is frozen, suspended, or locked for outgoing payments");
+        }
         
         // NRPS LIMIT VALIDATION
         transferPolicy.validateRailLimits(railConfig, request.getAmount());

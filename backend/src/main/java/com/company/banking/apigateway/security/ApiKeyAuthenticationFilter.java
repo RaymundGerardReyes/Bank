@@ -189,6 +189,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 @Override
                 public String getHeader(String name) {
                     if ("X-Client-Id".equalsIgnoreCase(name)) return String.valueOf(apiKey.getMerchantId());
+                    if ("X-Merchant-Id".equalsIgnoreCase(name)) return String.valueOf(apiKey.getMerchantId());
                     if ("X-Customer-Id".equalsIgnoreCase(name) && apiKey.getCustomerId() != null) return String.valueOf(apiKey.getCustomerId());
                     if ("X-Linked-Account".equalsIgnoreCase(name)) return apiKey.getLinkedAccountId();
                     return super.getHeader(name);
@@ -198,6 +199,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 public java.util.Enumeration<String> getHeaderNames() {
                     java.util.List<String> names = java.util.Collections.list(super.getHeaderNames());
                     if (names.stream().noneMatch("X-Client-Id"::equalsIgnoreCase)) names.add("X-Client-Id");
+                    if (names.stream().noneMatch("X-Merchant-Id"::equalsIgnoreCase)) names.add("X-Merchant-Id");
                     if (apiKey.getCustomerId() != null && names.stream().noneMatch("X-Customer-Id"::equalsIgnoreCase)) names.add("X-Customer-Id");
                     if (names.stream().noneMatch("X-Linked-Account"::equalsIgnoreCase)) names.add("X-Linked-Account");
                     return java.util.Collections.enumeration(names);
@@ -324,13 +326,15 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             return null; 
         }
 
-        // 1. Virtual Account Management (VAM)
+        // 1. Virtual Account Management (VAM) & Statements
         if ((path.startsWith("/api/v1/accounts") || path.startsWith("/api/v1/gateway/accounts")) && "POST".equalsIgnoreCase(method)) return "accounts:write";
         if ((path.startsWith("/api/v1/accounts") || path.startsWith("/api/v1/gateway/accounts")) && "GET".equalsIgnoreCase(method)) return "accounts:read";
+        if ((path.startsWith("/api/v1/statements") || path.startsWith("/api/v1/gateway/statements")) && "POST".equalsIgnoreCase(method)) return "accounts:read";
+        if ((path.startsWith("/api/v1/statements") || path.startsWith("/api/v1/gateway/statements")) && "GET".equalsIgnoreCase(method)) return "accounts:read";
 
         // 2. Payments & Checkout
-        if ((path.startsWith("/api/v1/payments") || path.startsWith("/api/v1/gateway/payments") || path.startsWith("/api/v1/gateway/checkout")) && "POST".equalsIgnoreCase(method)) return "payments:write";
-        if ((path.startsWith("/api/v1/payments") || path.startsWith("/api/v1/gateway/payments") || path.startsWith("/api/v1/gateway/checkout")) && "GET".equalsIgnoreCase(method)) return "payments:read";
+        if ((path.startsWith("/api/v1/payments") || path.startsWith("/api/v1/gateway/payments") || path.startsWith("/api/v1/gateway/checkout") || path.startsWith("/api/v1/gateway/payment-intents")) && "POST".equalsIgnoreCase(method)) return "payments:write";
+        if ((path.startsWith("/api/v1/payments") || path.startsWith("/api/v1/gateway/payments") || path.startsWith("/api/v1/gateway/checkout") || path.startsWith("/api/v1/gateway/payment-intents")) && "GET".equalsIgnoreCase(method)) return "payments:read";
 
         // 3. Payroll & Batch Distribution
         if (path.startsWith("/api/v1/batch") && "POST".equalsIgnoreCase(method)) return "payroll:write";

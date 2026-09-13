@@ -157,6 +157,9 @@ public class DeveloperOnboardingService {
                         .balance(java.math.BigDecimal.ZERO)
                         .currency("PHP")
                         .status(com.company.banking.common.enums.AccountStatus.ACTIVE)
+                        .allowIncoming(true)
+                        .allowOutgoing(true)
+                        .frozen(false)
                         .build();
                 accountPersistencePort.save(settlementAccount);
             }

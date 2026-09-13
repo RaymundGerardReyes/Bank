@@ -85,6 +85,13 @@ public class InternalTransferService implements TransactionUseCase {
         Account sourceAccount = transactionAccountResolver.resolveAndAuthorizeSource(request.getSourceAccountNumber());
         Account destinationAccount = transactionAccountResolver.resolveAndAuthorizeDestination(request.getDestinationAccountNumber(), sourceAccount);
 
+        if (!sourceAccount.canDebit()) {
+            throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Source account is frozen, suspended, or locked for outgoing transfers");
+        }
+        if (!destinationAccount.canCredit()) {
+            throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Destination account is frozen, suspended, or locked for incoming transfers");
+        }
+
         // Phase 2: Domain Abstraction and Classification (PRE-LOCK)
         com.company.banking.transaction.domain.CurrencyCode sourceCurrencyCode = com.company.banking.transaction.domain.CurrencyCode.fromString(sourceAccount.getCurrency());
         com.company.banking.transaction.domain.CurrencyCode destCurrencyCode = com.company.banking.transaction.domain.CurrencyCode.fromString(destinationAccount.getCurrency());
@@ -127,8 +134,8 @@ public class InternalTransferService implements TransactionUseCase {
             Account source = lockedAccounts.get(0);
             Account destination = lockedAccounts.get(1);
 
-            if (source.getStatus() != AccountStatus.ACTIVE || destination.getStatus() != AccountStatus.ACTIVE) {
-                throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "One or both accounts are not active");
+            if (!source.canDebit() || !destination.canCredit()) {
+                throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "One or both accounts are frozen, suspended, or locked");
             }
 
             // 4. Validate Business Rules & VAM Hierarchy (Post-lock to ensure state hasn't changed)

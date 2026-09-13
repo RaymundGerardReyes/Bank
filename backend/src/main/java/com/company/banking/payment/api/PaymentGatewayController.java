@@ -128,6 +128,42 @@ public class PaymentGatewayController {
             throw new com.company.banking.common.exception.BusinessException(com.company.banking.common.exception.ErrorCode.INVALID_REQUEST, "Malformed intent ID");
         }
         
-        throw new com.company.banking.common.exception.NotFoundException("Intent not found");
+        com.company.banking.payment.domain.PaymentIntent intent = orchestrationService.getIntent(intentId);
+
+        Long merchantId = null;
+        if (authenticatedMerchantIdStr != null) {
+            try {
+                merchantId = Long.parseLong(authenticatedMerchantIdStr);
+            } catch (NumberFormatException ignored) {}
+        }
+        if (merchantId == null && authentication != null) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof Long) {
+                merchantId = (Long) principal;
+            } else if (principal instanceof com.company.banking.customer.domain.Customer) {
+                merchantId = ((com.company.banking.customer.domain.Customer) principal).getId();
+            } else {
+                try {
+                    merchantId = Long.parseLong(authentication.getName());
+                } catch (Exception ignored) {}
+            }
+        }
+
+        if (merchantId != null && intent.getMerchantId() != null && !merchantId.equals(intent.getMerchantId())) {
+            throw new com.company.banking.common.exception.ForbiddenException("Not authorized to access this intent");
+        }
+
+        if (linkedAccountId != null && !linkedAccountId.equalsIgnoreCase("UNRESTRICTED")
+                && intent.getCustomerAccountNumber() != null
+                && !intent.getCustomerAccountNumber().equals("PENDING_CHECKOUT")
+                && !linkedAccountId.equals(intent.getCustomerAccountNumber())) {
+            throw new com.company.banking.common.exception.ForbiddenException("Account not authorized to view this intent");
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "status", 200,
+                "data", intent,
+                "message", "Payment intent retrieved"
+        ));
     }
 }

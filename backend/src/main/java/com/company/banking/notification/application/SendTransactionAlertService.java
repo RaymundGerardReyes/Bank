@@ -24,10 +24,13 @@ public class SendTransactionAlertService {
 
     // NEW: Enterprise Receipt Email Dispatcher
     public void sendTransferReceipt(String sourceEmail, String recipientEmail, String txRef, BigDecimal amount, String date) {
-        String subject = "NovaBank: Official Transfer Receipt (" + txRef + ")";
-        String body = "A funds transfer of $" + amount.toString() + " has been successfully processed.\n\n" +
-                      "Transaction Reference: " + txRef + "\n" +
-                      "Date Executed: " + date + "\n\n" +
+        String formattedAmount = amount != null ? amount.toString() : "0.00";
+        String formattedDate = date != null ? date : java.time.LocalDate.now().toString();
+        String formattedRef = txRef != null ? txRef : "N/A";
+        String subject = "NovaBank: Official Transfer Receipt (" + formattedRef + ")";
+        String body = "A funds transfer of $" + formattedAmount + " has been successfully processed.\n\n" +
+                      "Transaction Reference: " + formattedRef + "\n" +
+                      "Date Executed: " + formattedDate + "\n\n" +
                       "Thank you for banking securely with NovaBank Enterprise.";
 
         if (sourceEmail != null && !sourceEmail.isEmpty()) {

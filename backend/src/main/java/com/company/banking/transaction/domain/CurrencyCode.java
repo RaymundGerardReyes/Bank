@@ -9,7 +9,8 @@ public enum CurrencyCode {
     EUR(2),
     GBP(2),
     JPY(0),
-    SGD(2);
+    SGD(2),
+    CAD(2);
 
     private final int minorUnits;
 

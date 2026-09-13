@@ -70,6 +70,9 @@ public class PaymentIntent {
         if (this.feeAmount == null) {
             this.feeAmount = BigDecimal.ZERO;
         }
+        if (this.customerAccountNumber == null) {
+            this.customerAccountNumber = "PENDING_CHECKOUT";
+        }
     }
 
     @PreUpdate

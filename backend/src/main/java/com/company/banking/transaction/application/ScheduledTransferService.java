@@ -30,6 +30,11 @@ public class ScheduledTransferService {
 
         // VULN 1 FIX: Use centralized resolver
         Account source = accountResolver.resolveAndAuthorizeSource(request.getSourceAccountNumber());
+        if (!source.canDebit()) {
+            throw new com.company.banking.common.exception.BusinessException(
+                com.company.banking.common.exception.ErrorCode.ACCOUNT_SUSPENDED, 
+                "Source account is frozen, suspended, or locked for outgoing transfers");
+        }
 
         String txRef = "SCH-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 

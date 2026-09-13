@@ -24,6 +24,8 @@ import java.util.UUID;
 
 import com.company.banking.merchant.infrastructure.MerchantJpaRepository;
 import com.company.banking.payment.api.dto.PublicCheckoutSessionResponse;
+import com.company.banking.payment.domain.DynamicQrPayment;
+import com.company.banking.payment.infrastructure.DynamicQrPaymentJpaRepository;
 import java.util.List;
 
 @Service
@@ -34,6 +36,7 @@ public class CheckoutSessionService {
     private final CheckoutSessionJpaRepository sessionRepository;
     private final PaymentIntentJpaRepository intentRepository;
     private final MerchantJpaRepository merchantRepository;
+    private final DynamicQrPaymentJpaRepository dynamicQrPaymentJpaRepository;
 
     @Transactional
     public CheckoutSessionResponse createSession(Long merchantId, String idempotencyKey, CheckoutSessionRequest request) {
@@ -61,6 +64,7 @@ public class CheckoutSessionService {
             PaymentIntent intent = intentRepository.save(PaymentIntent.builder()
                     .intentId(intentId)
                     .merchantId(merchantId)
+                    .customerAccountNumber("PENDING_CHECKOUT")
                     .amount(derivedAmount)
                     .currency(request.getCurrency())
                     .status(PaymentIntentStatus.CREATED)
@@ -123,6 +127,25 @@ public class CheckoutSessionService {
                     ? null 
                     : session.getCancelUrl();
 
+            String qrRef = null;
+            String qrPayload = null;
+            String qrStatus = null;
+            LocalDateTime qrExpiresAt = null;
+
+            if (session.getPaymentIntentId() != null) {
+                Optional<PaymentIntent> intentOpt = intentRepository.findByIntentId(session.getPaymentIntentId());
+                if (intentOpt.isPresent()) {
+                    Optional<DynamicQrPayment> qrOpt = dynamicQrPaymentJpaRepository.findByPaymentIntentId(intentOpt.get().getId());
+                    if (qrOpt.isPresent()) {
+                        DynamicQrPayment qr = qrOpt.get();
+                        qrRef = qr.getQrReference();
+                        qrPayload = qr.getQrPayload();
+                        qrStatus = qr.getStatus();
+                        qrExpiresAt = qr.getExpiresAt();
+                    }
+                }
+            }
+
             return PublicCheckoutSessionResponse.builder()
                     .id(session.getSessionId())
                     .status(statusStr)
@@ -130,7 +153,12 @@ public class CheckoutSessionService {
                     .currency(session.getCurrency())
                     .description(session.getDescription())
                     .merchantName(merchantName)
-                    .paymentMethods(List.of("INTERNAL_ACCOUNT"))
+                    .paymentMethods(List.of("INTERNAL_ACCOUNT", "QR_PH"))
+                    .selectedPaymentMethod(session.getSelectedPaymentMethod())
+                    .qrReference(qrRef)
+                    .qrPayload(qrPayload)
+                    .qrStatus(qrStatus)
+                    .qrExpiresAt(qrExpiresAt)
                     .expiresAt(session.getExpiresAt())
                     .returnUrl(returnUrl)
                     .cancelUrl(cancelUrl)
@@ -157,6 +185,19 @@ public class CheckoutSessionService {
             default -> "ACTIVE";
         };
 
+        String qrRef = null;
+        String qrPayload = null;
+        String qrStatus = null;
+        LocalDateTime qrExpiresAt = null;
+        Optional<DynamicQrPayment> qrOpt = dynamicQrPaymentJpaRepository.findByPaymentIntentId(intent.getId());
+        if (qrOpt.isPresent()) {
+            DynamicQrPayment qr = qrOpt.get();
+            qrRef = qr.getQrReference();
+            qrPayload = qr.getQrPayload();
+            qrStatus = qr.getStatus();
+            qrExpiresAt = qr.getExpiresAt();
+        }
+
         return PublicCheckoutSessionResponse.builder()
                 .id(intent.getIntentId())
                 .status(mappedStatus)
@@ -164,7 +205,12 @@ public class CheckoutSessionService {
                 .currency(intent.getCurrency() != null ? intent.getCurrency() : "PHP")
                 .description(intent.getDescription() != null ? intent.getDescription() : "Order Payment")
                 .merchantName(merchantName)
-                .paymentMethods(List.of("INTERNAL_ACCOUNT"))
+                .paymentMethods(List.of("INTERNAL_ACCOUNT", "QR_PH"))
+                .selectedPaymentMethod(qrRef != null ? "QR_PH" : null)
+                .qrReference(qrRef)
+                .qrPayload(qrPayload)
+                .qrStatus(qrStatus)
+                .qrExpiresAt(qrExpiresAt)
                 .expiresAt(intent.getCreatedAt() != null ? intent.getCreatedAt().plusHours(1) : LocalDateTime.now().plusHours(1))
                 .returnUrl(null)
                 .cancelUrl(null)

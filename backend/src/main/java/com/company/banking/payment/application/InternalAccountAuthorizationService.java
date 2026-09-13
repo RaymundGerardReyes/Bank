@@ -76,8 +76,17 @@ public class InternalAccountAuthorizationService {
         Account account = accountPersistencePort.findByAccountNumber(customerAccountNumber)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Customer account not found"));
 
-        if (account.getStatus() != AccountStatus.ACTIVE) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Account is not active");
+        if (!account.canDebit()) {
+            if (account.isFrozen() || account.getStatus() == AccountStatus.FROZEN) {
+                throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is frozen due to compliance or security lockdown");
+            }
+            if (account.getStatus() != AccountStatus.ACTIVE) {
+                throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is not active");
+            }
+            if (!account.isAllowOutgoing()) {
+                throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is locked for outgoing transactions");
+            }
+            throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account cannot perform debit transactions");
         }
 
         if (account.getBalance().compareTo(intent.getAmount()) < 0) {

@@ -47,8 +47,17 @@ public class DepositService implements DepositUseCase {
         Account account = accountPersistencePort.findByAccountNumberForUpdate(request.getAccountNumber())
                 .orElseThrow(() -> new NotFoundException("Account not found: " + request.getAccountNumber()));
 
-        if (account.getStatus() != AccountStatus.ACTIVE) {
-            throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is not active");
+        if (!account.canCredit()) {
+            if (account.isFrozen() || account.getStatus() == AccountStatus.FROZEN) {
+                throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is frozen due to compliance or security lockdown");
+            }
+            if (account.getStatus() != AccountStatus.ACTIVE) {
+                throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is not active");
+            }
+            if (!account.isAllowIncoming()) {
+                throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account incoming transactions are locked");
+            }
+            throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is frozen, suspended, or locked for incoming transactions");
         }
 
         String txRef = "DEP-" + UUID.randomUUID().toString();

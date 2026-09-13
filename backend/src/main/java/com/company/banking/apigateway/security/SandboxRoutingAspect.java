@@ -55,9 +55,12 @@ public class SandboxRoutingAspect {
             Object[] args = pjp.getArgs();
             String intentId = (String) args[0];
             Long merchantId = (Long) args[1];
+            String refundId = args.length > 2 ? (String) args[2] : null;
+            java.math.BigDecimal refundAmount = args.length > 3 ? (java.math.BigDecimal) args[3] : null;
+            String reason = args.length > 4 ? (String) args[4] : null;
             
             log.info("[SANDBOX] Intercepting Refund for Intent {}. Bypassing real ledger.", intentId);
-            return simulateSandboxRefund(intentId, merchantId);
+            return simulateSandboxRefund(intentId, merchantId, refundId, refundAmount, reason);
         }
         // Proceed to real LIVE execution
         return pjp.proceed();
@@ -102,7 +105,7 @@ public class SandboxRoutingAspect {
         return intent;
     }
 
-    private PaymentIntent simulateSandboxRefund(String intentId, Long merchantId) {
+    private com.company.banking.payment.domain.Refund simulateSandboxRefund(String intentId, Long merchantId, String refundId, java.math.BigDecimal refundAmount, String reason) {
         PaymentIntent intent = intentRepository.findByIntentId(intentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Payment Intent not found"));
 
@@ -115,8 +118,17 @@ public class SandboxRoutingAspect {
         intent.setUpdatedAt(LocalDateTime.now());
         intentRepository.save(intent);
 
+        com.company.banking.payment.domain.Refund refund = com.company.banking.payment.domain.Refund.builder()
+                .refundId(refundId != null ? refundId : "ref_sbx_" + UUID.randomUUID().toString().replace("-", ""))
+                .paymentIntentId(intent.getId())
+                .amount(refundAmount != null ? refundAmount : intent.getAmount())
+                .reason(reason != null ? reason : "Sandbox Refund")
+                .status("COMPLETED")
+                .createdAt(LocalDateTime.now())
+                .build();
+
         log.info("[SANDBOX] Simulated Refund Webhook for Intent {}", intentId);
 
-        return intent;
+        return refund;
     }
 }

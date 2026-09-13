@@ -49,8 +49,17 @@ public class WithdrawService implements WithdrawUseCase {
         Account account = accountPersistencePort.findByAccountNumberForUpdate(request.getAccountNumber())
                 .orElseThrow(() -> new NotFoundException("Account not found: " + request.getAccountNumber()));
 
-        if (account.getStatus() != AccountStatus.ACTIVE) {
-            throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is not active");
+        if (!account.canDebit()) {
+            if (account.isFrozen() || account.getStatus() == AccountStatus.FROZEN) {
+                throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is frozen due to compliance or security lockdown");
+            }
+            if (account.getStatus() != AccountStatus.ACTIVE) {
+                throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is not active");
+            }
+            if (!account.isAllowOutgoing()) {
+                throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account outgoing transactions are locked");
+            }
+            throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is frozen, suspended, or locked for outgoing transactions");
         }
 
         if (!sufficientFundsPolicy.hasSufficientFunds(account, request.getAmount())) {

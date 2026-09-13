@@ -1,11 +1,14 @@
 package com.company.banking.account.application;
 
-import com.company.banking.account.api.dto.UpdateAccountSettingsRequest;
 import com.company.banking.account.api.dto.AccountResponse;
-import com.company.banking.account.domain.Account;
-import com.company.banking.account.application.port.out.AccountPersistencePort;
-import com.company.banking.common.exception.NotFoundException;
+import com.company.banking.account.api.dto.UpdateAccountSettingsRequest;
 import com.company.banking.account.application.port.in.UpdateAccountSettingsUseCase;
+import com.company.banking.account.application.port.out.AccountPersistencePort;
+import com.company.banking.account.domain.Account;
+import com.company.banking.common.enums.AccountStatus;
+import com.company.banking.common.exception.ForbiddenException;
+import com.company.banking.common.exception.NotFoundException;
+import com.company.banking.merchant.application.port.out.MerchantPersistencePort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,45 +18,48 @@ import org.springframework.transaction.annotation.Transactional;
 public class UpdateAccountSettingsService implements UpdateAccountSettingsUseCase {
     
     private final AccountPersistencePort accountPersistencePort;
+    private final MerchantPersistencePort merchantPersistencePort;
     
     @Transactional
+    @Override
     public AccountResponse updateSettings(String accountNumber, UpdateAccountSettingsRequest request, Long ownerId) {
         Account account = accountPersistencePort.findByAccountNumber(accountNumber)
             .orElseThrow(() -> new NotFoundException("Account '" + accountNumber + "' not found."));
             
-        if (!account.getCustomerId().equals(ownerId)) {
-            throw new com.company.banking.common.exception.ForbiddenException("Not authorized to access this account");
+        boolean isOwner = false;
+        if (account.getCustomerId() != null && account.getCustomerId().equals(ownerId)) {
+            isOwner = true;
+        } else if (account.getMerchantId() != null && merchantPersistencePort != null) {
+            isOwner = merchantPersistencePort.findById(account.getMerchantId())
+                    .map(m -> ownerId.equals(m.getOwnerId()))
+                    .orElse(false);
+        }
+        if (!isOwner) {
+            throw new ForbiddenException("Not authorized to access this account");
         }
 
-        if (request == null || (request.getFrozen() == null && request.getAllowIncoming() == null 
-                && request.getAllowOutgoing() == null && request.getRequireDualApproval() == null)) {
-            throw new com.company.banking.common.exception.BusinessException(
-                com.company.banking.common.exception.ErrorCode.INVALID_REQUEST, 
-                "At least one setting must be provided for update."
-            );
-        }
-
-        if (request.getFrozen() != null) {
-            account.setFrozen(request.getFrozen());
-        }
-        if (request.getAllowIncoming() != null) {
-            account.setAllowIncoming(request.getAllowIncoming());
-        }
-        if (request.getAllowOutgoing() != null) {
-            account.setAllowOutgoing(request.getAllowOutgoing());
-        }
-        if (request.getRequireDualApproval() != null) {
-            account.setRequireDualApproval(request.getRequireDualApproval());
+        if (request != null) {
+            if (request.getFrozen() != null) {
+                account.setFrozen(request.getFrozen());
+                if (request.getFrozen()) {
+                    account.setStatus(AccountStatus.FROZEN);
+                } else if (account.getStatus() == AccountStatus.FROZEN) {
+                    account.setStatus(AccountStatus.ACTIVE);
+                }
+            }
+            if (request.getAllowIncoming() != null) {
+                account.setAllowIncoming(request.getAllowIncoming());
+            }
+            if (request.getAllowOutgoing() != null) {
+                account.setAllowOutgoing(request.getAllowOutgoing());
+            }
+            if (request.getRequireDualApproval() != null) {
+                account.setRequireDualApproval(request.getRequireDualApproval());
+            }
         }
         
         account = accountPersistencePort.save(account);
 
-        AccountResponse response = new AccountResponse();
-        response.setAccountNumber(account.getAccountNumber());
-        response.setFrozen(account.isFrozen());
-        response.setAllowIncoming(account.isAllowIncoming());
-        response.setAllowOutgoing(account.isAllowOutgoing());
-        response.setRequireDualApproval(account.isRequireDualApproval());
-        return response;
+        return AccountResponse.fromEntity(account);
     }
 }

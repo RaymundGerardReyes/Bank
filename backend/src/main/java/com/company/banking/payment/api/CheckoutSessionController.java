@@ -76,6 +76,13 @@ public class CheckoutSessionController {
         return ResponseEntity.ok(ApiResponse.success("Checkout confirmed successfully", response));
     }
 
+    // Customer API: Simulate QR Scan and Pay
+    @PostMapping("/{id}/qr/simulate-pay")
+    public ResponseEntity<ApiResponse<CheckoutSessionResponse>> simulateQrPay(@PathVariable("id") String publicToken) {
+        CheckoutSessionResponse response = confirmationService.confirmCheckout(publicToken);
+        return ResponseEntity.ok(ApiResponse.success("QR payment simulated and confirmed successfully", response));
+    }
+
     private Long resolveMerchantStrictly(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new ForbiddenException("Unauthenticated request blocked at controller boundary.");

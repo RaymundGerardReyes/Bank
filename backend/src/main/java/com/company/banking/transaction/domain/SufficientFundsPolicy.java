@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 public class SufficientFundsPolicy {
 
     public boolean hasSufficientFunds(Account account, BigDecimal requiredAmount) {
-        if (account != null && account.isFrozen()) {
+        if (account != null && (account.isFrozen() || account.getStatus() == com.company.banking.common.enums.AccountStatus.FROZEN)) {
             throw new com.company.banking.common.exception.BusinessException(
                 com.company.banking.common.exception.ErrorCode.FORBIDDEN, 
                 "Account is frozen due to AML investigations or compliance reasons.");

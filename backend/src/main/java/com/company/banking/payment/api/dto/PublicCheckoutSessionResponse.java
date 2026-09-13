@@ -21,6 +21,11 @@ public class PublicCheckoutSessionResponse {
     private String currency;
     private String description;      
     private List<String> paymentMethods; 
+    private String selectedPaymentMethod;
+    private String qrReference;
+    private String qrPayload;
+    private String qrStatus;
+    private LocalDateTime qrExpiresAt;
     private LocalDateTime expiresAt;
     private String returnUrl;
     private String cancelUrl;

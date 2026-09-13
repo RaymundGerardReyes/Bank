@@ -74,5 +74,5 @@ tasks.named('test') {
     )
     maxParallelForks = 1
     forkEvery = 20
-    maxHeapSize = "1024m"
+    maxHeapSize = "384m"
 }

@@ -8,6 +8,7 @@ import com.company.banking.payment.domain.*;
 import com.company.banking.payment.infrastructure.CheckoutSessionJpaRepository;
 import com.company.banking.payment.infrastructure.PaymentAuthorizationJpaRepository;
 import com.company.banking.payment.infrastructure.PaymentIntentJpaRepository;
+import com.company.banking.payment.infrastructure.DynamicQrPaymentJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class CheckoutPaymentConfirmationService {
     private final InternalPaymentExecutionService executionService;
     private final CheckoutSessionStateTransitionPolicy transitionPolicy;
     private final AuditEventPublisher auditEventPublisher;
+    private final DynamicQrPaymentJpaRepository dynamicQrPaymentJpaRepository;
 
     @Transactional
     public CheckoutSessionResponse confirmCheckout(String publicToken) {
@@ -50,7 +52,12 @@ public class CheckoutPaymentConfirmationService {
         // 3. Verify Session Status
         transitionPolicy.validateTransition(session.getStatus(), CheckoutSessionStatus.PAID);
 
-        // 4. Load the Cryptographic / Logical Authorization
+        // 4. Handle QR_PH path
+        if ("QR_PH".equalsIgnoreCase(session.getSelectedPaymentMethod())) {
+            return confirmQrCheckout(session, publicToken);
+        }
+
+        // 5. Load the Cryptographic / Logical Authorization
         PaymentAuthorization authorization = authorizationRepository.findByCheckoutSessionId(session.getSessionId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Payment Authorization not found"));
 
@@ -97,6 +104,38 @@ public class CheckoutPaymentConfirmationService {
 
         auditEventPublisher.publishEvent("CHECKOUT_PAYMENT_CAPTURED", session.getMerchantId().toString(), "Successfully captured " + session.getAmount(), publicToken);
         log.info("[CHECKOUT CONFIRMATION] Session {} successfully marked as PAID.", publicToken);
+
+        return mapToResponse(session);
+    }
+
+    private CheckoutSessionResponse confirmQrCheckout(CheckoutSession session, String publicToken) {
+        PaymentIntent intent = intentRepository.findByIntentId(session.getPaymentIntentId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Payment Intent not found"));
+
+        DynamicQrPayment qrPayment = dynamicQrPaymentJpaRepository.findByPaymentIntentId(intent.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Dynamic QR not found for checkout session"));
+
+        if (qrPayment.getExpiresAt().isBefore(LocalDateTime.now())) {
+            qrPayment.setStatus("EXPIRED");
+            dynamicQrPaymentJpaRepository.save(qrPayment);
+            session.setStatus(CheckoutSessionStatus.EXPIRED);
+            sessionRepository.save(session);
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "QR code has expired");
+        }
+
+        qrPayment.setStatus("PAID");
+        if (qrPayment.getScannedAt() == null) {
+            qrPayment.setScannedAt(LocalDateTime.now());
+        }
+        dynamicQrPaymentJpaRepository.save(qrPayment);
+
+        executionService.captureQrPayment(intent.getIntentId(), session.getMerchantId(), qrPayment.getQrReference());
+
+        session.setStatus(CheckoutSessionStatus.PAID);
+        sessionRepository.save(session);
+
+        auditEventPublisher.publishEvent("CHECKOUT_QR_PAYMENT_CAPTURED", session.getMerchantId().toString(), "Successfully captured QR Ph payment of " + session.getAmount(), publicToken);
+        log.info("[CHECKOUT CONFIRMATION] Session {} successfully captured via QR Ph and marked PAID.", publicToken);
 
         return mapToResponse(session);
     }

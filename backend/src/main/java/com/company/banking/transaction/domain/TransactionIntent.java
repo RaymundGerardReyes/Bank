@@ -70,5 +70,14 @@ public class TransactionIntent {
         if (this.status == null) {
             this.status = TransactionIntentStatus.DRAFT;
         }
+        if (this.rail == null || this.rail.isBlank()) {
+            this.rail = "INTERNAL";
+        }
+        if (this.fee == null) {
+            this.fee = BigDecimal.ZERO;
+        }
+        if (this.total == null) {
+            this.total = this.amount != null ? this.amount.add(this.fee) : BigDecimal.ZERO;
+        }
     }
 }

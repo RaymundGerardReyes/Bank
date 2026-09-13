@@ -60,14 +60,24 @@ public class Account {
     @Column(name = "monthly_limit")
     private BigDecimal monthlyLimit;
 
+    @Builder.Default
     @Column(name = "allow_incoming")
-    private boolean allowIncoming;
+    private boolean allowIncoming = true;
 
+    @Builder.Default
     @Column(name = "allow_outgoing")
-    private boolean allowOutgoing;
+    private boolean allowOutgoing = true;
 
     @Column(name = "require_dual_approval")
     private boolean requireDualApproval;
+
+    public boolean canDebit() {
+        return this.status == AccountStatus.ACTIVE && !this.frozen && this.allowOutgoing;
+    }
+
+    public boolean canCredit() {
+        return this.status == AccountStatus.ACTIVE && !this.frozen && this.allowIncoming;
+    }
 
     // --- CARD & ROUTING FIELDS ---
     @Builder.Default

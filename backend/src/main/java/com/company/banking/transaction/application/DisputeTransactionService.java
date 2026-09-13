@@ -29,9 +29,29 @@ public class DisputeTransactionService {
         Transaction tx = ledgerPersistencePort.findById(id)
                 .orElseThrow(() -> new NotFoundException("Transaction not found for ID: " + id));
 
+        // Resolve customerId from authentication context if available
+        Long customerId = 1L;
+        String username = "customer";
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            if (auth.getName() != null && !auth.getName().isBlank()) {
+                username = auth.getName();
+            }
+            Object principal = auth.getPrincipal();
+            if (principal instanceof com.company.banking.customer.domain.Customer) {
+                customerId = ((com.company.banking.customer.domain.Customer) principal).getId();
+            } else if (principal instanceof Long) {
+                customerId = (Long) principal;
+            } else {
+                try {
+                    customerId = Long.parseLong(auth.getName());
+                } catch (Exception ignored) {}
+            }
+        }
+
         // Create the formal back-office dispute case
         com.company.banking.transaction.domain.DisputeCase disputeCase = com.company.banking.transaction.domain.DisputeCase.builder()
-                .customerId(1L) // Assuming customer ID 1 for now (should come from auth context)
+                .customerId(customerId)
                 .transactionReference(tx.getTransactionReference())
                 .reason(request.getReasonCode() + ": " + (request.getNotes() != null ? request.getNotes() : ""))
                 .status("FILED")
@@ -45,7 +65,6 @@ public class DisputeTransactionService {
         Transaction saved = ledgerPersistencePort.save(tx);
         
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-        String username = "customer"; // Can be replaced with actual Spring Security Context user
         auditEventPublisher.publishEvent("DISPUTE_CASE_FILED", username, 
             "Created formal dispute case #" + disputeCase.getId() + " for transaction " + saved.getTransactionReference(), correlationId);
 

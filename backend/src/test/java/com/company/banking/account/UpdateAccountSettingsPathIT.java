@@ -183,6 +183,7 @@ public class UpdateAccountSettingsPathIT extends BaseIntegrationTest {
     @DisplayName("P08: State Transition - Reversing a lockdown")
     void p08_ReverseLockdown() throws Exception {
         testAccount.setFrozen(true);
+        testAccount.setStatus(AccountStatus.FROZEN);
         accountRepository.save(testAccount);
 
         String payload = "{\"frozen\": false}";
@@ -195,6 +196,9 @@ public class UpdateAccountSettingsPathIT extends BaseIntegrationTest {
 
         Account dbAccount = accountRepository.findByAccountNumber(testAccount.getAccountNumber()).orElseThrow();
         assertFalse(dbAccount.isFrozen());
+        assertEquals(AccountStatus.ACTIVE, dbAccount.getStatus());
+        assertTrue(dbAccount.canCredit());
+        assertTrue(dbAccount.canDebit());
     }
 
     @Test

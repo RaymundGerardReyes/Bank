@@ -63,8 +63,21 @@ public class PaymentIntentOrchestrationService {
         PaymentIntent intent;
         try {
             intent = transactionTemplate.execute(status -> {
-                Account account = accountPersistencePort.findByAccountNumber(sourceAccountId)
-                        .orElseThrow(() -> new com.company.banking.common.exception.NotFoundException("Account not found"));
+                Account account = accountPersistencePort.findByAccountNumberForUpdate(sourceAccountId)
+                        .orElseThrow(() -> new com.company.banking.common.exception.NotFoundException("Account not found: " + sourceAccountId));
+
+                if (!account.canDebit()) {
+                    if (account.isFrozen() || account.getStatus() == AccountStatus.FROZEN) {
+                        throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is frozen due to compliance or security lockdown");
+                    }
+                    if (account.getStatus() != AccountStatus.ACTIVE) {
+                        throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is not active: " + account.getStatus());
+                    }
+                    if (!account.isAllowOutgoing()) {
+                        throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account is locked for outgoing transactions");
+                    }
+                    throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Account cannot perform debit transactions");
+                }
 
                 if (account.getBalance().compareTo(request.getAmount()) < 0) {
                     throw new BusinessException(ErrorCode.INSUFFICIENT_FUNDS, "Insufficient funds");

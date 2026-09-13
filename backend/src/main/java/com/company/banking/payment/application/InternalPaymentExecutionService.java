@@ -42,6 +42,7 @@ public class InternalPaymentExecutionService {
     private final RefundJpaRepository refundRepository;
     private final PaymentEventOutboxService outboxService;
     private final com.company.banking.transaction.infrastructure.TransactionJpaRepository transactionRepository;
+    private final com.company.banking.merchant.application.port.out.MerchantPersistencePort merchantPersistencePort;
 
     @Transactional
     public PaymentIntent capturePayment(String intentId, Long merchantId, String captureIdempotencyKey) {
@@ -60,7 +61,7 @@ public class InternalPaymentExecutionService {
         statePolicy.validateCanCapture(intent.getStatus());
 
         String accountA = intent.getCustomerAccountNumber();
-        String accountB = "MERCHANT-SETTLEMENT-" + merchantId;
+        String accountB = resolveMerchantSettlementAccountNumber(merchantId);
 
         Account firstLock, secondLock;
         if (accountA.compareTo(accountB) < 0) {
@@ -75,6 +76,13 @@ public class InternalPaymentExecutionService {
 
         Account sourceAccount = accountA.equals(firstLock.getAccountNumber()) ? firstLock : secondLock;
         Account merchantSettlementAccount = accountB.equals(firstLock.getAccountNumber()) ? firstLock : secondLock;
+
+        if (!sourceAccount.canDebit()) {
+            throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Customer account is frozen, suspended, or locked for outgoing transactions");
+        }
+        if (!merchantSettlementAccount.canCredit()) {
+            throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Merchant settlement account is frozen, suspended, or locked for incoming transactions");
+        }
 
         if (sourceAccount.getBalance().compareTo(intent.getAmount()) < 0) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_FUNDS, "Insufficient funds for capture");
@@ -92,7 +100,7 @@ public class InternalPaymentExecutionService {
                 .transactionReference(txRef)
                 .idempotencyKey(captureIdempotencyKey)
                 .sourceAccountNumber(sourceAccount.getAccountNumber())
-                .destinationAccountNumber("MERCHANT-SETTLEMENT-" + merchantId)
+                .destinationAccountNumber(merchantSettlementAccount.getAccountNumber())
                 .amount(intent.getAmount())
                 .currency(intent.getCurrency())
                 .status(TransactionStatus.COMPLETED)
@@ -128,6 +136,80 @@ public class InternalPaymentExecutionService {
 
         outboxService.enqueuePaymentSucceeded(savedIntent, transaction);
 
+        return savedIntent;
+    }
+
+    @Transactional
+    public PaymentIntent captureQrPayment(String intentId, Long merchantId, String qrReference) {
+        log.info("[INTERNAL GATEWAY] Capturing QR payment intent: {}", intentId);
+
+        PaymentIntent intent = paymentIntentRepository.findByIntentIdForUpdate(intentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Payment Intent not found"));
+
+        if (!intent.getMerchantId().equals(merchantId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "Merchant ownership validation failed");
+        }
+
+        String merchantSettlement = resolveMerchantSettlementAccountNumber(merchantId);
+        String clearingAccount = "CLEARING-QRPH-INCOMING";
+
+        Account firstLock, secondLock;
+        if (clearingAccount.compareTo(merchantSettlement) < 0) {
+            firstLock = getOrCreateAccount(clearingAccount, 0L, intent.getCurrency());
+            secondLock = getOrCreateAccount(merchantSettlement, merchantId, intent.getCurrency());
+        } else {
+            firstLock = getOrCreateAccount(merchantSettlement, merchantId, intent.getCurrency());
+            secondLock = getOrCreateAccount(clearingAccount, 0L, intent.getCurrency());
+        }
+
+        Account debitAcc = clearingAccount.equals(firstLock.getAccountNumber()) ? firstLock : secondLock;
+        Account creditAcc = merchantSettlement.equals(firstLock.getAccountNumber()) ? firstLock : secondLock;
+
+        creditAcc.setBalance(creditAcc.getBalance().add(intent.getAmount()));
+        accountPersistencePort.save(creditAcc);
+
+        String txRef = "QR-CAP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        Transaction transaction = Transaction.builder()
+                .transactionReference(txRef)
+                .idempotencyKey("qr_cap_" + qrReference)
+                .sourceAccountNumber(debitAcc.getAccountNumber())
+                .destinationAccountNumber(creditAcc.getAccountNumber())
+                .amount(intent.getAmount())
+                .currency(intent.getCurrency())
+                .status(TransactionStatus.COMPLETED)
+                .description("QR Ph P2M Settlement: " + qrReference)
+                .build();
+
+        try {
+            transactionRepository.saveAndFlush(transaction);
+        } catch (DataIntegrityViolationException e) {
+            log.info("Idempotent duplicate QR capture for {}", qrReference);
+            return intent;
+        }
+
+        LedgerEntry debitEntry = LedgerEntry.builder()
+                .transactionReference(txRef)
+                .accountNumber(debitAcc.getAccountNumber())
+                .entryType(EntryType.DEBIT)
+                .amount(intent.getAmount())
+                .currency(intent.getCurrency())
+                .build();
+
+        LedgerEntry creditEntry = LedgerEntry.builder()
+                .transactionReference(txRef)
+                .accountNumber(creditAcc.getAccountNumber())
+                .entryType(EntryType.CREDIT)
+                .amount(intent.getAmount())
+                .currency(intent.getCurrency())
+                .build();
+
+        ledgerPersistencePort.saveLedgerEntries(Arrays.asList(debitEntry, creditEntry));
+
+        intent.setStatus(PaymentIntentStatus.SUCCESS);
+        PaymentIntent savedIntent = paymentIntentRepository.save(intent);
+
+        outboxService.enqueuePaymentSucceeded(savedIntent, transaction);
         return savedIntent;
     }
 
@@ -224,7 +306,7 @@ public class InternalPaymentExecutionService {
         }
 
         String accountA = intent.getCustomerAccountNumber();
-        String accountB = "MERCHANT-SETTLEMENT-" + merchantId;
+        String accountB = resolveMerchantSettlementAccountNumber(merchantId);
 
         Account firstLock, secondLock;
         if (accountA.compareTo(accountB) < 0) {
@@ -239,6 +321,13 @@ public class InternalPaymentExecutionService {
 
         Account customerAccount = accountA.equals(firstLock.getAccountNumber()) ? firstLock : secondLock;
         Account merchantSettlementAccount = accountB.equals(firstLock.getAccountNumber()) ? firstLock : secondLock;
+
+        if (!merchantSettlementAccount.canDebit()) {
+            throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Merchant settlement account is frozen, suspended, or locked for outgoing transactions");
+        }
+        if (!customerAccount.canCredit()) {
+            throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED, "Customer account is frozen, suspended, or locked for incoming transactions");
+        }
 
         customerAccount.setBalance(customerAccount.getBalance().add(refundAmount));
         merchantSettlementAccount.setBalance(merchantSettlementAccount.getBalance().subtract(refundAmount));
@@ -313,8 +402,45 @@ public class InternalPaymentExecutionService {
         return refund;
     }
 
+    private String resolveMerchantSettlementAccountNumber(Long merchantId) {
+        if (merchantPersistencePort != null) {
+            Optional<com.company.banking.merchant.domain.Merchant> merchantOpt = merchantPersistencePort.findById(merchantId);
+            if (merchantOpt.isPresent()) {
+                String configuredSettlement = merchantOpt.get().getSettlementAccount();
+                if (configuredSettlement != null && !configuredSettlement.trim().isEmpty()) {
+                    if (accountPersistencePort.findByAccountNumber(configuredSettlement.trim()).isPresent()) {
+                        return configuredSettlement.trim();
+                    }
+                }
+            }
+        }
+        return "MERCHANT-SETTLEMENT-" + merchantId;
+    }
+
     private Account getOrCreateAccount(String accountNumber, Long merchantId, String currency) {
         return accountPersistencePort.findByAccountNumberForUpdate(accountNumber)
+                .map(acc -> {
+                    // Auto-heal default merchant settlement accounts if they were created with invalid or missing defaults
+                    if (accountNumber.startsWith("MERCHANT-SETTLEMENT-")) {
+                        boolean modified = false;
+                        if (acc.getStatus() == null || (acc.getStatus() == com.company.banking.common.enums.AccountStatus.FROZEN && !acc.isFrozen())) {
+                            acc.setStatus(com.company.banking.common.enums.AccountStatus.ACTIVE);
+                            modified = true;
+                        }
+                        if (!acc.isAllowIncoming() && !acc.isFrozen() && acc.getStatus() == com.company.banking.common.enums.AccountStatus.ACTIVE) {
+                            acc.setAllowIncoming(true);
+                            modified = true;
+                        }
+                        if (!acc.isAllowOutgoing() && !acc.isFrozen() && acc.getStatus() == com.company.banking.common.enums.AccountStatus.ACTIVE) {
+                            acc.setAllowOutgoing(true);
+                            modified = true;
+                        }
+                        if (modified) {
+                            return accountPersistencePort.save(acc);
+                        }
+                    }
+                    return acc;
+                })
                 .orElseGet(() -> accountPersistencePort.save(Account.builder()
                         .accountNumber(accountNumber)
                         // PHASE 10 FIX: Correctly maps ownership to the domain boundary
@@ -324,6 +450,7 @@ public class InternalPaymentExecutionService {
                         .status(com.company.banking.common.enums.AccountStatus.ACTIVE)
                         .allowIncoming(true)
                         .allowOutgoing(true)
+                        .frozen(false)
                         .build()));
     }
 }
