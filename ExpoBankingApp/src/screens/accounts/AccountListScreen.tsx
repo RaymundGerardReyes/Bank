@@ -16,16 +16,28 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { formatCurrency } from '../../utils/formatters';
+import { fxService, DEFAULT_RATES_TO_PHP } from '../../services/fx/fxService';
 
 export const AccountListScreen = () => {
   const { accounts, refetch } = useAccounts();
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = React.useState(false);
+  const [ratesToPhp, setRatesToPhp] = React.useState<Record<string, number>>(DEFAULT_RATES_TO_PHP);
+
+  React.useEffect(() => {
+    fxService.getRates('PHP').then((res) => {
+      if (res?.ratesToPhp) setRatesToPhp(res.ratesToPhp);
+    }).catch(() => {});
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
     if (refetch) await refetch();
+    try {
+      const res = await fxService.getRates('PHP');
+      if (res?.ratesToPhp) setRatesToPhp(res.ratesToPhp);
+    } catch (e) {}
     setRefreshing(false);
   };
 
@@ -39,6 +51,14 @@ export const AccountListScreen = () => {
   }, [accounts]);
 
   const currencyEntries = React.useMemo(() => Object.entries(balancesByCurrency), [balancesByCurrency]);
+
+  const totalNetLiquidityInPhp = React.useMemo(() => {
+    return (accounts || []).reduce((sum, acc) => {
+      const curr = acc.currency || 'PHP';
+      const bal = acc.balance || 0;
+      return sum + fxService.convertAmountToPhp(bal, curr, ratesToPhp);
+    }, 0);
+  }, [accounts, ratesToPhp]);
 
   const renderHeader = () => (
     <View style={styles.headerArea}>
@@ -63,21 +83,27 @@ export const AccountListScreen = () => {
       {accounts && accounts.length > 0 && (
         <View style={styles.summaryCard}>
           <View style={styles.summaryLeft}>
-            <Text style={styles.summaryLabel}>
-              {currencyEntries.length > 1 ? 'Liquidity by Currency' : 'Total Net Liquidity'}
+            <Text style={styles.summaryLabel}>Total Net Liquidity</Text>
+            <Text style={styles.summaryAmount}>
+              {formatCurrency(totalNetLiquidityInPhp, 'PHP')}
             </Text>
-            {currencyEntries.length <= 1 ? (
-              <Text style={styles.summaryAmount}>
-                {formatCurrency(currencyEntries[0]?.[1] || 0, currencyEntries[0]?.[0] || 'USD')}
-              </Text>
-            ) : (
+            {currencyEntries.length > 0 && (
               <View style={styles.multiCurrencySummary}>
-                {currencyEntries.map(([currency, amount]) => (
-                  <Text key={currency} style={styles.summaryAmountItem}>
-                    <Text style={styles.currencyTag}>{currency}: </Text>
-                    {formatCurrency(amount, currency)}
-                  </Text>
-                ))}
+                {currencyEntries.map(([currency, amount]) => {
+                  const phpEquiv = fxService.convertAmountToPhp(amount, currency, ratesToPhp);
+                  const isPhp = currency === 'PHP';
+                  return (
+                    <Text key={currency} style={styles.summaryAmountItem}>
+                      <Text style={styles.currencyTag}>{currency}: </Text>
+                      {formatCurrency(amount, currency)}
+                      {!isPhp && (
+                        <Text style={styles.currencyConvertedText}>
+                          {' '}(≈ {formatCurrency(phpEquiv, 'PHP')})
+                        </Text>
+                      )}
+                    </Text>
+                  );
+                })}
               </View>
             )}
           </View>
@@ -244,6 +270,11 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '700',
+  },
+  currencyConvertedText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
   },
   ratesPill: {
     flexDirection: 'row',

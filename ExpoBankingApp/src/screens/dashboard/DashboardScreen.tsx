@@ -17,6 +17,7 @@ import { transactionService } from '../../services/transaction/transactionServic
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { formatCurrency, formatDate, generateUUID, maskAccountNumber } from '../../utils/formatters';
+import { fxService, DEFAULT_RATES_TO_PHP } from '../../services/fx/fxService';
 
 export const DashboardScreen = () => {
   const { accounts, isLoading, refetch } = useAccounts();
@@ -29,6 +30,7 @@ export const DashboardScreen = () => {
   const [recentTransactions, setRecentTransactions] = React.useState<any[]>([]);
   const [loadingTxns, setLoadingTxns] = React.useState(false);
   const [traceId] = React.useState(generateUUID().split('-')[0].toUpperCase());
+  const [ratesToPhp, setRatesToPhp] = React.useState<Record<string, number>>(DEFAULT_RATES_TO_PHP);
 
   const isAdminOrTeller = user?.role === 'ADMIN' || user?.role === 'TELLER';
 
@@ -42,6 +44,14 @@ export const DashboardScreen = () => {
   }, [accounts]);
 
   const currencyEntries = React.useMemo(() => Object.entries(balancesByCurrency), [balancesByCurrency]);
+
+  const totalNetLiquidityInPhp = React.useMemo(() => {
+    return (accounts || []).reduce((sum, acc) => {
+      const curr = acc.currency || 'PHP';
+      const bal = acc.balance || 0;
+      return sum + fxService.convertAmountToPhp(bal, curr, ratesToPhp);
+    }, 0);
+  }, [accounts, ratesToPhp]);
 
   const fetchLiveTransactions = React.useCallback(async () => {
     if (!accounts || accounts.length === 0) return;
@@ -59,21 +69,34 @@ export const DashboardScreen = () => {
     }
   }, [accounts]);
 
+  const fetchFxRates = React.useCallback(async () => {
+    try {
+      const res = await fxService.getRates('PHP');
+      if (res?.ratesToPhp) {
+        setRatesToPhp(res.ratesToPhp);
+      }
+    } catch (err) {
+      console.log('Fetching FX rates fallback:', err);
+    }
+  }, []);
+
   useFocusEffect(
     React.useCallback(() => {
       if (refetch) refetch();
       fetchLiveTransactions();
+      fetchFxRates();
       setLastSynced(new Date().toISOString());
-    }, [refetch, fetchLiveTransactions])
+    }, [refetch, fetchLiveTransactions, fetchFxRates])
   );
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
     if (refetch) await refetch();
     await fetchLiveTransactions();
+    await fetchFxRates();
     setLastSynced(new Date().toISOString());
     setRefreshing(false);
-  }, [refetch, fetchLiveTransactions]);
+  }, [refetch, fetchLiveTransactions, fetchFxRates]);
 
   return (
     <SecureScreenWrapper style={styles.container}>
@@ -105,34 +128,43 @@ export const DashboardScreen = () => {
 
         <View style={styles.netWorthCard}>
           <View style={styles.netWorthHeader}>
-            <Text style={styles.netWorthLabel}>
-              {currencyEntries.length > 1 ? 'Liquidity by Currency' : 'Total Net Liquidity'}
-            </Text>
-            {currencyEntries.length === 1 && (
-              <Text style={styles.currencyBadge}>{currencyEntries[0][0]}</Text>
-            )}
+            <Text style={styles.netWorthLabel}>Total Net Liquidity</Text>
+            <Text style={styles.currencyBadge}>PHP (₱)</Text>
           </View>
-          {currencyEntries.length <= 1 ? (
-            <Text style={styles.netWorthAmount}>
-              {currencyEntries.length === 1
-                ? formatCurrency(currencyEntries[0][1], currencyEntries[0][0]).replace(/^[^\d]+/, '')
-                : '0.00'}
-            </Text>
-          ) : (
+          <Text style={styles.netWorthAmount}>
+            {formatCurrency(totalNetLiquidityInPhp, 'PHP')}
+          </Text>
+
+          {currencyEntries.length > 0 && (
             <View style={styles.multiCurrencyList}>
-              {currencyEntries.map(([currency, amount]) => (
-                <View key={currency} style={styles.multiCurrencyItem}>
-                  <Text style={styles.multiCurrencyBadge}>{currency}</Text>
-                  <Text style={styles.multiCurrencyAmount}>
-                    {formatCurrency(amount, currency)}
-                  </Text>
-                </View>
-              ))}
+              <View style={styles.multiCurrencyHeader}>
+                <Text style={styles.multiCurrencyHeaderText}>Multi-Currency Sub-Accounts</Text>
+                <Text style={styles.multiCurrencySubText}>FX Converted to ₱</Text>
+              </View>
+              {currencyEntries.map(([currency, amount]) => {
+                const phpEquiv = fxService.convertAmountToPhp(amount, currency, ratesToPhp);
+                const isPhp = currency === 'PHP';
+                return (
+                  <View key={currency} style={styles.multiCurrencyItem}>
+                    <View style={styles.multiCurrencyLeft}>
+                      <Text style={styles.multiCurrencyBadge}>{currency}</Text>
+                      <Text style={styles.multiCurrencyAmount}>
+                        {formatCurrency(amount, currency)}
+                      </Text>
+                    </View>
+                    {!isPhp && (
+                      <Text style={styles.multiCurrencyConverted}>
+                        ≈ {formatCurrency(phpEquiv, 'PHP')}
+                      </Text>
+                    )}
+                  </View>
+                );
+              })}
             </View>
           )}
           <View style={styles.netWorthFooter}>
             <Text style={styles.netWorthFooterText}>
-              TLS Pinned • Root: PASS • {traceId}
+              TLS Pinned • Root: PASS • FX Active • {traceId}
             </Text>
           </View>
         </View>
@@ -420,27 +452,61 @@ const styles = StyleSheet.create({
   },
   multiCurrencyList: {
     marginVertical: spacing.xs,
+    backgroundColor: '#F8FAFC',
+    borderRadius: spacing.borderRadius.md,
+    padding: spacing.sm,
+  },
+  multiCurrencyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+    paddingHorizontal: 4,
+  },
+  multiCurrencyHeaderText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  multiCurrencySubText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.textMuted,
   },
   multiCurrencyItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderBottomWidth: 1,
-    borderBottomColor: '#F8FAFC',
+    borderBottomColor: '#EDF2F7',
+  },
+  multiCurrencyLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   multiCurrencyBadge: {
-    backgroundColor: '#F1F5F9',
-    color: colors.textSecondary,
-    fontSize: 12,
+    backgroundColor: '#E2E8F0',
+    color: colors.accent,
+    fontSize: 11,
     fontWeight: '800',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 4,
   },
-  multiCurrencyAmount: {
+  multiCurrencyNative: {
     color: colors.accent,
-    fontSize: 22,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  multiCurrencyConverted: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
     fontWeight: '800',
     letterSpacing: -0.5,
   },
