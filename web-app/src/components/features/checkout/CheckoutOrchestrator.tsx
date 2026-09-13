@@ -11,6 +11,7 @@ import { checkoutService } from "@/services/checkout/checkoutService";
 // Sub-components (We will create these next)
 import { PaymentMethodSelector } from "./PaymentMethodSelector";
 import { InternalAccountAuthorization } from "./InternalAccountAuthorization";
+import { QrPhCheckoutView } from "./QrPhCheckoutView";
 import { CheckoutConfirmation } from "./CheckoutConfirmation";
 import { TerminalStateScreen } from "./TerminalStateScreen";
 
@@ -81,6 +82,21 @@ export const CheckoutOrchestrator = ({
       case "ACTIVE":
         return <PaymentMethodSelector sessionId={sessionId} onMethodSelected={refetch} availableMethods={session.paymentMethods || []} />;
       case "PAYMENT_PENDING":
+        if (session.selectedPaymentMethod === "QR_PH") {
+          return (
+            <QrPhCheckoutView
+              sessionId={sessionId}
+              session={session}
+              onPaid={refetch}
+              onChangeMethod={() => {
+                // Allows user to revert and re-select payment method
+                checkoutService.selectPaymentMethod(sessionId, { paymentMethod: "INTERNAL_ACCOUNT" })
+                  .then(() => refetch())
+                  .catch(() => refetch());
+              }}
+            />
+          );
+        }
         return <InternalAccountAuthorization sessionId={sessionId} onAuthorized={refetch} />;
       case "AUTHORIZED":
         return <CheckoutConfirmation sessionId={sessionId} onConfirmed={refetch} />;

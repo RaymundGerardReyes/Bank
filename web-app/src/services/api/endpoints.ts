@@ -30,6 +30,10 @@ export const endpoints = {
     audit: API_ENDPOINTS.ADMIN_AUDIT,
     status: API_ENDPOINTS.ADMIN_STATUS,
   },
+  fx: {
+    rates: API_ENDPOINTS.FX_RATES,
+    quote: API_ENDPOINTS.FX_QUOTE,
+  },
 
   // --- GATEWAY: Payment Intents ---
   gateway: {

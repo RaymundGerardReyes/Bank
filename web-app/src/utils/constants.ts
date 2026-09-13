@@ -15,6 +15,10 @@ export const API_ENDPOINTS = {
   ADMIN_AUDIT: "/admin/audit",
   ADMIN_STATUS: "/admin/account-status",
 
+  // --- FX: Foreign Exchange & Rates ---
+  FX_RATES: "/fx/rates",
+  FX_QUOTE: "/fx/quote",
+
   // --- GATEWAY: Payment Intents ---
   GATEWAY_PAYMENTS: "/gateway/payments",
   GATEWAY_PAYMENT_BY_ID: (id: string) => `/gateway/payments/${id}`,

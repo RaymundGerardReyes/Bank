@@ -1,7 +1,7 @@
 import { ApiResponse } from '../../models/ApiResponse';
 import httpClient from '../api/httpClient';
 
-export type PaymentMethod = 'CARD' | 'EWALLET' | 'QR' | 'ONLINE_BANKING' | 'CASH_OTC';
+export type PaymentMethod = 'INTERNAL_ACCOUNT' | 'QR_PH' | 'CARD' | 'EWALLET' | 'QR' | 'ONLINE_BANKING' | 'CASH_OTC';
 
 export interface SessionValidationResponse {
     valid: boolean;
@@ -40,6 +40,11 @@ export interface PublicCheckoutSession {
     currency: string;
     description?: string;
     paymentMethods?: string[];
+    selectedPaymentMethod?: string;
+    qrReference?: string;
+    qrPayload?: string;
+    qrStatus?: string;
+    qrExpiresAt?: string;
     expiresAt?: string;
     returnUrl?: string;
     cancelUrl?: string;
@@ -97,5 +102,10 @@ export const checkoutService = {
     // Advances state from AUTHORIZED -> PAID (Triggers the actual financial capture)
     async confirmPayment(sessionId: string) {
         return httpClient.post<ApiResponse<any>>(`/api/v1/checkout/sessions/${sessionId}/confirm`);
+    },
+
+    // Simulates customer scanning and completing QR Ph payment
+    async simulateQrPayment(sessionId: string) {
+        return httpClient.post<ApiResponse<any>>(`/api/v1/checkout/sessions/${sessionId}/qr/simulate-pay`);
     }
 };
