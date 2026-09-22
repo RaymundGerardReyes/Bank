@@ -1,6 +1,5 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
 import React, { useState, useEffect, useCallback } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { Button } from "@/components/ui/Button";
@@ -13,18 +12,8 @@ const QR_CANVAS_SIZE = 280;
 const QR_LOGO_SIZE = Math.round(QR_CANVAS_SIZE * 0.20); // 20% of canvas
 
 // ---------------------------------------------------------------------------
-// QR Ph Logo — inline Base64 SVG Data URI (no external asset required)
-// Colors: BSP-mandated Blue (#203a70), Red (#ce2029), Yellow (#fcd116)
 // Helpers: Robust Expiration Parser (Fixes timezone jump bug)
 // ---------------------------------------------------------------------------
-const QR_PH_LOGO_URI: string = (() => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-    <path d="M 20 65 V 35 Q 20 20, 35 20 H 65 L 75 30 L 65 40 H 35 Q 30 40, 30 45 V 65 Z" fill="#203a70" />
-    <path d="M 80 35 V 65 Q 80 80, 65 80 H 35 L 25 70 L 35 60 H 65 Q 70 60, 70 55 V 35 Z" fill="#ce2029" />
-    <circle cx="50" cy="50" r="16" fill="#fcd116" />
-  </svg>`;
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
-})();
 export function computeTimeLeft(
   expiresAt: string | null | undefined,
   sessionStatus?: string
@@ -36,8 +25,6 @@ export function computeTimeLeft(
     return { display: "15:00", expired: false, urgent: false };
   }
 
-const QR_CANVAS_SIZE = 280;
-const QR_LOGO_SIZE = Math.round(QR_CANVAS_SIZE * 0.2); // 20% of canvas
   let normalized = expiresAt.trim();
   // If backend serializes LocalDateTime without timezone info (e.g., 2026-09-13T15:52:11.977),
   // JavaScript parsers in local time zones (e.g. GMT+8) will treat it as local time rather than UTC,
@@ -46,13 +33,6 @@ const QR_LOGO_SIZE = Math.round(QR_CANVAS_SIZE * 0.2); // 20% of canvas
     normalized += "Z";
   }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-function computeTimeLeft(expiresAt: string | null): { display: string; expired: boolean; urgent: boolean } {
-  if (!expiresAt) return { display: "15:00", expired: false, urgent: false };
-  const diff = new Date(expiresAt).getTime() - Date.now();
-  if (diff <= 0) return { display: "00:00", expired: true, urgent: true };
   let expiration = new Date(normalized).getTime();
   if (isNaN(expiration)) {
     expiration = new Date(expiresAt).getTime();
@@ -99,7 +79,6 @@ export const QrPhCheckoutView: React.FC<Props> = ({
   const logoUri = getVectorLogoDataUri();
 
   const [timeState, setTimeState] = useState(() =>
-    computeTimeLeft(session.qrExpiresAt ?? session.expiresAt ?? null)
     computeTimeLeft(expiresAt, session.status)
   );
   const [copied, setCopied] = useState(false);
@@ -107,30 +86,23 @@ export const QrPhCheckoutView: React.FC<Props> = ({
   const [error, setError] = useState<string | null>(null);
 
   // The actual EMVCo TLV payload from the backend — this is what gets encoded in the QR
-  // The actual EMVCo TLV payload from the backend — this is encoded in the QR code
   const paymentPayload = session.qrPayload ?? "";
   const qrRef = session.qrReference ?? `QR-${session.id.substring(0, 10).toUpperCase()}`;
-  const expiresAt = session.qrExpiresAt ?? session.expiresAt ?? null;
 
   // ------------------------------------------------------------------
-  // Countdown timer — re-computes every second from qrExpiresAt
   // Countdown timer — re-computes every second from qrExpiresAt / expiresAt
   // ------------------------------------------------------------------
   useEffect(() => {
     if (!expiresAt) return;
 
-    // Immediate tick so the display is correct on mount
-    setTimeState(computeTimeLeft(expiresAt));
     // Immediate tick on mount
     setTimeState(computeTimeLeft(expiresAt, session.status));
 
     const interval = setInterval(() => {
-      setTimeState(computeTimeLeft(expiresAt));
       setTimeState(computeTimeLeft(expiresAt, session.status));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [expiresAt]);
   }, [expiresAt, session.status]);
 
   // ------------------------------------------------------------------
@@ -161,13 +133,11 @@ export const QrPhCheckoutView: React.FC<Props> = ({
 
   // ------------------------------------------------------------------
   // Download QR code as PNG
-  // Download QR code as PNG from HTML5 Canvas
   // ------------------------------------------------------------------
   const handleDownload = useCallback(() => {
     const canvas = document.getElementById("qr-canvas-element") as HTMLCanvasElement | null;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL("image/png");
-    const dataUrl = canvas.toDataURL("image/png", 1.0);
     const link = document.createElement("a");
     link.href = dataUrl;
     link.download = `QRPh-${qrRef}.png`;
@@ -187,7 +157,6 @@ export const QrPhCheckoutView: React.FC<Props> = ({
       {/* ── Brand Header ── */}
       <div className="w-full text-center">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold tracking-wide uppercase mb-2">
-          {/* QR Ph icon rendered via the same SVG inline */}
           {/* QR Ph National Standard icon */}
           <svg width="14" height="14" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M 20 65 V 35 Q 20 20, 35 20 H 65 L 75 30 L 65 40 H 35 Q 30 40, 30 45 V 65 Z" fill="#203a70" />
@@ -221,7 +190,6 @@ export const QrPhCheckoutView: React.FC<Props> = ({
               level="H"
               marginSize={2}
               imageSettings={{
-                src: QR_PH_LOGO_URI,
                 src: logoUri,
                 x: undefined,
                 y: undefined,
@@ -232,7 +200,6 @@ export const QrPhCheckoutView: React.FC<Props> = ({
             />
           ) : (
             // Skeleton placeholder while payload arrives
-            // Loading skeleton placeholder
             <div
               className="flex items-center justify-center bg-gray-100 rounded-lg"
               style={{ width: QR_CANVAS_SIZE, height: QR_CANVAS_SIZE }}

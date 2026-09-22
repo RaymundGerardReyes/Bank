@@ -1,6 +1,9 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import DeveloperNavTabs from "@/components/docs/DeveloperNavTabs";
+import Link from "next/link";
+import { Code2, ArrowRight } from "lucide-react";
 import { useState } from "react";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -85,7 +88,8 @@ export default function DevelopersPage() {
         processedPath = path.replace("{id}", `${idPrefix}a1b2c3d4e5`);
     }
     
-    const baseUrl = `https://api.${process.env.PLATFORM_DOMAIN}${processedPath}`;
+    const domain = process.env.NEXT_PUBLIC_PLATFORM_DOMAIN || process.env.PLATFORM_DOMAIN || "novabank.ph";
+    const baseUrl = `https://api.${domain}${processedPath}`;
 
     // Dynamically inject the VAM Account ID into the payload string
     let payloadStr = "";
@@ -151,8 +155,11 @@ class Program
 
   return (
     <div className="min-h-screen bg-dominant text-accent font-sans selection:bg-secondary selection:text-accent pb-24">
+      {/* Top Cross-Navigation Tabs */}
+      <DeveloperNavTabs />
+
       {/* Header Section */}
-      <div className="bg-surface border-b border-secondary/30 pt-16 pb-12 px-6">
+      <div className="bg-surface border-b border-secondary/30 pt-12 pb-12 px-6">
         <div className="max-w-7xl mx-auto flex flex-col gap-4">
           <div className="flex items-center gap-3">
             <span className="px-3 py-1 bg-accent text-dominant text-xs font-extrabold rounded-full uppercase tracking-wider shadow-md shadow-accent/20">API Reference v1.0</span>
@@ -162,6 +169,26 @@ class Program
           <p className="text-accent/80 font-medium max-w-3xl text-lg leading-relaxed">
             Generate native SDK code snippets instantly. Your API Key scopes and Virtual Account limits are evaluated in real-time by the core ledger.
           </p>
+
+          {/* Codebase Snippets Callout Banner */}
+          <div className="mt-2 p-4 rounded-xl bg-sky-50 border border-sky-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-sky-600 text-white shadow-sm">
+                <Code2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-extrabold text-sky-950">Looking for Pre-Made Codebase Snippets & Webhook Servers?</h4>
+                <p className="text-xs text-sky-800 font-medium mt-0.5">Explore ready-to-run C# .NET, Spring Boot, FastAPI, and Express code with live credential injection.</p>
+              </div>
+            </div>
+            <Link
+              href="/developers/snippets"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm whitespace-nowrap self-start sm:self-auto"
+            >
+              <span>Explore Snippets</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
       </div>
 

@@ -9,6 +9,7 @@ export default defineConfig({
     include: ['src/tests/**/*.{test,spec}.{ts,tsx}', 'tests/unit/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**'],
     pool: 'vmThreads',
+    fileParallelism: false,
     env: {
       BACKEND_API_BASE_URL: 'http://localhost:8080/api/v1',
       NEXT_PUBLIC_APP_URL: 'http://localhost:3000',

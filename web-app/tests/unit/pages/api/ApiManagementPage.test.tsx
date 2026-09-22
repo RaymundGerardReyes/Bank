@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 // --- Mocks ---
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
+  usePathname: vi.fn(() => '/api'),
 }));
 
 vi.mock('@/hooks/useAuth', () => ({
