@@ -41,7 +41,7 @@ public class PaymentIntentOrchestrationService {
     private final ExternalPaymentGateway externalPaymentGateway;
     private final TransactionTemplate transactionTemplate;
 
-    @Value("${PAYMENT_ALLOWED_DOMAINS}")
+    @Value("${PAYMENT_ALLOWED_DOMAINS:${platform.domain:localhost},paymongo.com,localhost}")
     private List<String> allowedDomains;
 
     public PaymentSessionResponse createIntent(Long merchantId, String sourceAccountId, CreatePaymentIntentRequest request) {
@@ -215,15 +215,23 @@ public class PaymentIntentOrchestrationService {
         if (allowedDomains == null || allowedDomains.isEmpty()) return false;
         try {
             URI uri = new URI(url);
-            if (!"https".equalsIgnoreCase(uri.getScheme()) && !"localhost".equals(uri.getHost())) {
-                // strict HTTPS enforcement except for localhost
-                if (!"http".equalsIgnoreCase(uri.getScheme()) || !"localhost".equals(uri.getHost())) {
-                    return false;
-                }
-            }
+            String scheme = uri.getScheme();
             String host = uri.getHost();
             if (host == null) return false;
-            return allowedDomains.stream().anyMatch(d -> host.equals(d) || host.endsWith("." + d));
+
+            String hostLower = host.toLowerCase();
+
+            boolean isHttps = "https".equalsIgnoreCase(scheme);
+            boolean isHttpLocalhost = "http".equalsIgnoreCase(scheme) && "localhost".equalsIgnoreCase(hostLower);
+            if (!isHttps && !isHttpLocalhost) {
+                return false;
+            }
+
+            return allowedDomains.stream()
+                    .filter(d -> d != null && !d.isBlank())
+                    .map(String::trim)
+                    .map(String::toLowerCase)
+                    .anyMatch(d -> hostLower.equals(d) || hostLower.endsWith("." + d));
         } catch (Exception e) {
             return false;
         }

@@ -18,7 +18,7 @@ import java.util.Map;
 @Configuration
 public class OpenApiConfig {
 
-    @Value("${API_PUBLIC_URL:https://novabank.ph.dev}")
+    @Value("${API_PUBLIC_URL:}")
     private String apiPublicUrl;
 
     @Value("${spring.profiles.active:prod}")

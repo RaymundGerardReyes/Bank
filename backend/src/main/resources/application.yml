@@ -43,9 +43,10 @@ server:
     include-exception: false
 
 platform:
-  domain: ${PLATFORM_DOMAIN:}
+  domain: ${PLATFORM_DOMAIN:localhost}
 
 payment:
+  allowed-domains: ${PAYMENT_ALLOWED_DOMAINS:${PLATFORM_DOMAIN:localhost},paymongo.com,localhost}
   checkout-base-url: ${PAYMENT_CHECKOUT_BASE_URL:}
   webhook-public-url: ${PAYMENT_WEBHOOK_PUBLIC_URL:}
   webhook-host: ${PAYMENT_WEBHOOK_HOST:}
