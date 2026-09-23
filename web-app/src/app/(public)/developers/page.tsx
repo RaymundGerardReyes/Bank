@@ -4,7 +4,9 @@ import { Card } from "@/components/ui/Card";
 import DeveloperNavTabs from "@/components/docs/DeveloperNavTabs";
 import Link from "next/link";
 import { Code2, ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { smoothScrollTo } from "@/utils/scroll";
+import { getApiBaseUrl, getRootDomain } from "@/utils/domains";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 type SdkLanguage = "cURL" | "Python" | "TypeScript" | "Go" | "C# .NET";
@@ -13,6 +15,7 @@ const SDK_LANGUAGES: SdkLanguage[] = ["cURL", "Python", "TypeScript", "Go", "C# 
 
 const API_MODULES = [
   {
+    id: "vam",
     domain: "Virtual Account Management (VAM)",
     description: "Provision dynamic sub-ledgers. API Keys are confined to their VAM boundary.",
     endpoints: [
@@ -21,6 +24,7 @@ const API_MODULES = [
     ]
   },
   {
+    id: "treasury",
     domain: "Treasury & Transfers",
     description: "Move money internally. VAM boundary violations return 403 Forbidden.",
     endpoints: [
@@ -29,6 +33,7 @@ const API_MODULES = [
     ]
   },
   {
+    id: "payments",
     domain: "Canonical Payment Gateway (Phase 6E)",
     description: "Provider-neutral payment intent orchestration. External providers act only as adapters.",
     endpoints: [
@@ -44,6 +49,7 @@ const API_MODULES = [
     ]
   },
   {
+    id: "settlements",
     domain: "Settlement & Reconciliation",
     description: "Execute settlement instructions and reconcile with external payment adapters.",
     endpoints: [
@@ -54,6 +60,7 @@ const API_MODULES = [
     ]
   },
   {
+    id: "ledger",
     domain: "Immutable Ledger",
     description: "Query double-entry journal logs.",
     endpoints: [
@@ -77,6 +84,23 @@ export default function DevelopersPage() {
   const [vamAccountInput, setVamAccountInput] = useState<string>("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
+  useEffect(() => {
+    const handleHash = () => {
+      if (typeof window !== "undefined" && window.location.hash) {
+        const targetId = window.location.hash.replace("#", "");
+        if (API_MODULES.some((m) => m.id === targetId)) {
+          requestAnimationFrame(() => {
+            smoothScrollTo(targetId);
+          });
+        }
+      }
+    };
+
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
+
   // Dynamic SDK Generation Engine
   const generateCodeSnippet = (method: HttpMethod, path: string, payload?: object) => {
     const keyStr = apiKeyInput.trim() || "sk_live_YOUR_API_KEY";
@@ -88,8 +112,10 @@ export default function DevelopersPage() {
         processedPath = path.replace("{id}", `${idPrefix}a1b2c3d4e5`);
     }
     
-    const domain = process.env.NEXT_PUBLIC_PLATFORM_DOMAIN || process.env.PLATFORM_DOMAIN || "novabank.ph";
-    const baseUrl = `https://api.${domain}${processedPath}`;
+    const rootDomain = getRootDomain();
+    const apiBaseUrl = getApiBaseUrl();
+    const cleanPath = processedPath.startsWith("/api") ? processedPath : `/api${processedPath.startsWith("/") ? "" : "/"}${processedPath}`;
+    const baseUrl = `${apiBaseUrl}${cleanPath}`;
 
     // Dynamically inject the VAM Account ID into the payload string
     let payloadStr = "";
@@ -194,7 +220,7 @@ class Program
 
       {/* Security Architecture Guide */}
       <div className="max-w-7xl mx-auto px-6 mt-10">
-        <Card title="📖 NovaBank Enterprise API: Developer Guide" className="bg-surface border-secondary/30">
+        <Card title="📖 MundBank Enterprise API: Developer Guide" className="bg-surface border-secondary/30">
           <div className="flex flex-col gap-6 text-accent/80">
             <div>
               <h3 className="text-xl font-bold text-accent mb-2">Two-Dimensional Least Privilege Model</h3>
@@ -209,7 +235,20 @@ class Program
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
               <div className="bg-dominant p-6 rounded-xl border border-secondary/20 shadow-sm">
-                <h4 className="text-lg font-extrabold text-sky-400 mb-2">🏢 Virtual Account Management (VAM)</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-lg font-extrabold text-sky-400">🏢 Virtual Account Management (VAM)</h4>
+                  <a
+                    href="#vam"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      smoothScrollTo("vam");
+                      window.history.pushState(null, "", "#vam");
+                    }}
+                    className="text-xs font-bold text-sky-600 hover:text-sky-700 transition-colors cursor-pointer"
+                  >
+                    Endpoints &darr;
+                  </a>
+                </div>
                 <p className="text-sm mb-4 text-accent/70 font-medium">Responsible for provisioning and viewing isolated sub-ledgers.</p>
                 <ul className="text-sm space-y-3 font-medium">
                   <li><span className="text-emerald-600 bg-emerald-500/10 font-bold font-mono px-1.5 py-0.5 rounded border border-emerald-500/20 text-xs">GET /api/v1/accounts</span> <br/><span className="mt-1 block">Returns a list of all VAM accounts the API key is bound to.</span></li>
@@ -218,7 +257,20 @@ class Program
               </div>
 
               <div className="bg-dominant p-6 rounded-xl border border-secondary/20 shadow-sm">
-                <h4 className="text-lg font-extrabold text-sky-400 mb-2">💸 Treasury & Transfers</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-lg font-extrabold text-sky-400">💸 Treasury & Transfers</h4>
+                  <a
+                    href="#treasury"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      smoothScrollTo("treasury");
+                      window.history.pushState(null, "", "#treasury");
+                    }}
+                    className="text-xs font-bold text-sky-600 hover:text-sky-700 transition-colors cursor-pointer"
+                  >
+                    Endpoints &darr;
+                  </a>
+                </div>
                 <p className="text-sm mb-4 text-accent/70 font-medium">Responsible for moving money internally between corporate accounts.</p>
                 <ul className="text-sm space-y-3 font-medium">
                   <li><span className="text-emerald-600 bg-emerald-500/10 font-bold font-mono px-1.5 py-0.5 rounded border border-emerald-500/20 text-xs">GET /api/v1/treasury/liquidity</span> <br/><span className="mt-1 block">Checks live cash positioning and available balances.</span></li>
@@ -227,7 +279,20 @@ class Program
               </div>
 
               <div className="bg-dominant p-6 rounded-xl border border-secondary/20 shadow-sm">
-                <h4 className="text-lg font-extrabold text-sky-400 mb-2">📚 Immutable Ledger</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-lg font-extrabold text-sky-400">📚 Immutable Ledger</h4>
+                  <a
+                    href="#ledger"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      smoothScrollTo("ledger");
+                      window.history.pushState(null, "", "#ledger");
+                    }}
+                    className="text-xs font-bold text-sky-600 hover:text-sky-700 transition-colors cursor-pointer"
+                  >
+                    Endpoints &darr;
+                  </a>
+                </div>
                 <p className="text-sm mb-4 text-accent/70 font-medium">Responsible for the core double-entry accounting records.</p>
                 <ul className="text-sm space-y-3 font-medium">
                   <li><span className="text-emerald-600 bg-emerald-500/10 font-bold font-mono px-1.5 py-0.5 rounded border border-emerald-500/20 text-xs">GET /api/v1/ledger</span> <br/><span className="mt-1 block">Queries transaction history and immutable journal logs.</span></li>
@@ -236,7 +301,20 @@ class Program
               </div>
 
               <div className="bg-dominant p-6 rounded-xl border border-secondary/20 shadow-sm">
-                <h4 className="text-lg font-extrabold text-sky-400 mb-2">🌐 Additional Enterprise Modules</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-lg font-extrabold text-sky-400">🌐 Additional Enterprise Modules</h4>
+                  <a
+                    href="#payments"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      smoothScrollTo("payments");
+                      window.history.pushState(null, "", "#payments");
+                    }}
+                    className="text-xs font-bold text-sky-600 hover:text-sky-700 transition-colors cursor-pointer"
+                  >
+                    Endpoints &darr;
+                  </a>
+                </div>
                 <p className="text-sm mb-4 text-accent/70 font-medium">If a developer requires access to these modules, they must be explicitly granted those scopes:</p>
                 <ul className="text-sm space-y-3 font-medium">
                   <li><strong className="text-accent">Payments:</strong> Now integrated directly into the interactive API gateway above (Phase 6E).</li>
@@ -286,6 +364,27 @@ class Program
         {/* Right Column: API Endpoints & Dynamic Snippets */}
         <div className="xl:col-span-8 flex flex-col gap-10">
 
+          {/* Quick Module In-Page Navigation Bar */}
+          <div className="flex items-center gap-1.5 bg-surface p-2 rounded-xl border border-secondary/30 overflow-x-auto scroll-smooth scrollbar-none sticky top-16 z-20 backdrop-blur-md bg-surface/95 shadow-xs">
+            <span className="text-[10px] font-bold text-accent/50 uppercase tracking-wider pl-2 pr-3 whitespace-nowrap">
+              Jump to Domain:
+            </span>
+            {API_MODULES.map((mod) => (
+              <a
+                key={mod.id}
+                href={`#${mod.id}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  smoothScrollTo(mod.id);
+                  window.history.pushState(null, "", `#${mod.id}`);
+                }}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg text-accent/70 hover:text-accent hover:bg-secondary/15 transition-colors whitespace-nowrap bg-dominant border border-secondary/20 cursor-pointer"
+              >
+                {mod.domain.split(" (")[0]}
+              </a>
+            ))}
+          </div>
+
           {/* Global Language Selector */}
           <div className="flex items-center gap-2 bg-surface p-2 rounded-xl border border-secondary/30 overflow-x-auto">
             <span className="text-[10px] font-bold text-accent/50 uppercase tracking-wider pl-2 pr-4">Programming Language</span>
@@ -301,7 +400,7 @@ class Program
           </div>
 
           {API_MODULES.map((module) => (
-            <div key={module.domain} className="flex flex-col gap-6">
+            <div key={module.domain} id={module.id} className="flex flex-col gap-6 scroll-mt-24">
               <div className="border-b border-secondary/30 pb-2">
                 <h2 className="text-2xl font-extrabold text-accent">{module.domain}</h2>
                 <p className="text-sm text-accent/60 font-medium mt-1">{module.description}</p>

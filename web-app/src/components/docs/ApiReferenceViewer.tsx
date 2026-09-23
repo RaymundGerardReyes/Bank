@@ -17,11 +17,26 @@ export const ApiReferenceViewer: React.FC<ApiReferenceViewerProps> = ({ specUrl 
       const safeSpecUrl = specUrl || "/v3/api-docs/developer-gateway";
 
       try {
-        const url = safeSpecUrl.startsWith("http")
+        const primaryUrl = safeSpecUrl.startsWith("http")
           ? safeSpecUrl
           : `${window.location.origin}${safeSpecUrl.startsWith("/") ? "" : "/"}${safeSpecUrl}`;
+        const fallbackUrl = `${window.location.origin}/v3/api-docs/developer-gateway`;
 
-        const res = await fetch(url);
+        let res: Response;
+        try {
+          res = await fetch(primaryUrl);
+          if (!res.ok && primaryUrl !== fallbackUrl) {
+            console.warn(`[ApiReferenceViewer] Primary spec URL (${primaryUrl}) returned ${res.status}. Retrying same-origin (${fallbackUrl}).`);
+            res = await fetch(fallbackUrl);
+          }
+        } catch (fetchErr) {
+          if (primaryUrl !== fallbackUrl) {
+            console.warn(`[ApiReferenceViewer] Primary spec fetch failed (${fetchErr instanceof Error ? fetchErr.message : 'network error'}). Retrying same-origin (${fallbackUrl}).`);
+            res = await fetch(fallbackUrl);
+          } else {
+            throw fetchErr;
+          }
+        }
 
         if (!res.ok) {
           setError(`Failed to load API spec: ${res.status} ${res.statusText}`);

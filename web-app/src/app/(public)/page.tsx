@@ -4,17 +4,19 @@ import Link from "next/link";
 
 export default function MunBankLandingPage() {
   return (
-    <div className="min-h-screen bg-surface text-accent font-sans selection:bg-secondary/30 selection:text-accent relative overflow-hidden">
-      {/* Dynamic Motion Background Ambient Blobs */}
-      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-secondary/15 rounded-full blur-[140px] animate-pulse-glow pointer-events-none" />
-      <div
-        className="absolute top-1/3 -right-32 w-[500px] h-[500px] bg-accent/10 rounded-full blur-[120px] animate-pulse-glow pointer-events-none"
-        style={{ animationDelay: "1.5s" }}
-      />
-      <div
-        className="absolute bottom-1/4 -left-32 w-[550px] h-[550px] bg-sky-400/10 rounded-full blur-[130px] animate-pulse-glow pointer-events-none"
-        style={{ animationDelay: "3s" }}
-      />
+    <div className="min-h-screen bg-surface text-accent font-sans selection:bg-secondary/30 selection:text-accent relative overflow-x-clip">
+      {/* Dynamic Motion Background Ambient Blobs (contained so sticky navigation is never disrupted) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-secondary/15 rounded-full blur-[140px] animate-pulse-glow" />
+        <div
+          className="absolute top-1/3 -right-32 w-[500px] h-[500px] bg-accent/10 rounded-full blur-[120px] animate-pulse-glow"
+          style={{ animationDelay: "1.5s" }}
+        />
+        <div
+          className="absolute bottom-1/4 -left-32 w-[550px] h-[550px] bg-sky-400/10 rounded-full blur-[130px] animate-pulse-glow"
+          style={{ animationDelay: "3s" }}
+        />
+      </div>
 
       {/* STICKY GLASSMORPHIC NAVIGATION */}
       <header className="sticky top-0 z-50 bg-dominant/80 backdrop-blur-xl border-b border-secondary/20 transition-all duration-300 shadow-sm">
@@ -22,14 +24,14 @@ export default function MunBankLandingPage() {
           <Logo size="md" />
 
           <nav className="hidden md:flex items-center gap-8 font-bold text-sm text-accent/70">
-            <Link href="#features" className="hover:text-accent transition-colors py-2 relative group">
+            <a href="#features" className="hover:text-accent transition-colors py-2 relative group cursor-pointer">
               Features
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-accent transition-all duration-300 group-hover:w-full rounded-full" />
-            </Link>
-            <Link href="#testimonials" className="hover:text-accent transition-colors py-2 relative group">
+            </a>
+            <a href="#testimonials" className="hover:text-accent transition-colors py-2 relative group cursor-pointer">
               Testimonials
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-accent transition-all duration-300 group-hover:w-full rounded-full" />
-            </Link>
+            </a>
             <Link href="/developers" className="hover:text-accent transition-colors py-2 relative group">
               Developers
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-accent transition-all duration-300 group-hover:w-full rounded-full" />
@@ -185,7 +187,7 @@ export default function MunBankLandingPage() {
       </section>
 
       {/* CORE FEATURES SECTION */}
-      <section id="features" className="py-24 px-6 bg-surface relative z-10">
+      <section id="features" className="py-24 px-6 bg-surface relative z-10 scroll-mt-20">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl sm:text-5xl font-black text-accent mb-4 tracking-tight">
@@ -240,7 +242,7 @@ export default function MunBankLandingPage() {
       </section>
 
       {/* SOCIAL PROOF SECTION */}
-      <section id="testimonials" className="py-24 px-6 bg-dominant relative z-10">
+      <section id="testimonials" className="py-24 px-6 bg-dominant relative z-10 scroll-mt-20">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-black text-accent mb-4 tracking-tight">Trusted by Enterprise Leaders</h2>

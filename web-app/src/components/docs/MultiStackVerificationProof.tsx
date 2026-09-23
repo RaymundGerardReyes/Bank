@@ -95,7 +95,7 @@ export default function MultiStackVerificationProof() {
               </span>
             </h2>
             <p className="text-xs text-accent/70 font-medium">
-              Every code snippet is verified against real local runtimes (.NET 10, Java 21, Python 3.13, Node 22, OpenSSL 3.5) and passes backend integration tests.
+              Every code snippet is verified against real local runtimes (.NET, Java, Python, Node, OpenSSL) and passes backend integration tests.
             </p>
           </div>
         </div>

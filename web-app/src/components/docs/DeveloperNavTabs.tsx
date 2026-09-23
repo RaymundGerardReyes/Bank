@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookOpen, Code2, Terminal, ShieldCheck } from "lucide-react";
+import { isReducedMotionPreferred } from "@/utils/scroll";
 
 export const DeveloperNavTabs: React.FC = () => {
   let pathname = "";
@@ -12,6 +13,22 @@ export const DeveloperNavTabs: React.FC = () => {
   } catch {
     pathname = "";
   }
+
+  const activeTabRef = useRef<HTMLAnchorElement | null>(null);
+
+  useEffect(() => {
+    if (activeTabRef.current && typeof activeTabRef.current.scrollIntoView === "function") {
+      try {
+        activeTabRef.current.scrollIntoView({
+          behavior: isReducedMotionPreferred() ? "auto" : "smooth",
+          block: "nearest",
+          inline: "center",
+        });
+      } catch {
+        activeTabRef.current.scrollIntoView();
+      }
+    }
+  }, [pathname]);
 
   const tabs = [
     {
@@ -41,13 +58,14 @@ export const DeveloperNavTabs: React.FC = () => {
     <div className="w-full bg-surface border-b border-secondary/20 sticky top-0 z-30 backdrop-blur-md bg-opacity-95">
       <div className="max-w-7xl mx-auto px-6 py-3 flex flex-wrap items-center justify-between gap-4">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none scroll-smooth">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <Link
                 key={tab.name}
                 href={tab.href}
+                ref={tab.active ? activeTabRef : undefined}
                 className={`flex items-center gap-2.5 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap border ${
                   tab.active
                     ? "bg-accent text-dominant border-accent shadow-md shadow-accent/20"

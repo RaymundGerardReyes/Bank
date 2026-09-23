@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ApiTestResponse, executeApiTest } from "@/services/docs/apiTestRunner";
+import { getApiBaseUrl } from "@/utils/domains";
 import React, { useState } from "react";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -32,7 +33,7 @@ const DOMAINS: DomainModule[] = [
     endpoints: [
       {
         method: "POST",
-        path: "/v1/accounts",
+        path: "/api/v1/accounts",
         label: "Provision VAM",
         defaultPayload: {
           accountType: "PAYROLL",
@@ -46,7 +47,7 @@ const DOMAINS: DomainModule[] = [
           requireDualApproval: false
         }
       },
-      { method: "GET", path: "/v1/accounts", label: "List Hierarchy" },
+      { method: "GET", path: "/api/v1/accounts", label: "List Hierarchy" },
     ],
   },
   {
@@ -54,9 +55,9 @@ const DOMAINS: DomainModule[] = [
     title: "2. Payment Processing",
     description: "Core lifecycle management: Authorization, Capture, Void, Refund, and Dispute handling.",
     endpoints: [
-      { method: "POST", path: "/v1/payments", label: "Create Intent", defaultPayload: { amount: 100.0, currency: "USD", sourceAccount: "1001987654" } },
-      { method: "POST", path: "/v1/payments/101/capture", label: "Capture", defaultPayload: { amount: 100.0 } },
-      { method: "POST", path: "/v1/payments/101/refunds", label: "Refund", defaultPayload: { reason: "Customer return" } },
+      { method: "POST", path: "/api/v1/payments", label: "Create Intent", defaultPayload: { amount: 100.0, currency: "USD", sourceAccount: "1001987654" } },
+      { method: "POST", path: "/api/v1/payments/101/capture", label: "Capture", defaultPayload: { amount: 100.0 } },
+      { method: "POST", path: "/api/v1/payments/101/refunds", label: "Refund", defaultPayload: { reason: "Customer return" } },
     ],
   },
   {
@@ -64,9 +65,9 @@ const DOMAINS: DomainModule[] = [
     title: "3. Bulk Distribution & Payroll",
     description: "CSV/JSON batch uploads, Maker-Checker dual approvals, and multi-disbursement routing.",
     endpoints: [
-      { method: "POST", path: "/v1/batch/payroll", label: "Upload Batch", defaultPayload: { batchName: "July 2026 Payroll", count: 25 } },
-      { method: "POST", path: "/v1/batch/501/approve", label: "Checker Approve", defaultPayload: { checkerComments: "Verified against ledger" } },
-      { method: "GET", path: "/v1/batch/501/status", label: "Track Status" },
+      { method: "POST", path: "/api/v1/batch/payroll", label: "Upload Batch", defaultPayload: { batchName: "July 2026 Payroll", count: 25 } },
+      { method: "POST", path: "/api/v1/batch/501/approve", label: "Checker Approve", defaultPayload: { checkerComments: "Verified against ledger" } },
+      { method: "GET", path: "/api/v1/batch/501/status", label: "Track Status" },
     ],
   },
   {
@@ -74,9 +75,9 @@ const DOMAINS: DomainModule[] = [
     title: "4. Payment Orchestration",
     description: "Smart routing, multi-rail gateway failover, and dynamic active-active clustering.",
     endpoints: [
-      { method: "POST", path: "/v1/routing/evaluate", label: "Route Payment", defaultPayload: { amount: 250.0, currency: "USD", preferredRail: "INSTAPAY" } },
-      { method: "GET", path: "/v1/routing/rules", label: "List Rules" },
-      { method: "POST", path: "/v1/routing/simulate", label: "Dry Run", defaultPayload: { amount: 1000.0, currency: "PHP" } },
+      { method: "POST", path: "/api/v1/routing/evaluate", label: "Route Payment", defaultPayload: { amount: 250.0, currency: "USD", preferredRail: "INSTAPAY" } },
+      { method: "GET", path: "/api/v1/routing/rules", label: "List Rules" },
+      { method: "POST", path: "/api/v1/routing/simulate", label: "Dry Run", defaultPayload: { amount: 1000.0, currency: "PHP" } },
     ],
   },
   {
@@ -84,9 +85,9 @@ const DOMAINS: DomainModule[] = [
     title: "5. Transfers & Treasury",
     description: "Internal, Scheduled, Wire, Cross-Border, and Virtual IBAN concentration.",
     endpoints: [
-      { method: "POST", path: "/v1/transfers/internal", label: "Internal Transfer", defaultPayload: { sourceAccountNumber: "1001987654", recipientAccountNumber: "1002345678", amount: 50.0 } },
-      { method: "POST", path: "/v1/transfers/scheduled", label: "Schedule", defaultPayload: { sourceAccountNumber: "1001987654", recipientAccountNumber: "1002345678", amount: 150.0, scheduledDate: "2026-08-01" } },
-      { method: "GET", path: "/v1/treasury/liquidity", label: "Cash Position" },
+      { method: "POST", path: "/api/v1/transfers/internal", label: "Internal Transfer", defaultPayload: { sourceAccountNumber: "1001987654", recipientAccountNumber: "1002345678", amount: 50.0 } },
+      { method: "POST", path: "/api/v1/transfers/scheduled", label: "Schedule", defaultPayload: { sourceAccountNumber: "1001987654", recipientAccountNumber: "1002345678", amount: 150.0, scheduledDate: "2026-08-01" } },
+      { method: "GET", path: "/api/v1/treasury/liquidity", label: "Cash Position" },
     ],
   },
   {
@@ -94,9 +95,9 @@ const DOMAINS: DomainModule[] = [
     title: "6. Fraud & Risk AI",
     description: "AI-driven velocity checks, AML/Sanctions screening, and dynamic limits.",
     endpoints: [
-      { method: "POST", path: "/v1/risk/evaluate", label: "Score Txn", defaultPayload: { amount: 5000.0, accountNo: "1001987654" } },
-      { method: "POST", path: "/v1/risk/aml-screen", label: "Screen Entity", defaultPayload: { entityName: "Acme Corp", country: "US" } },
-      { method: "GET", path: "/v1/risk/velocity", label: "Check Limits" },
+      { method: "POST", path: "/api/v1/risk/evaluate", label: "Score Txn", defaultPayload: { amount: 5000.0, accountNo: "1001987654" } },
+      { method: "POST", path: "/api/v1/risk/aml-screen", label: "Screen Entity", defaultPayload: { entityName: "Acme Corp", country: "US" } },
+      { method: "GET", path: "/api/v1/risk/velocity", label: "Check Limits" },
     ],
   },
 ];
@@ -187,7 +188,9 @@ export const DomainLibrary: React.FC = () => {
       keyStr = isCopying || isKeyVisible ? providedApiKey.trim() : "sk_...[HIDDEN]... ";
     }
 
-    const baseUrl = `https://api.${process.env.PLATFORM_DOMAIN}${ep.path}`;
+    const apiBaseUrl = getApiBaseUrl();
+    const cleanPath = ep.path.startsWith("/api") ? ep.path : `/api${ep.path.startsWith("/") ? "" : "/"}${ep.path}`;
+    const baseUrl = `${apiBaseUrl}${cleanPath}`;
     const safeBody = requestBodyText ? requestBodyText.replace(/\n/g, "") : "";
 
     switch (activeSdk) {

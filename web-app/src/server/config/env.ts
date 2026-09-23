@@ -41,9 +41,12 @@ const serverEnvSchema = z.object({
     emptyToUndefined,
     z.string().min(1).default(process.env.PLATFORM_DOMAIN || "localhost")
   ),
-  OPENAPI_SPEC_URL: z.string().url(),
-  ENABLE_PASSKEY_AUTH: z.string().optional(),
-  ENABLE_DEV_API_DOCS: z.string().optional(),
+  OPENAPI_SPEC_URL: z.preprocess(
+    emptyToUndefined,
+    z.string().url().default("http://localhost:8080/v3/api-docs")
+  ),
+  ENABLE_PASSKEY_AUTH: z.string().optional().default("true"),
+  ENABLE_DEV_API_DOCS: z.string().optional().default("true"),
   UPSTASH_REDIS_REST_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 });

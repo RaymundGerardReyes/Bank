@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DeveloperNavTabs from "@/components/docs/DeveloperNavTabs";
 import CodeSnippetViewer from "@/components/docs/CodeSnippetViewer";
 import MultiStackVerificationProof from "@/components/docs/MultiStackVerificationProof";
 import { Card } from "@/components/ui/Card";
+import { smoothScrollTo } from "@/utils/scroll";
+import { getApiBaseUrl } from "@/utils/domains";
 import {
   KeyRound,
   Lock,
@@ -40,13 +42,13 @@ export default function CodebaseSnippetsPage() {
   // Dynamic Credentials Context (reactive across all code generators)
   const [apiKey, setApiKey] = useState("sk_test_novabank_99214b");
   const [webhookSecret, setWebhookSecret] = useState("whsec_test_secret_123456789");
-  const [baseUrl, setBaseUrl] = useState("https://api.novabank.ph");
+  const [baseUrl, setBaseUrl] = useState(() => getApiBaseUrl());
   const [vamAccount, setVamAccount] = useState("4859220013371001");
   const [destAccount, setDestAccount] = useState("4859220013379999");
 
   const safeKey = apiKey.trim() || "sk_test_novabank_99214b";
   const safeSecret = webhookSecret.trim() || "whsec_test_secret_123456789";
-  const safeBaseUrl = baseUrl.trim().replace(/\/+$/, "") || "https://api.novabank.ph";
+  const safeBaseUrl = baseUrl.trim().replace(/\/+$/, "") || getApiBaseUrl();
   const safeVamAccount = vamAccount.trim() || "4859220013371001";
   const safeDestAccount = destAccount.trim() || "4859220013379999";
 
@@ -125,6 +127,46 @@ export default function CodebaseSnippetsPage() {
       badge: "Sandbox",
     },
   ];
+
+  // Handler for workflow selection with smooth scrolling to the workflow viewer
+  const handleWorkflowSelect = (id: ActiveWorkflow) => {
+    setActiveWorkflow(id);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", `#${id}`);
+    }
+    requestAnimationFrame(() => {
+      const viewer = document.getElementById("workflow-viewer");
+      if (viewer) {
+        const rect = viewer.getBoundingClientRect();
+        // On mobile/tablet or when the viewer is outside comfortable viewport range, smooth scroll to it
+        if (window.innerWidth < 1280 || rect.top < 70 || rect.top > window.innerHeight) {
+          smoothScrollTo(viewer);
+        }
+      }
+    });
+  };
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (typeof window !== "undefined" && window.location.hash) {
+        const hash = window.location.hash.replace("#", "") as ActiveWorkflow;
+        const matched = workflows.find((w) => w.id === hash);
+        if (matched) {
+          setActiveWorkflow(matched.id);
+          requestAnimationFrame(() => {
+            const viewer = document.getElementById("workflow-viewer");
+            if (viewer) {
+              smoothScrollTo(viewer);
+            }
+          });
+        }
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   // -------------------------------------------------------------
   // Workflow 1: Authentication & Setup Snippets
@@ -306,16 +348,11 @@ export API_BASE_URL="${safeBaseUrl}"
 export API_KEY="${safeKey}"
 export REQUEST_ID=$(uuidgen 2>/dev/null || cat /proc/sys/kernel/random/uuid)
 
-# Verify API Key & Gateway Connectivity
-curl -i -X GET "$API_BASE_URL/api/v1/accounts" \\
+# Verify API Key, Gateway Connectivity, and MDC Correlation Tracing
+curl -i -X GET "$API_BASE_URL/api/v1/health" \\
   -H "X-API-Key: $API_KEY" \\
   -H "X-Request-Id: $REQUEST_ID" \\
-# Verify API Key, Gateway Connectivity, and MDC Correlation Tracing
-curl -i -X GET "$API_BASE_URL/api/v1/health" \
-  -H "X-API-Key: $API_KEY" \
-  -H "X-Request-Id: $REQUEST_ID" \
   -H "Accept: application/json"`,
-          notes: "Quick check to confirm that your API key is active and reaches the core gateway.",
           notes: "Pings /api/v1/health with X-API-Key and X-Request-Id to verify perimeter routing, latency, and MDC correlation tracking.",
         };
     }
@@ -1822,7 +1859,6 @@ curl -X POST "${safeBaseUrl}/api/v1/webhooks/simulate" \\
       </div>
 
       {/* Main Content Layout */}
-      <div className="max-w-7xl mx-auto px-6 mt-8 grid grid-cols-1 xl:grid-cols-12 gap-8">
       <div className="max-w-7xl mx-auto px-6 mt-8 flex flex-col gap-8">
         {/* Real Cryptographic Parity & Runtime Proof Banner */}
         <MultiStackVerificationProof />
@@ -1874,7 +1910,7 @@ curl -X POST "${safeBaseUrl}/api/v1/webhooks/simulate" \\
                   type="text"
                   value={baseUrl}
                   onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder="https://api.novabank.ph"
+                  placeholder={getApiBaseUrl()}
                   className="px-3 py-2 bg-surface border border-secondary/30 rounded-lg text-xs font-mono text-accent focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
@@ -1911,7 +1947,7 @@ curl -X POST "${safeBaseUrl}/api/v1/webhooks/simulate" \\
                 onClick={() => {
                   setApiKey("sk_test_novabank_99214b");
                   setWebhookSecret("whsec_test_secret_123456789");
-                  setBaseUrl("https://api.novabank.ph");
+                  setBaseUrl(getApiBaseUrl());
                   setVamAccount("4859220013371001");
                   setDestAccount("4859220013379999");
                 }}
@@ -1940,7 +1976,7 @@ curl -X POST "${safeBaseUrl}/api/v1/webhooks/simulate" \\
                     <button
                       key={wf.id}
                       type="button"
-                      onClick={() => setActiveWorkflow(wf.id)}
+                      onClick={() => handleWorkflowSelect(wf.id)}
                       className={`flex flex-col p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                         isSelected
                           ? "bg-accent text-dominant border-accent shadow-md shadow-accent/15"
@@ -1993,7 +2029,7 @@ curl -X POST "${safeBaseUrl}/api/v1/webhooks/simulate" \\
                     <button
                       key={wf.id}
                       type="button"
-                      onClick={() => setActiveWorkflow(wf.id)}
+                      onClick={() => handleWorkflowSelect(wf.id)}
                       className={`flex flex-col p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                         isSelected
                           ? "bg-accent text-dominant border-accent shadow-md shadow-accent/15"
@@ -2049,7 +2085,7 @@ curl -X POST "${safeBaseUrl}/api/v1/webhooks/simulate" \\
         </div>
 
         {/* Right Column: Language Switcher + Codeblock Display */}
-        <div className="xl:col-span-8 flex flex-col gap-6">
+        <div id="workflow-viewer" className="xl:col-span-8 flex flex-col gap-6 scroll-mt-20">
           {/* Language Selector Bar */}
           <div className="flex items-center justify-between bg-surface p-2 rounded-2xl border border-secondary/30 overflow-x-auto gap-2 shadow-xs">
             <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">

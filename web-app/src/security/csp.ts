@@ -2,8 +2,8 @@ export function generateCspHeader(nonce?: string): string {
   const scriptSrc = nonce ? `'self' 'nonce-${nonce}'` : "'self'";
   const platformDomain = process.env.PLATFORM_DOMAIN || process.env.NEXT_PUBLIC_PLATFORM_DOMAIN || "";
   
-  const domainConnectHttps = platformDomain ? `https://${platformDomain}` : "";
-  const domainConnectHttp = platformDomain ? `http://${platformDomain}` : "";
+  const domainConnectHttps = platformDomain ? `https://${platformDomain} https://*.${platformDomain}` : "";
+  const domainConnectHttp = platformDomain ? `http://${platformDomain} http://*.${platformDomain}` : "";
 
   return [
     "default-src 'self'",
