@@ -58,4 +58,32 @@ public class FxCalculationServiceTest {
 
         assertEquals(ErrorCode.INVALID_REQUEST, ex.getErrorCode());
     }
+
+    @Test
+    void calculateDestinationAmount_UniversityErpUsdToPhp_MatchesLiveMidMarketBenchmark() {
+        // User scenario: $122,074.00 USD at live rate 62.6280 PHP
+        Money sourceMoney = Money.of(new BigDecimal("122074.00"), CurrencyCode.USD);
+        FxQuote quote = new FxQuote(
+                CurrencyCode.USD,
+                CurrencyCode.PHP,
+                new BigDecimal("62.6280"),
+                Instant.now(),
+                Instant.now().plusSeconds(600),
+                "LIVE_MID_MARKET",
+                "REF-122074"
+        );
+
+        Money destinationMoney = fxCalculationService.calculateDestinationAmount(sourceMoney, quote);
+
+        assertEquals(CurrencyCode.PHP, destinationMoney.getCurrency());
+        // 122,074.00 * 62.6280 = 7,645,250.472 -> rounds to 7,645,250.47 PHP
+        assertEquals(new BigDecimal("7645250.47"), destinationMoney.getAmount());
+
+        // Plus Main Account PHP balance: 50.00 PHP
+        Money mainAccountBalance = Money.of(new BigDecimal("50.00"), CurrencyCode.PHP);
+        Money totalNetLiquidity = mainAccountBalance.add(destinationMoney);
+
+        // Grand Total: 7,645,300.47 PHP
+        assertEquals(new BigDecimal("7645300.47"), totalNetLiquidity.getAmount());
+    }
 }

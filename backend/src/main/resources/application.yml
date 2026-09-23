@@ -57,6 +57,8 @@ fx:
     url: ${FX_PROVIDER_URL:https://api.frankfurter.app}
     timeout-ms: 3000
     ttl-minutes: 15
+  rates:
+    usd-php: ${FX_RATE_USD_PHP:62.6280}
 
 management:
   health:

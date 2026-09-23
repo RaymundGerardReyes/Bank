@@ -24,6 +24,10 @@ payment:
     webhook-secret: whsec_test_secret_123456789
     sandbox: true
 
+fx:
+  provider:
+    type: fake
+
 logging:
   level:
     root: INFO
