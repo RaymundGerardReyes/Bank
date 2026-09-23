@@ -10,7 +10,6 @@ services:
       APP_ENV: production
       # CRITICAL: PAYMENT_CHECKOUT_BASE_URL must resolve to the external payment gateway host
       # (e.g., https://${PAYMENT_WEBHOOK_HOST}) matching Nginx virtual host routing for /checkout/.
-      PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-${UI_PUBLIC_HOST}}
       PAYMENT_CHECKOUT_BASE_URL: ${PAYMENT_CHECKOUT_BASE_URL:-https://${PAYMENT_WEBHOOK_HOST}}
 
     # No exposed ports; accessed purely via Nginx
