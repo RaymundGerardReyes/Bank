@@ -93,7 +93,7 @@ fi
 
 log "Fetching remote tags to avoid collisions..."
 if [ "$DRY_RUN" = false ]; then
-  git fetch --tags origin >> "$LOG_FILE" 2>&1 || true
+  GIT_TERMINAL_PROMPT=0 git fetch --tags origin >> "$LOG_FILE" 2>&1 || true
 else
   log "  (skipped actual fetch in dry-run; assuming local tags are current)"
 fi
