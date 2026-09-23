@@ -9,7 +9,7 @@ export interface FxRatesResponse {
 
 export const DEFAULT_RATES_TO_PHP: Record<string, number> = {
   PHP: 1.0,
-  USD: 58.20,
+  USD: 62.6280,
   EUR: 63.50,
   GBP: 74.80,
   CAD: 42.80,
@@ -30,7 +30,7 @@ export const fxService = {
         base: 'PHP',
         rates: {
           PHP: 1.0,
-          USD: 1 / 58.20,
+          USD: 1 / 62.6280,
           EUR: 1 / 63.50,
           GBP: 1 / 74.80,
           CAD: 1 / 42.80,
