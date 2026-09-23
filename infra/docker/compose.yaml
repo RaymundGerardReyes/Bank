@@ -86,6 +86,8 @@ services:
       PASSKEY_RP_NAME: ${PASSKEY_RP_NAME}
       PASSKEY_RP_ORIGIN: ${PASSKEY_RP_ORIGIN}
       INTERNAL_BFF_API_KEY: ${INTERNAL_BFF_API_KEY}
+      FX_PROVIDER_TYPE: ${FX_PROVIDER_TYPE:-live}
+      FX_PROVIDER_URL: ${FX_PROVIDER_URL:-https://open.er-api.com/v6/latest}
     depends_on:
       database:
         condition: service_healthy
