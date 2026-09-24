@@ -27,11 +27,13 @@ export PAGER=cat
 CONFIG_FILE="modules.conf"
 DRY_RUN=false
 AUTO_YES=false
+NO_FETCH=false
 
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=true ;;
     --yes) AUTO_YES=true ;;
+    --no-fetch) NO_FETCH=true ;;
     --config)
       shift_config_next=true ;;
     *)
@@ -92,10 +94,10 @@ else
 fi
 
 log "Fetching remote tags to avoid collisions..."
-if [ "$DRY_RUN" = false ]; then
+if [ "$DRY_RUN" = false ] && [ "$NO_FETCH" = false ]; then
   GIT_TERMINAL_PROMPT=0 git fetch --tags origin >> "$LOG_FILE" 2>&1 || true
 else
-  log "  (skipped actual fetch in dry-run; assuming local tags are current)"
+  log "  (skipped actual fetch in dry-run/no-fetch mode; assuming local tags are current)"
 fi
 
 bump_patch() {
