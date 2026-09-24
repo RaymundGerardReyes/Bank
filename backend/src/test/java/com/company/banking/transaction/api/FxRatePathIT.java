@@ -38,7 +38,23 @@ public class FxRatePathIT extends BaseIntegrationTest {
                     .andExpect(jsonPath("$.ratesToPhp.CAD").value(42.800000))
                     .andExpect(jsonPath("$.ratesToPhp.SGD").value(44.500000))
                     .andExpect(jsonPath("$.ratesToPhp.JPY").value(0.380000))
+                    .andExpect(jsonPath("$.provider").isNotEmpty())
+                    .andExpect(jsonPath("$.providerAttribution").isNotEmpty())
+                    .andExpect(jsonPath("$.disclaimer").isNotEmpty())
                     .andExpect(jsonPath("$.timestamp").isNotEmpty());
+        }
+
+        @Test
+        @DisplayName("Returns 200 OK and triggers cache refresh when refresh=true parameter is passed")
+        void shouldRefreshCacheAndReturnRates() throws Exception {
+            mockMvc.perform(get("/api/v1/fx/rates")
+                            .param("base", "PHP")
+                            .param("refresh", "true")
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.base").value("PHP"))
+                    .andExpect(jsonPath("$.ratesToPhp.USD").value(62.628000))
+                    .andExpect(jsonPath("$.provider").isNotEmpty());
         }
 
         @Test

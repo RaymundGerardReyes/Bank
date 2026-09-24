@@ -25,8 +25,17 @@ public class ExchangeRateApiResponse {
 
     private Map<String, BigDecimal> rates;
 
+    @JsonProperty("provider")
+    private String provider;
+
     @JsonProperty("time_last_update_unix")
     private Long timeLastUpdateUnix;
+
+    @JsonProperty("time_last_update_utc")
+    private String timeLastUpdateUtc;
+
+    @JsonProperty("time_next_update_utc")
+    private String timeNextUpdateUtc;
 
     public String resolveBase() {
         return baseCode != null && !baseCode.isBlank() ? baseCode : base;

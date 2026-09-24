@@ -28,7 +28,12 @@ public class FxController {
 
     @GetMapping("/rates")
     public ResponseEntity<Map<String, Object>> getRates(
-            @RequestParam(value = "base", defaultValue = "PHP") String baseCurrencyStr) {
+            @RequestParam(value = "base", defaultValue = "PHP") String baseCurrencyStr,
+            @RequestParam(value = "refresh", defaultValue = "false") boolean refresh) {
+        if (refresh) {
+            fxRateProviderPort.refreshCache();
+        }
+
         CurrencyCode baseCurrency = CurrencyCode.fromString(baseCurrencyStr);
         Money dummyBaseAmount = Money.of(BigDecimal.ONE, baseCurrency);
 
@@ -56,6 +61,10 @@ public class FxController {
         response.put("rates", rates);
         response.put("ratesToPhp", ratesToPhp);
         response.put("timestamp", java.time.Instant.now().toString());
+
+        Map<String, Object> metadata = fxRateProviderPort.getProviderMetadata(baseCurrency);
+        response.putAll(metadata);
+        response.put("disclaimer", "Indicative valuation based on live market feed. Sub-account foreign balances remain in their physical native currency without erosion.");
 
         return ResponseEntity.ok(response);
     }

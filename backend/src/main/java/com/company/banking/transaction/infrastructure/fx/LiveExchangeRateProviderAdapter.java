@@ -127,7 +127,16 @@ public class LiveExchangeRateProviderAdapter implements FxRateProviderPort {
             ExchangeRateApiResponse response = restTemplate.getForObject(url, ExchangeRateApiResponse.class);
 
             if (response != null && response.getRates() != null && !response.getRates().isEmpty()) {
-                cache.put(source, new CachedRatesPayload(response.getRates(), now.plus(ttlMinutes, ChronoUnit.MINUTES)));
+                String provider = response.getProvider() != null && !response.getProvider().isBlank()
+                        ? response.getProvider() : "https://www.exchangerate-api.com";
+                cache.put(source, new CachedRatesPayload(
+                        response.getRates(),
+                        now.plus(ttlMinutes, ChronoUnit.MINUTES),
+                        provider,
+                        response.getTimeLastUpdateUtc(),
+                        response.getTimeNextUpdateUtc(),
+                        true
+                ));
 
                 BigDecimal rate = response.getRates().get(destination.name());
                 if (rate != null && rate.compareTo(BigDecimal.ZERO) > 0) {
@@ -161,6 +170,39 @@ public class LiveExchangeRateProviderAdapter implements FxRateProviderPort {
                 "Unsupported currency pair: " + source + " to " + destination);
     }
 
+    @Override
+    public void refreshCache() {
+        clearCache();
+    }
+
+    @Override
+    public Map<String, Object> getProviderMetadata(CurrencyCode base) {
+        Instant now = clock.instant();
+        Map<String, Object> meta = new java.util.LinkedHashMap<>();
+        meta.put("provider", "LIVE_OPEN_EXCHANGE_RATES");
+        meta.put("providerAttribution", "Open Exchange Rates Live Market Feed");
+
+        CachedRatesPayload payload = cache.get(base);
+        if (payload == null && base == CurrencyCode.PHP) {
+            payload = cache.get(CurrencyCode.USD);
+        }
+
+        if (payload != null && !payload.isExpired(now)) {
+            meta.put("isLive", payload.isLive);
+            if (payload.timeLastUpdateUtc != null) {
+                meta.put("timeLastUpdateUtc", payload.timeLastUpdateUtc);
+            }
+            if (payload.timeNextUpdateUtc != null) {
+                meta.put("timeNextUpdateUtc", payload.timeNextUpdateUtc);
+            }
+            meta.put("cached", true);
+        } else {
+            meta.put("isLive", true);
+            meta.put("cached", false);
+        }
+        return meta;
+    }
+
     public void clearCache() {
         cache.clear();
     }
@@ -168,10 +210,22 @@ public class LiveExchangeRateProviderAdapter implements FxRateProviderPort {
     private static class CachedRatesPayload {
         final Map<String, BigDecimal> rates;
         final Instant expiresAt;
+        final String provider;
+        final String timeLastUpdateUtc;
+        final String timeNextUpdateUtc;
+        final boolean isLive;
 
         CachedRatesPayload(Map<String, BigDecimal> rates, Instant expiresAt) {
+            this(rates, expiresAt, "https://www.exchangerate-api.com", null, null, true);
+        }
+
+        CachedRatesPayload(Map<String, BigDecimal> rates, Instant expiresAt, String provider, String timeLastUpdateUtc, String timeNextUpdateUtc, boolean isLive) {
             this.rates = new ConcurrentHashMap<>(rates);
             this.expiresAt = expiresAt;
+            this.provider = provider;
+            this.timeLastUpdateUtc = timeLastUpdateUtc;
+            this.timeNextUpdateUtc = timeNextUpdateUtc;
+            this.isLive = isLive;
         }
 
         boolean isExpired(Instant now) {
