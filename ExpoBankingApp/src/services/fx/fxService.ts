@@ -5,6 +5,12 @@ export interface FxRatesResponse {
   rates: Record<string, number>;
   ratesToPhp: Record<string, number>;
   timestamp: string;
+  provider?: string;
+  providerAttribution?: string;
+  isLive?: boolean;
+  timeLastUpdateUtc?: string;
+  timeNextUpdateUtc?: string;
+  disclaimer?: string;
 }
 
 export const DEFAULT_RATES_TO_PHP: Record<string, number> = {
@@ -18,9 +24,9 @@ export const DEFAULT_RATES_TO_PHP: Record<string, number> = {
 };
 
 export const fxService = {
-  getRates: async (base: string = 'PHP'): Promise<FxRatesResponse> => {
+  getRates: async (base: string = 'PHP', refresh: boolean = false): Promise<FxRatesResponse> => {
     try {
-      const response = await apiClient.get<FxRatesResponse>(`/fx/rates?base=${base}`);
+      const response = await apiClient.get<FxRatesResponse>(`/fx/rates?base=${base}${refresh ? '&refresh=true' : ''}`);
       if (response.data && response.data.ratesToPhp) {
         return response.data;
       }
@@ -39,6 +45,10 @@ export const fxService = {
         },
         ratesToPhp: DEFAULT_RATES_TO_PHP,
         timestamp: new Date().toISOString(),
+        provider: 'FALLBACK_BENCHMARK',
+        providerAttribution: 'Hardened Reference Rates',
+        isLive: false,
+        disclaimer: 'Reference rates applied. Market rates may vary.',
       };
     }
   },
