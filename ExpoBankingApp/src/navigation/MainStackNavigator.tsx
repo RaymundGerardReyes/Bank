@@ -21,6 +21,7 @@ import { ExternalPaymentScreen } from '../screens/transfers/ExternalPaymentScree
 import { TransferConfirmScreen } from '../screens/transfers/TransferConfirmScreen';
 import { TransferReviewScreen } from '../screens/transfers/TransferReviewScreen';
 import { WithdrawScreen } from '../screens/transfers/WithdrawScreen';
+import { QrScannerScreen } from '../screens/qr/QrScannerScreen';
 
 import { colors } from '../theme/colors';
 
@@ -125,6 +126,13 @@ export const MainStackNavigator = () => {
                 name="AuditLogs"
                 component={AuditLogScreen}
                 options={{ title: 'Audit Trail' }}
+            />
+
+            {/* 6. QR Scanner & Live Passkey Authorization */}
+            <Stack.Screen
+                name="QrScanner"
+                component={QrScannerScreen}
+                options={{ headerShown: false }}
             />
         </Stack.Navigator>
     );

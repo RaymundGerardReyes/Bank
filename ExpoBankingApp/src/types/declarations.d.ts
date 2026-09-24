@@ -7,6 +7,16 @@ declare module 'react-native-vision-camera' {
     requestPermission: () => Promise<boolean>;
   };
   export function useFrameProcessor(processor: (frame: any) => void, deps: any[]): any;
+  export function useCodeScanner(config: {
+    codeTypes: string[];
+    onCodeScanned: (codes: any[], frame?: any) => void;
+  }): any;
+  export type Code = {
+    type: string;
+    value?: string;
+    frame?: any;
+    corners?: any[];
+  };
 }
 
 declare module 'react-native-nitro-inspire-face' {

@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import {
@@ -115,9 +116,19 @@ export const DashboardScreen = () => {
               {user?.firstName || 'Raymund'} {user?.lastName || 'Reyes'}
             </Text>
           </View>
-          <View style={styles.securityBadge}>
-            <View style={styles.securityDot} />
-            <Text style={styles.securityBadgeText}>SECURE</Text>
+          <View style={styles.headerRightRow}>
+            <TouchableOpacity
+              style={styles.qrHeaderBtn}
+              onPress={() => navigation.navigate('QrScanner')}
+              activeOpacity={0.8}
+              accessibilityLabel="Scan QR Code"
+            >
+              <Ionicons name="qr-code-outline" size={20} color={colors.accent} />
+            </TouchableOpacity>
+            <View style={styles.securityBadge}>
+              <View style={styles.securityDot} />
+              <Text style={styles.securityBadgeText}>SECURE</Text>
+            </View>
           </View>
         </View>
 
@@ -148,7 +159,7 @@ export const DashboardScreen = () => {
                   <View key={currency} style={styles.multiCurrencyItem}>
                     <View style={styles.multiCurrencyLeft}>
                       <Text style={styles.multiCurrencyBadge}>{currency}</Text>
-                      <Text style={styles.multiCurrencyAmount}>
+                      <Text style={styles.multiCurrencyNative}>
                         {formatCurrency(amount, currency)}
                       </Text>
                     </View>
@@ -175,6 +186,13 @@ export const DashboardScreen = () => {
         </View>
 
         <View style={styles.quickActionsGrid}>
+          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('QrScanner')}>
+            <View style={[styles.actionIconBg, { backgroundColor: '#EEF2FF' }]}>
+              <Ionicons name="qr-code" size={26} color={colors.accent} />
+            </View>
+            <Text style={styles.actionText}>Scan QR</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Transfers')}>
             <View style={[styles.actionIconBg, { backgroundColor: '#F0F9FF' }]}>
               <Text style={styles.actionIconText}>💸</Text>
@@ -370,6 +388,26 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: -0.5,
   },
+  headerRightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  qrHeaderBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   securityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -506,9 +544,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '700',
-  },
-    fontWeight: '800',
-    letterSpacing: -0.5,
   },
   netWorthFooter: {
     marginTop: spacing.md,

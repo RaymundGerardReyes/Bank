@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
-import { FingerprintIcon } from "lucide-react";
+import { FingerprintIcon, QrCode, Smartphone } from "lucide-react";
 import { startAuthentication } from "@simplewebauthn/browser";
+import { QRCodeSVG } from "qrcode.react";
 import { transactionService } from "@/services/transaction/transactionService";
 
 interface PasskeyAuthorizationProps {
@@ -23,6 +24,7 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
 }) => {
   const [authenticating, setAuthenticating] = useState(false);
   const [waitingForMobile, setWaitingForMobile] = useState(false);
+  const [activeIntentId, setActiveIntentId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLocalDev, setIsLocalDev] = useState(false);
 
@@ -59,7 +61,6 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
   };
 
   const pollMobileApproval = async (intentId: number) => {
-    // In a full integration, this would poll GET /api/v1/transactions/intents/{intentId}/authorization/status
     const pollInterval = setInterval(async () => {
       try {
         const res = await transactionService.getAuthStatus(intentId);
@@ -102,6 +103,41 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
     }, 60000);
   };
 
+  const initiateMobileAuthorization = async () => {
+    setAuthenticating(false);
+    setWaitingForMobile(true);
+    setError(null);
+
+    try {
+      const intentRes = await transactionService.createIntent({
+        rail: "INTERNAL",
+        sourceAccountId: "AUTO",
+        recipient: recipient,
+        amount: amount,
+        currency: "PHP",
+        fee: 0.00,
+        total: amount,
+        idempotencyKey: "PUSH-" + Date.now(),
+      });
+      const data = intentRes.data as { id?: number };
+      if (!data?.id) throw new Error("Invalid intent response: missing ID");
+      const intentId = data.id;
+      setActiveIntentId(intentId);
+
+      await transactionService.createPushRequest(intentId, {
+        amount: amount,
+        sourceAccount: "Web Client",
+        destinationAccount: recipient,
+      });
+
+      pollMobileApproval(intentId);
+    } catch (pushErr: any) {
+      console.error("Mobile authorization initiation failed", pushErr);
+      setWaitingForMobile(false);
+      setError("Failed to initiate mobile authorization. Please check network connectivity.");
+    }
+  };
+
   const handleAuthorize = async () => {
     setAuthenticating(true);
     setError(null);
@@ -121,82 +157,14 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
     } catch (err: any) {
       console.error("WebAuthn Error:", err);
       
-      if (err.name === 'NotAllowedError') {
+      if (err.name === 'NotAllowedError' || isLocalDev) {
         shouldStopLoading = false;
-        console.warn("WebAuthn denied/timeout. Falling back to Sync Queueing Mobile Approval.");
-        setAuthenticating(false);
-        setWaitingForMobile(true);
-        
-        try {
-          // 1. Create Intent for Push Fallback (in real app, this might be created earlier)
-          const intentRes = await transactionService.createIntent({
-            rail: "INTERNAL", // Simplified for fallback demo
-            sourceAccountId: "UNKNOWN",
-            recipient: recipient,
-            amount: amount,
-            currency: "PHP",
-            fee: 0.00,
-            total: amount,
-            idempotencyKey: "PUSH-" + new Date().getTime()
-          });
-          const data = intentRes.data as { id?: number };
-          if (!data?.id) throw new Error("Invalid intent response: missing ID");
-          const intentId = data.id;
-          
-          // 2. Trigger Push Request
-          await transactionService.createPushRequest(intentId, {
-            amount: amount,
-            sourceAccount: "Auto-detect",
-            destinationAccount: recipient
-          });
-          
-          // 3. Poll
-          pollMobileApproval(intentId);
-        } catch (pushErr) {
-          console.error("Push Error", pushErr);
-          setWaitingForMobile(false);
-          setError("Failed to initiate mobile authorization.");
-        }
+        console.warn("WebAuthn unavailable or cancelled. Falling back to Mobile Passkey Sync & QR Scan.");
+        await initiateMobileAuthorization();
         return;
       }
 
-      if (isLocalDev) {
-        shouldStopLoading = false;
-        console.warn("Dev Mode Detected: WebAuthn failed. Falling back to Sync Queueing.");
-        setAuthenticating(false);
-        setWaitingForMobile(true);
-        
-        try {
-          const intentRes = await transactionService.createIntent({
-            rail: "INTERNAL",
-            sourceAccountId: "DEV-ACCOUNT",
-            recipient: recipient,
-            amount: amount,
-            currency: "PHP",
-            fee: 0.00,
-            total: amount,
-            idempotencyKey: "DEV-PUSH-" + new Date().getTime()
-          });
-          const data = intentRes.data as { id?: number };
-          if (!data?.id) throw new Error("Invalid intent response: missing ID");
-          const intentId = data.id;
-          
-          await transactionService.createPushRequest(intentId, {
-            amount: amount,
-            sourceAccount: "Dev Account",
-            destinationAccount: recipient
-          });
-          
-          pollMobileApproval(intentId);
-        } catch (pushErr) {
-          console.error("Push Error", pushErr);
-          setWaitingForMobile(false);
-          setError("Failed to initiate mobile authorization.");
-        }
-        return;
-      }
-
-      setError("Failed to verify Passkey. Please try again or use another method.");
+      setError("Failed to verify Passkey. Please try again or scan the QR code with your mobile app.");
     } finally {
       if (shouldStopLoading) {
         setAuthenticating(false);
@@ -205,14 +173,19 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
   };
 
   if (waitingForMobile) {
+    const qrPayload = activeIntentId
+      ? `munbank://authorize?intentId=${activeIntentId}&amount=${amount}&recipient=${encodeURIComponent(recipient)}&currency=PHP`
+      : "";
+
     return (
-      <div className="flex flex-col gap-6 items-center text-center py-8 animate-in zoom-in-95 duration-500">
-        <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mb-2 relative">
+      <div className="flex flex-col gap-5 items-center text-center py-6 animate-in zoom-in-95 duration-500 max-w-sm mx-auto">
+        <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center relative">
           <div className="absolute inset-0 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <FingerprintIcon className="w-8 h-8 text-indigo-600 animate-pulse" />
+          <FingerprintIcon className="w-7 h-7 text-indigo-600 animate-pulse" />
         </div>
+
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-600 tracking-wider mb-3 animate-pulse">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-600 tracking-wider mb-2 animate-pulse">
             PEER LIVE SYNC
           </div>
           <h2 className="text-2xl font-black text-accent mb-2">Check Your Phone</h2>
@@ -220,17 +193,33 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
             We've sent a secure push notification to your Expo Banking App to verify this transfer of <strong>₱{amount.toFixed(2)}</strong>.
           </p>
         </div>
-        <div className="flex flex-col gap-3 w-full mt-4">
+
+        {qrPayload && (
+          <div className="bg-white p-3.5 rounded-2xl shadow-lg border border-slate-200/80 flex flex-col items-center">
+            <QRCodeSVG
+              value={qrPayload}
+              size={180}
+              level="M"
+              includeMargin={false}
+            />
+            <div className="flex items-center gap-1.5 mt-2.5 text-[11px] font-semibold text-slate-500">
+              <QrCode className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Scan with NovaBank Mobile App</span>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2.5 w-full mt-2">
           {isLocalDev && (
             <Button
               variant="secondary"
               onClick={handleSimulate}
-              className="w-full py-4 text-lg border-2 border-indigo-500/50 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-400"
+              className="w-full py-2.5 text-sm border-2 border-indigo-500/50 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-400"
             >
               [DEV] Bypass Access
             </Button>
           )}
-          <Button variant="ghost" onClick={onCancel} className="w-full">
+          <Button variant="ghost" onClick={onCancel} className="w-full text-sm">
             Cancel Transfer
           </Button>
         </div>
@@ -240,7 +229,6 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
 
   return (
     <div className="flex flex-col gap-6 items-center text-center py-6 animate-in zoom-in-95 duration-500">
-      
       <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-2">
         <FingerprintIcon className={`w-10 h-10 text-primary ${authenticating ? "animate-pulse" : ""}`} />
       </div>
@@ -270,11 +258,21 @@ export const PasskeyAuthorization: React.FC<PasskeyAuthorizationProps> = ({
           {authenticating ? "Verifying Passkey..." : "Use Passkey to Authorize"}
         </Button>
 
+        <Button
+          variant="secondary"
+          onClick={initiateMobileAuthorization}
+          className="w-full py-3.5 text-base flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 shadow-sm"
+          disabled={authenticating}
+        >
+          <Smartphone className="w-4 h-4 text-indigo-600" />
+          <span>Authorize on Phone / Scan QR</span>
+        </Button>
+
         {isLocalDev && (
           <Button
             variant="secondary"
             onClick={handleSimulate}
-            className="w-full py-4 text-lg border-2 border-emerald-500/50 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400"
+            className="w-full py-3 text-sm border-2 border-emerald-500/50 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400"
             disabled={authenticating}
           >
             <span>[DEV] Bypass Access</span>
