@@ -70,7 +70,7 @@ public class TransferPolicyTest {
     @DisplayName("validateApiKeyVamBinding(String): unlinked key passes string check")
     void stringOverload_UnlinkedKey_Passes() {
         ApiKeyAuthenticationToken token = new ApiKeyAuthenticationToken(
-                "sk_live_test", 100L, "LIVE", 1L, null,
+                "sk_live_test", null, "LIVE", 1L, null,
                 Set.of("treasury:write"), Collections.emptyList()
         );
         SecurityContextHolder.getContext().setAuthentication(token);
@@ -94,7 +94,7 @@ public class TransferPolicyTest {
     @DisplayName("validateApiKeyVamBinding(Account): unlinked key accessing sub-account throws 403 Forbidden")
     void accountOverload_UnlinkedKey_SubAccount_ThrowsForbidden() {
         ApiKeyAuthenticationToken token = new ApiKeyAuthenticationToken(
-                "sk_live_test", 100L, "LIVE", 1L, null,
+                "sk_live_test", null, "LIVE", 1L, null,
                 Set.of("treasury:write"), Collections.emptyList()
         );
         SecurityContextHolder.getContext().setAuthentication(token);

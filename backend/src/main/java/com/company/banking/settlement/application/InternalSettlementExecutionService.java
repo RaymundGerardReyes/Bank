@@ -34,6 +34,7 @@ public class InternalSettlementExecutionService {
     private final AccountPersistencePort accountPersistencePort;
     private final LedgerPersistencePort ledgerPersistencePort;
     private final com.company.banking.account.application.GlobalAccountLockGuard globalAccountLockGuard;
+    private final com.company.banking.merchant.application.port.out.MerchantPersistencePort merchantPersistencePort;
 
     @Transactional
     public SettlementInstruction executeSettlement(String instructionId, Long requestingMerchantId) {
@@ -60,7 +61,7 @@ public class InternalSettlementExecutionService {
         }
 
         // 4. Deterministic Account Locking (Prevents Deadlocks)
-        String sourceAccNumber = "MERCHANT-SETTLEMENT-" + instruction.getMerchantId();
+        String sourceAccNumber = resolveMerchantSettlementAccountNumber(instruction.getMerchantId());
         String destAccNumber = instruction.getDestinationAccount();
 
         List<Account> lockedAccounts = globalAccountLockGuard.acquireDeterministicLocks(sourceAccNumber, destAccNumber);
@@ -129,4 +130,20 @@ public class InternalSettlementExecutionService {
         
         return instructionRepository.save(instruction);
     }
+
+    private String resolveMerchantSettlementAccountNumber(Long merchantId) {
+        if (merchantPersistencePort != null && merchantId != null) {
+            java.util.Optional<com.company.banking.merchant.domain.Merchant> merchantOpt = merchantPersistencePort.findById(merchantId);
+            if (merchantOpt.isPresent()) {
+                String configuredSettlement = merchantOpt.get().getSettlementAccount();
+                if (configuredSettlement != null && !configuredSettlement.trim().isEmpty()) {
+                    if (accountPersistencePort != null && accountPersistencePort.findByAccountNumber(configuredSettlement.trim()).isPresent()) {
+                        return configuredSettlement.trim();
+                    }
+                }
+            }
+        }
+        return "MERCHANT-SETTLEMENT-" + merchantId;
+    }
 }
+

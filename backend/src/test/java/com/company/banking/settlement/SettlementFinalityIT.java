@@ -62,7 +62,7 @@ public class SettlementFinalityIT extends LedgerSpyIntegrationTest {
     @Autowired private com.company.banking.account.infrastructure.AccountJpaRepository accountJpaRepository;
     @Autowired private com.company.banking.payment.infrastructure.RefundJpaRepository refundRepository;
     @Autowired private com.company.banking.payment.infrastructure.PaymentAttemptJpaRepository paymentAttemptRepository;
-    @Autowired private com.company.banking.payment.infrastructure.PaymentEventJpaRepository paymentEventRepository;
+    @Autowired private com.company.banking.merchant.application.port.out.MerchantPersistencePort merchantPersistencePort;
     @Autowired private jakarta.persistence.EntityManager entityManager;
 
     private final Long MERCHANT_ID = 999L;
@@ -73,7 +73,12 @@ public class SettlementFinalityIT extends LedgerSpyIntegrationTest {
 
     @BeforeEach
     public void setup() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
 
+        merchantPersistencePort.findById(MERCHANT_ID).ifPresent(m -> {
+            m.setSettlementAccount(SUSPENSE_ACC);
+            merchantPersistencePort.save(m);
+        });
 
         // 2. Establish Conserved Financial Baseline idempotently
         accountPersistencePort.findByAccountNumber(CUSTOMER_ACC)
@@ -107,10 +112,21 @@ public class SettlementFinalityIT extends LedgerSpyIntegrationTest {
                         .allowOutgoing(true).allowIncoming(true).build()));
 
         merchantBalanceRepository.findByMerchantId(MERCHANT_ID)
+                .map(mb -> {
+                    mb.setAvailableBalance(BigDecimal.ZERO);
+                    mb.setPendingBalance(BigDecimal.ZERO);
+                    mb.setUpdatedAt(LocalDateTime.now());
+                    return merchantBalanceRepository.save(mb);
+                })
                 .orElseGet(() -> merchantBalanceRepository.save(MerchantBalance.builder()
                         .merchantId(MERCHANT_ID).availableBalance(new BigDecimal("0.00"))
                         .pendingBalance(new BigDecimal("0.00")).currency("PHP")
                         .updatedAt(LocalDateTime.now()).build()));
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    public void tearDown() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
     }
 
     /**

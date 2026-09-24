@@ -7,6 +7,7 @@ import com.company.banking.transaction.domain.CurrencyCode;
 import com.company.banking.transaction.domain.FxQuote;
 import com.company.banking.transaction.domain.Money;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -53,6 +54,7 @@ public class LiveExchangeRateProviderAdapter implements FxRateProviderPort {
     // Cache: BaseCurrency -> CachedRatesPayload
     private final ConcurrentHashMap<CurrencyCode, CachedRatesPayload> cache = new ConcurrentHashMap<>();
 
+    @Autowired
     @SuppressWarnings("removal")
     public LiveExchangeRateProviderAdapter(
             RestTemplateBuilder restTemplateBuilder,
