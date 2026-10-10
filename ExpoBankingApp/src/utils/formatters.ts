@@ -1,4 +1,4 @@
-export const formatCurrency = (amount: number, currency: string = 'USD'): string => {
+export const formatCurrency = (amount: number, currency: string = 'PHP'): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
@@ -26,7 +26,7 @@ export const formatDate = (dateString: string, timeZone?: string): string => {
 export const maskAccountNumber = (accountNumber: string): string => {
   if (!accountNumber || accountNumber.length < 4) return '****';
   const lastFour = accountNumber.slice(-4);
-  return `•••• •••• ${lastFour}`;
+  return `**** **** ${lastFour}`;
 };
 
 export const generateUUID = (): string => {

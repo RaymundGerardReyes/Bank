@@ -4,33 +4,38 @@ import * as React from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../../components/common/Button';
+import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { Input } from '../../components/common/Input';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
 import { useAuth } from '../../hooks/useAuth';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 
 export const LoginScreen = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { login } = useAuth();
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [showPassword, setShowPassword] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const { login } = useAuth();
 
   const handleLogin = async () => {
-    if (!username || !password) {
-      setError('Please enter both email and password.');
+    if (!username.trim() || !password) {
+      setError('Enter your email and password to continue.');
       return;
     }
+
     setError(null);
     setLoading(true);
     try {
       await login(username.trim(), password);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } } };
-      setError(errorObj.response?.data?.message || 'Invalid credentials.');
+      setError(errorObj.response?.data?.message || 'We could not sign you in with those credentials.');
     } finally {
       setLoading(false);
     }
@@ -43,78 +48,86 @@ export const LoginScreen = () => {
         style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header Branding */}
-          <View style={styles.headerContainer}>
-            <View style={styles.logoPlaceholder}>
-              <Ionicons name="shield-checkmark" size={36} color={colors.accent} />
+          <View style={styles.brandSection}>
+            <View style={styles.brandMark}>
+              <Ionicons name="shield-checkmark-outline" size={30} color={colors.primary} />
             </View>
-            <Text style={styles.title}>NovaBank Enterprise</Text>
-            <Text style={styles.subtitle}>Secure Corporate Banking</Text>
+            <Text style={styles.brandName}>NovaBank</Text>
+            <Text style={styles.brandCopy}>Private mobile banking for verified clients.</Text>
           </View>
 
-          {/* Secure Form Card */}
-          <View style={styles.formContainer}>
-            {error ? (
-              <View style={styles.errorBanner}>
-                <Ionicons name="alert-circle" size={16} color={colors.danger} style={{ marginRight: 6 }} />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
+          <View style={styles.formPanel}>
+            <Text style={styles.formTitle}>Sign in</Text>
+            <Text style={styles.formSubtitle}>Use your registered credentials to access your accounts.</Text>
+
+            {error ? <ErrorBanner message={error} onDismiss={() => setError(null)} /> : null}
 
             <Input
-              label="Email Address"
-              placeholder="Enter your registered email"
+              label="Email address"
+              placeholder="name@example.com"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
+              autoComplete="email"
               keyboardType="email-address"
+              textContentType="username"
             />
+
             <Input
               label="Password"
-              placeholder="••••••••"
-              secureTextEntry
+              placeholder="Enter password"
+              secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
+              autoCapitalize="none"
+              textContentType="password"
             />
 
-            <TouchableOpacity
-              style={styles.forgotBtn}
-              onPress={() => navigation.navigate('ForgotPassword')}
-            >
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
-
-            <Button
-              title="Secure Sign In"
-              onPress={handleLogin}
-              loading={loading}
-              style={styles.primaryButton}
-            />
-
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.dividerLine} />
+            <View style={styles.formUtilityRow}>
+              <TouchableOpacity
+                onPress={() => setShowPassword((value) => !value)}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+              >
+                <Text style={styles.utilityLink}>{showPassword ? 'Hide password' : 'Show password'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('ForgotPassword')}
+                accessibilityRole="button"
+                accessibilityLabel="Forgot password"
+              >
+                <Text style={styles.utilityLink}>Forgot password</Text>
+              </TouchableOpacity>
             </View>
 
-            {/* INTEGRATED FACE VERIFICATION ENTRY POINT */}
+            <Button
+              title="Sign in securely"
+              onPress={handleLogin}
+              loading={loading}
+              fullWidth
+              style={styles.signInButton}
+            />
+
             <TouchableOpacity
-              style={styles.biometricBtn}
-              activeOpacity={0.8}
+              style={styles.faceIdButton}
+              activeOpacity={0.82}
               onPress={() => navigation.navigate('FaceVerification')}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in with Face ID"
             >
-              <Ionicons name="scan-outline" size={20} color={colors.accent} style={{ marginRight: 8 }} />
-              <Text style={styles.biometricText}>Sign In with Face ID</Text>
+              <Ionicons name="scan-outline" size={20} color={colors.primary} />
+              <Text style={styles.faceIdText}>Use Face ID</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.footerContainer}>
-            <Text style={styles.footerText}>Secure TLS Connection Established.</Text>
-          </View>
+          <Text style={styles.footerText}>Protected by device security and encrypted transport.</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SecureScreenWrapper>
@@ -124,7 +137,7 @@ export const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC', // Sleek off-white modern background
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -132,123 +145,99 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.screen,
   },
-  headerContainer: {
+  brandSection: {
     alignItems: 'center',
-    marginBottom: spacing.xxl,
-  },
-  logoPlaceholder: {
-    width: 72,
-    height: 72,
-    backgroundColor: colors.surface,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  title: {
-    color: colors.accent,
-    fontSize: 26,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    textAlign: 'center',
-    fontWeight: '500',
-    marginTop: 4,
-  },
-  formContainer: {
-    backgroundColor: colors.dominant,
-    borderRadius: spacing.borderRadius.lg,
-    padding: spacing.xl,
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 20,
-    elevation: 5,
-  },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    marginBottom: spacing.md,
-  },
-  errorText: {
-    color: colors.danger,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  forgotBtn: {
-    alignSelf: 'flex-end',
     marginBottom: spacing.xl,
-    marginTop: -8,
   },
-  forgotText: {
-    color: colors.secondary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  primaryButton: {
-    backgroundColor: colors.accent,
-    borderRadius: 12,
-    paddingVertical: 16,
-  },
-  dividerRow: {
-    flexDirection: 'row',
+  brandMark: {
+    width: 64,
+    height: 64,
+    borderRadius: spacing.borderRadius.lg,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
-    marginVertical: spacing.lg,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.md,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E2E8F0',
+  brandName: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.hero,
+    lineHeight: typography.lineHeight.hero,
+    fontWeight: typography.fontWeight.heavy,
+    textAlign: 'center',
   },
-  dividerText: {
-    color: colors.textMuted,
-    paddingHorizontal: 12,
-    fontSize: 12,
-    fontWeight: '700',
+  brandCopy: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.md,
+    lineHeight: typography.lineHeight.md,
+    textAlign: 'center',
+    marginTop: spacing.xs,
   },
-  biometricBtn: {
+  formPanel: {
+    backgroundColor: colors.surface,
+    borderRadius: spacing.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.ml,
+    ...shadows.subtle,
+  },
+  formTitle: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.xxl,
+    lineHeight: typography.lineHeight.xxl,
+    fontWeight: typography.fontWeight.heavy,
+  },
+  formSubtitle: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+  },
+  formUtilityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: -spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  utilityLink: {
+    color: colors.primary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  signInButton: {
+    marginTop: spacing.xs,
+  },
+  faceIdButton: {
+    minHeight: 50,
+    marginTop: spacing.ms,
+    borderRadius: spacing.borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    gap: spacing.sm,
   },
-  biometricText: {
-    color: colors.accent,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  footerContainer: {
-    marginTop: spacing.xxl,
-    alignItems: 'center',
+  faceIdText: {
+    color: colors.primary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   footerText: {
     color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: 'monospace',
-  }
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+  },
 });
 
 export default LoginScreen;

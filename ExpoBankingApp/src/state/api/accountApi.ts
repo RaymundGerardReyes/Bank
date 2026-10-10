@@ -12,13 +12,14 @@ export const accountApi = createApi({
       const token = await tokenStorageService.getAccessToken();
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
+        headers.set('Cookie', `bank_session=${token}`);
       }
       return headers;
     },
   }),
   tagTypes: ['Accounts'],
   endpoints: (builder) => ({
-    getAccounts: builder.query<ApiResponse<AccountSummary[]>, void>({
+    getAccounts: builder.query<ApiResponse<AccountSummary[]>, string | void>({
       query: () => '/accounts',
       providesTags: ['Accounts'],
     }),

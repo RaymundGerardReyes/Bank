@@ -12,6 +12,7 @@ export const transactionApi = createApi({
       const token = await tokenStorageService.getAccessToken();
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
+        headers.set('Cookie', `bank_session=${token}`);
       }
       return headers;
     },
@@ -19,13 +20,18 @@ export const transactionApi = createApi({
   tagTypes: ['Transactions'],
   endpoints: (builder) => ({
     getTransactionHistory: builder.query<ApiResponse<Transaction[]>, string>({
-      query: (accountNumber) => `/transactions/history/${accountNumber}`,
+      query: (accountNumber) => `/transactions/history?accountNumber=${encodeURIComponent(accountNumber)}`,
       providesTags: ['Transactions'],
       transformResponse: (response: any) => {
-        // Map Spring Boot's PagedResponse content to the standard array expected by the frontend
+        // Map Spring Boot's PagedResponse content or standard array to the frontend data array
+        const items = Array.isArray(response.data?.content)
+          ? response.data.content
+          : Array.isArray(response.data)
+          ? response.data
+          : [];
         return {
           ...response,
-          data: response.data?.content || [],
+          data: items,
         };
       },
     }),

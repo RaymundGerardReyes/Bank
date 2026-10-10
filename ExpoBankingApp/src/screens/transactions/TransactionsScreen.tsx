@@ -1,5 +1,6 @@
 import React from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { colors } from '../../theme/colors';
 
 // Mock Data representing your backend Ledger
 const TRANSACTIONS = [
@@ -64,27 +65,27 @@ export default function TransactionsScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' }, // 60% Dominant
+    container: { flex: 1, backgroundColor: colors.background },
     header: { paddingHorizontal: 24, paddingTop: 40, paddingBottom: 20 },
-    headerTitle: { fontSize: 28, fontWeight: '800', color: '#003366' }, // 10% Accent
-    headerSubtitle: { fontSize: 16, fontWeight: '500', color: '#7BB2D9', marginTop: 4 },
+    headerTitle: { fontSize: 28, fontWeight: '800', color: colors.primary },
+    headerSubtitle: { fontSize: 16, fontWeight: '500', color: colors.info, marginTop: 4 },
     filterContainer: { flexDirection: 'row', paddingHorizontal: 24, marginBottom: 16, gap: 12 },
-    filterChip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
-    filterActive: { backgroundColor: '#003366', borderColor: '#003366' },
-    filterText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
-    filterTextActive: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+    filterChip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
+    filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    filterText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+    filterTextActive: { fontSize: 14, fontWeight: '700', color: colors.surface },
     listContainer: { paddingHorizontal: 24, paddingBottom: 40 },
     transactionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
     leftSection: { flexDirection: 'row', alignItems: 'center', flex: 1 },
     iconContainer: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-    iconCredit: { backgroundColor: '#ECFDF5' }, // Very light green
-    iconDebit: { backgroundColor: '#F0F9FF' }, // Very light blue
-    iconText: { fontSize: 18, fontWeight: '800', color: '#003366' },
-    txTitle: { fontSize: 16, fontWeight: '700', color: '#003366', marginBottom: 4 },
-    txCategory: { fontSize: 13, fontWeight: '500', color: '#7BB2D9' },
+    iconCredit: { backgroundColor: colors.successBg },
+    iconDebit: { backgroundColor: colors.infoBg },
+    iconText: { fontSize: 18, fontWeight: '800', color: colors.primary },
+    txTitle: { fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: 4 },
+    txCategory: { fontSize: 13, fontWeight: '500', color: colors.info },
     rightSection: { alignItems: 'flex-end' },
     txAmount: { fontSize: 16, fontWeight: '800' },
-    amountCredit: { color: '#10B981' }, // Emerald Green for income
-    amountDebit: { color: '#003366' }, // Navy for expenses
-    separator: { height: 1, backgroundColor: '#F1F5F9' },
+    amountCredit: { color: colors.success },
+    amountDebit: { color: colors.primary },
+    separator: { height: 1, backgroundColor: colors.divider },
 });

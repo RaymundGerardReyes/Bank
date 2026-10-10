@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dominant,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.divider,
   },
   txnLeft: {
     flexDirection: 'row',
@@ -150,10 +150,10 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   iconBgCredit: {
-    backgroundColor: '#ECFCCB',
+    backgroundColor: colors.successBg,
   },
   iconBgDebit: {
-    backgroundColor: '#F0F8FF',
+    backgroundColor: colors.infoBg,
   },
   iconText: {
     fontSize: 16,

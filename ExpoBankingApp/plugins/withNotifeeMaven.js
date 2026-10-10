@@ -1,4 +1,4 @@
-const { withProjectBuildGradle } = require("@expo/config-plugins");
+const { withProjectBuildGradle } = require("expo/config-plugins");
 
 /**
  * Custom Expo Config Plugin to inject Notifee's local Maven repository 

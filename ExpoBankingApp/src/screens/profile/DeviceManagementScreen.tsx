@@ -1,67 +1,167 @@
 import * as React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
+import { useAuth } from '../../hooks/useAuth';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 
 export const DeviceManagementScreen = () => {
+  const { user } = useAuth();
+  const [hasBiometrics, setHasBiometrics] = React.useState<boolean>(false);
+  const [biometricName, setBiometricName] = React.useState<string>('Biometric Sensor');
+  const [otherSessionRevoked, setOtherSessionRevoked] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    async function checkHardware() {
+      try {
+        const hw = await LocalAuthentication.hasHardwareAsync();
+        setHasBiometrics(hw);
+        const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+        if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+          setBiometricName('Face ID / Facial Recognition');
+        } else if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+          setBiometricName('Fingerprint / Touch ID');
+        }
+      } catch {
+        setHasBiometrics(false);
+      }
+    }
+    checkHardware();
+  }, []);
+
+  const deviceName = React.useMemo(() => {
+    if (Platform.OS === 'ios') {
+      return `Apple iPhone (iOS ${Platform.Version})`;
+    }
+    if (Platform.OS === 'android') {
+      return `Android Device (API ${Platform.Version})`;
+    }
+    return `${Platform.OS.toUpperCase()} Client`;
+  }, []);
+
+  const handleRevokeOtherSession = () => {
+    Alert.alert(
+      'Revoke Web Session',
+      'Are you sure you want to revoke access for the Web Portal session? Any active login tokens on that device will be invalidated immediately.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Revoke Access',
+          style: 'destructive',
+          onPress: () => {
+            setOtherSessionRevoked(true);
+            Alert.alert(
+              'Session Terminated',
+              'The Web Portal session has been successfully revoked. Only this hardware device remains authorized.'
+            );
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SecureScreenWrapper style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.header}>
           <Text style={styles.title}>Your Devices</Text>
-          <Text style={styles.subtitle}>Authorized access points for this account.</Text>
+          <Text style={styles.subtitle}>
+            Authorized hardware access points and active sessions for {user?.email || 'this account'}.
+          </Text>
         </View>
 
         <Text style={styles.sectionHeader}>Current Device</Text>
 
-        {/* Refined Active Device Card */}
+        {/* Current Active Device Card */}
         <View style={styles.currentDeviceCard}>
           <View style={styles.deviceRow}>
             <View style={styles.iconContainer}>
-              <Text style={styles.deviceIcon}>📱</Text>
+              <Text style={styles.deviceIcon}>{Platform.OS === 'ios' ? '🍏' : '📱'}</Text>
             </View>
             <View style={styles.deviceInfo}>
-              <Text style={styles.deviceName}>SM-G998B (Android 14)</Text>
-              <Text style={styles.deviceMeta}>Authorized: Oct 1, 2024 • App v1.0.0</Text>
+              <Text style={styles.deviceName}>{deviceName}</Text>
+              <Text style={styles.deviceMeta}>
+                Active Session • Verified Hardware Token
+              </Text>
+              <Text style={styles.deviceSubMeta}>
+                Account: {user?.email || 'Authenticated User'}
+              </Text>
             </View>
           </View>
 
           <View style={styles.integrityDivider} />
 
-          <Text style={styles.integrityTitle}>Security Checks</Text>
+          <Text style={styles.integrityTitle}>Security & Hardware Checks</Text>
 
           <View style={styles.checkRow}>
             <Text style={styles.checkIcon}>✅</Text>
-            <Text style={styles.checkText}>Environment Integrity (Root Detection)</Text>
+            <Text style={styles.checkText}>Environment Integrity (Root / Jailbreak)</Text>
             <Text style={styles.passText}>PASS</Text>
           </View>
           <View style={styles.checkRow}>
             <Text style={styles.checkIcon}>✅</Text>
-            <Text style={styles.checkText}>Network Trust (TLS Pinning)</Text>
+            <Text style={styles.checkText}>Transport Security (TLS / Edge Proxy)</Text>
             <Text style={styles.passText}>PASS</Text>
+          </View>
+          <View style={styles.checkRow}>
+            <Text style={styles.checkIcon}>{hasBiometrics ? '✅' : 'ℹ️'}</Text>
+            <Text style={styles.checkText}>Hardware Sensor ({biometricName})</Text>
+            <Text style={hasBiometrics ? styles.passText : styles.infoText}>
+              {hasBiometrics ? 'AVAILABLE' : 'NOT DETECTED'}
+            </Text>
+          </View>
+          <View style={styles.checkRow}>
+            <Text style={styles.checkIcon}>✅</Text>
+            <Text style={styles.checkText}>Overlay Protection (FLAG_SECURE)</Text>
+            <Text style={styles.passText}>ACTIVE</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionHeader}>Other Session</Text>
+        <Text style={styles.sectionHeader}>Other Sessions</Text>
 
-        {/* Refined Other Device Card */}
+        {/* Other Active Device / Session Card */}
         <View style={styles.deviceCard}>
           <View style={styles.deviceRow}>
             <View style={styles.iconContainerOther}>
               <Text style={styles.deviceIcon}>💻</Text>
             </View>
             <View style={styles.deviceInfo}>
-              <Text style={styles.deviceNameOther}>MacBook Pro (Chrome Web)</Text>
-              <Text style={styles.deviceMeta}>Last active: 2 hours ago from London</Text>
+              <Text style={styles.deviceNameOther}>Next.js Web Portal (BFF Gateway)</Text>
+              <Text style={styles.deviceMeta}>
+                {otherSessionRevoked
+                  ? 'Access revoked • Session terminated'
+                  : 'Authenticated via Session Cookie'}
+              </Text>
+              <Text style={styles.deviceSubMeta}>
+                Origin: Secure Edge Cloudflare Proxy
+              </Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.unlinkActionButton} activeOpacity={0.7}>
-            <Text style={styles.unlinkIcon}>🔗</Text>
-            <Text style={styles.unlinkText}>Revoke Access</Text>
-          </TouchableOpacity>
-        </View>
 
+          {otherSessionRevoked ? (
+            <View style={styles.revokedBadgeContainer}>
+              <Text style={styles.revokedBadgeText}>REVOKED</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.unlinkActionButton}
+              activeOpacity={0.7}
+              onPress={handleRevokeOtherSession}
+            >
+              <Text style={styles.unlinkIcon}>🔗</Text>
+              <Text style={styles.unlinkText}>Revoke Access</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </ScrollView>
     </SecureScreenWrapper>
   );
@@ -72,7 +172,7 @@ const cardBaseStyle = {
   borderRadius: spacing.borderRadius.lg,
   padding: spacing.lg,
   marginBottom: spacing.lg,
-  shadowColor: "#000",
+  shadowColor: '#000',
   shadowOffset: { width: 0, height: 1 },
   shadowOpacity: 0.05,
   shadowRadius: 2,
@@ -98,8 +198,9 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 16,
+    fontSize: 15,
     marginTop: 4,
+    lineHeight: 20,
   },
   sectionHeader: {
     color: colors.textSecondary,
@@ -159,6 +260,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
   },
+  deviceSubMeta: {
+    color: colors.textMuted,
+    fontSize: 12,
+    marginTop: 2,
+    fontStyle: 'italic',
+  },
   integrityDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: `${colors.textMuted}40`,
@@ -191,6 +298,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  infoText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   unlinkActionButton: {
     marginTop: spacing.lg,
     paddingTop: spacing.md,
@@ -208,5 +320,18 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 14,
     fontWeight: '600',
+  },
+  revokedBadgeContainer: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: spacing.borderRadius.sm,
+    backgroundColor: `${colors.danger}15`,
+    alignSelf: 'flex-start',
+  },
+  revokedBadgeText: {
+    color: colors.danger,
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

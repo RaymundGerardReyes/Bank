@@ -335,11 +335,11 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   productCardSelected: {
     borderColor: colors.accent,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -383,12 +383,12 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   badgePopular: {
-    backgroundColor: '#ECFCCB',
+    backgroundColor: colors.successBg,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#86EFAC',
+    borderColor: colors.success,
   },
   badgePopularText: {
     color: colors.success,
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
   benefitsContainer: {
     gap: 4,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: colors.divider,
     paddingTop: 8,
   },
   benefitRow: {
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.lg,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     marginBottom: spacing.md,
   },
   amountInputRow: {
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.borderStrong,
   },
   chipSelected: {
     backgroundColor: colors.accent,
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   previewStatus: {
-    color: '#86EFAC',
+    color: colors.success,
     fontSize: 10,
     fontWeight: '700',
   },
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   successIconBg: {
     marginBottom: spacing.md,
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.md,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.borderStrong,
     marginBottom: spacing.xl,
   },
   snippetLabel: {
@@ -607,7 +607,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: colors.divider,
   },
   snippetSubText: {
     color: colors.textSecondary,

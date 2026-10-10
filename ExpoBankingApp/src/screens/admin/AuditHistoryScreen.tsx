@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { colors } from '../../theme/colors';
 
 // Mock Data representing your backend Audit Logs
 const AUDIT_LOGS = [
@@ -16,10 +17,10 @@ export default function AuditHistoryScreen() {
     // Helper to determine icon letter and color based on event type
     const getIconConfig = (type: string) => {
         switch (type) {
-            case 'security': return { letter: 'S', bg: '#FEE2E2', color: '#E11D48' }; // Light red / Red
-            case 'transaction': return { letter: 'T', bg: '#E0F2FE', color: '#0284C7' }; // Light blue / Blue
-            case 'system': return { letter: 'C', bg: '#F3F4F6', color: '#475569' }; // Light gray / Gray
-            default: return { letter: 'A', bg: '#F8FAFC', color: '#003366' };
+            case 'security': return { letter: 'S', bg: colors.dangerBg, color: colors.danger };
+            case 'transaction': return { letter: 'T', bg: colors.infoBg, color: colors.info };
+            case 'system': return { letter: 'C', bg: colors.surfaceAlt, color: colors.textSecondary };
+            default: return { letter: 'A', bg: colors.primaryLight, color: colors.primary };
         }
     };
 
@@ -94,17 +95,17 @@ export default function AuditHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' }, // 60% Dominant Pure White
+    container: { flex: 1, backgroundColor: colors.background },
 
     header: { paddingHorizontal: 24, paddingTop: 40, paddingBottom: 20 },
-    headerTitle: { fontSize: 28, fontWeight: '800', color: '#003366' }, // 10% Deep Navy Accent
-    headerSubtitle: { fontSize: 16, fontWeight: '500', color: '#7BB2D9', marginTop: 4 }, // 30% Sky Blue Secondary
+    headerTitle: { fontSize: 28, fontWeight: '800', color: colors.primary },
+    headerSubtitle: { fontSize: 16, fontWeight: '500', color: colors.info, marginTop: 4 },
 
     filterContainer: { flexDirection: 'row', paddingHorizontal: 24, marginBottom: 16, gap: 10 },
-    filterChip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
-    filterActive: { backgroundColor: '#003366', borderColor: '#003366' },
-    filterText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
-    filterTextActive: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+    filterChip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
+    filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    filterText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+    filterTextActive: { fontSize: 13, fontWeight: '700', color: colors.surface },
 
     listContainer: { paddingHorizontal: 24, paddingBottom: 40 },
 
@@ -115,19 +116,19 @@ const styles = StyleSheet.create({
     iconText: { fontSize: 18, fontWeight: '800' },
 
     textDataContainer: { flex: 1, paddingRight: 10 },
-    actionTitle: { fontSize: 15, fontWeight: '800', color: '#003366', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
-    actorSubtitle: { fontSize: 13, fontWeight: '600', color: '#475569', marginBottom: 2 },
-    dateText: { fontSize: 12, fontWeight: '500', color: '#7BB2D9' },
+    actionTitle: { fontSize: 15, fontWeight: '800', color: colors.primary, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+    actorSubtitle: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 2 },
+    dateText: { fontSize: 12, fontWeight: '500', color: colors.info },
 
     rightSection: { alignItems: 'flex-end', justifyContent: 'center' },
 
     statusBadge: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1 },
-    badgeSuccess: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
-    badgeFailed: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
+    badgeSuccess: { backgroundColor: colors.successBg, borderColor: colors.success },
+    badgeFailed: { backgroundColor: colors.dangerBg, borderColor: colors.danger },
 
     statusText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
-    textSuccess: { color: '#059669' },
-    textFailed: { color: '#DC2626' },
+    textSuccess: { color: colors.success },
+    textFailed: { color: colors.danger },
 
-    separator: { height: 1, backgroundColor: '#F1F5F9' },
+    separator: { height: 1, backgroundColor: colors.divider },
 });

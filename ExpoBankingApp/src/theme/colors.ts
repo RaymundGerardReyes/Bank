@@ -1,31 +1,43 @@
 export const colors = {
-  // --- 60-30-10 Rule Palette ---
-  dominant: '#FFFFFF',      // 60% - Clean whitespace and main backgrounds
-  secondary: '#7BB2D9',     // 30% - Structural elements, card borders, banners
-  accent: '#0F2C59',        // 10% - High-contrast text, primary buttons, icons
-  surface: '#F4F9FC',       // Very light tint of secondary for input fields
+  background: '#F7F4EF',
+  surface: '#FFFFFF',
+  surfaceAlt: '#F0EDE7',
+  surfacePressed: '#E8E2D8',
 
-  // --- Mapped to existing app architecture ---
-  primary: '#0F2C59',       // Mapped to Accent for high priority
-  primaryLight: '#E0F2FE',  // Light blue tint for secondary buttons / highlight chips
-  background: '#FFFFFF',    // Mapped to Dominant 60%
-  card: '#FFFFFF',          // Pure white cards to sit on white backgrounds
-  cardBorder: '#7BB2D9',    // Mapped to Secondary 30%
+  primary: '#12312B',
+  primaryPressed: '#0D2520',
+  primaryLight: '#E2EEE9',
+  secondary: '#6F6559',
+  accent: '#9B6A2F',
 
-  textPrimary: '#0F2C59',   // Ensures WCAG compliance against white backgrounds
-  textSecondary: '#7BB2D9', // Used for subtitles or less important text
-  textMuted: '#94A3B8',     // Standard gray for placeholders
+  border: '#DED7CB',
+  borderStrong: '#C7BDAE',
+  divider: '#E8E2D8',
 
-  success: '#16A34A',
-  danger: '#DC2626',
-  warning: '#D97706',
-  info: '#0284C7',
+  textPrimary: '#1C1B19',
+  textSecondary: '#5E574F',
+  textMuted: '#8A8175',
+  textInverse: '#FFFFFF',
+
+  success: '#237A57',
+  successBg: '#E4F2EA',
+  warning: '#A86912',
+  warningBg: '#F6E9D1',
+  danger: '#B83F3F',
+  dangerBg: '#F7E4E2',
+  info: '#356A8C',
+  infoBg: '#E1ECF2',
 
   white: '#FFFFFF',
   black: '#000000',
   transparent: 'transparent',
 
-  inputBg: '#F4F9FC',       // Subtle background to separate inputs from pure white
-  inputBorder: '#7BB2D9',   // 30% structural color
-  inputFocus: '#0F2C59',    // 10% highlight color
+  inputBg: '#FFFFFF',
+  inputBorder: '#D8D0C4',
+  inputFocus: '#12312B',
+
+  // Backward-compatible aliases used by existing screens.
+  dominant: '#F7F4EF',
+  card: '#FFFFFF',
+  cardBorder: '#DED7CB',
 };

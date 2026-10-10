@@ -183,7 +183,7 @@ export const AccountDetailScreen = () => {
             disabled={!isActive}
             onPress={() => navigation.navigate('Transfers', { sourceAccountNumber: account.accountNumber })}
           >
-            <View style={[styles.actionIconBg, { backgroundColor: '#F0F9FF' }]}>
+            <View style={[styles.actionIconBg, { backgroundColor: colors.infoBg }]}>
               <Ionicons name="swap-horizontal" size={22} color={colors.accent} />
             </View>
             <Text style={styles.actionLabel}>Transfer</Text>
@@ -193,7 +193,7 @@ export const AccountDetailScreen = () => {
             style={styles.actionButton}
             onPress={() => navigation.navigate('Deposit', { targetAccountNumber: account.accountNumber })}
           >
-            <View style={[styles.actionIconBg, { backgroundColor: '#ECFCCB' }]}>
+            <View style={[styles.actionIconBg, { backgroundColor: colors.successBg }]}>
               <Ionicons name="arrow-down" size={22} color={colors.success} />
             </View>
             <Text style={styles.actionLabel}>Deposit</Text>
@@ -204,7 +204,7 @@ export const AccountDetailScreen = () => {
             disabled={!isActive}
             onPress={() => navigation.navigate('Withdraw', { sourceAccountNumber: account.accountNumber })}
           >
-            <View style={[styles.actionIconBg, { backgroundColor: '#FEF3C7' }]}>
+            <View style={[styles.actionIconBg, { backgroundColor: colors.warningBg }]}>
               <Ionicons name="arrow-up" size={22} color={colors.warning} />
             </View>
             <Text style={styles.actionLabel}>Withdraw</Text>
@@ -214,7 +214,7 @@ export const AccountDetailScreen = () => {
             style={styles.actionButton}
             onPress={() => navigation.navigate('Statements', { accountNumber: account.accountNumber })}
           >
-            <View style={[styles.actionIconBg, { backgroundColor: '#F1F5F9' }]}>
+            <View style={[styles.actionIconBg, { backgroundColor: colors.surfaceAlt }]}>
               <Ionicons name="document-text-outline" size={22} color={colors.accent} />
             </View>
             <Text style={styles.actionLabel}>Statements</Text>
@@ -414,14 +414,14 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.full,
   },
   badgeActive: {
-    backgroundColor: 'rgba(22, 163, 74, 0.2)',
+    backgroundColor: 'rgba(35,122,87,0.2)',
     borderWidth: 1,
-    borderColor: '#4ADE80',
+    borderColor: colors.success,
   },
   badgeFrozen: {
-    backgroundColor: 'rgba(220, 38, 38, 0.2)',
+    backgroundColor: 'rgba(184,63,63,0.2)',
     borderWidth: 1,
-    borderColor: '#F87171',
+    borderColor: colors.danger,
   },
   statusDot: {
     width: 6,
@@ -430,20 +430,20 @@ const styles = StyleSheet.create({
     marginRight: 5,
   },
   dotActive: {
-    backgroundColor: '#4ADE80',
+    backgroundColor: colors.success,
   },
   dotFrozen: {
-    backgroundColor: '#F87171',
+    backgroundColor: colors.danger,
   },
   statusText: {
     fontSize: 11,
     fontWeight: '800',
   },
   textActive: {
-    color: '#4ADE80',
+    color: colors.success,
   },
   textFrozen: {
-    color: '#F87171',
+    color: colors.danger,
   },
   accountNumberRow: {
     flexDirection: 'row',
@@ -509,9 +509,9 @@ const styles = StyleSheet.create({
   frozenAlert: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
+    backgroundColor: colors.dangerBg,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: colors.danger,
     borderRadius: spacing.borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.lg,
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.lg,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     marginBottom: spacing.xl,
   },
   cardSectionTitle: {
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   },
   rowDivider: {
     height: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.divider,
     marginVertical: 4,
   },
   sectionHeaderBetween: {
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.lg,
     paddingHorizontal: spacing.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   loadingTxnsBox: {
     flexDirection: 'row',
@@ -645,7 +645,7 @@ const styles = StyleSheet.create({
   },
   txnBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.divider,
   },
   txnIconBg: {
     width: 36,
@@ -656,10 +656,10 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   iconCredit: {
-    backgroundColor: '#ECFCCB',
+    backgroundColor: colors.successBg,
   },
   iconDebit: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: colors.infoBg,
   },
   txnCenter: {
     flex: 1,

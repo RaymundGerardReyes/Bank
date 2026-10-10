@@ -15,6 +15,7 @@ export enum TransactionStatus {
 export interface Transaction {
   id: number;
   transactionId: string;
+  transactionReference?: string;
   sourceAccountNumber: string;
   destinationAccountNumber: string;
   amount: number;
@@ -51,9 +52,11 @@ export interface WithdrawRequest {
 export interface ExternalPaymentRequest {
   sourceAccountNumber: string;
   routingNumber: string;
-  recipientAccountNumber: string;
+  destinationAccountNumber: string;
+  recipientAccountNumber?: string;
   recipientName: string;
   amount: number;
+  railName: string;
   description?: string;
   idempotencyKey: string;
 }

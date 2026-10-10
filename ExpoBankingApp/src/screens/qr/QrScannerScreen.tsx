@@ -17,10 +17,12 @@ import {
 import {
   Camera,
   Code,
+  isNativeCameraAvailable,
+  isWorkletFrameProcessorSupported,
   useCameraDevice,
   useCameraPermission,
   useCodeScanner,
-} from 'react-native-vision-camera';
+} from '../../services/camera/visionCameraSafe';
 import { Button } from '../../components/common/Button';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
 import { ENV } from '../../config/env';
@@ -31,7 +33,7 @@ import { spacing } from '../../theme/spacing';
 import { formatCurrency } from '../../utils/formatters';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SCAN_AREA_SIZE = 260;
+const SCAN_AREA_SIZE = Math.min(Math.max(Math.floor(SCREEN_WIDTH * 0.68), 220), 300);
 
 interface AuthIntentPayload {
   intentId: number;
@@ -89,6 +91,32 @@ export const QrScannerScreen: React.FC = () => {
     loopAnim.start();
     return () => loopAnim.stop();
   }, [scanLineAnim]);
+
+  const mountAnim = React.useRef(new Animated.Value(0)).current;
+  const cornerPulseAnim = React.useRef(new Animated.Value(0.6)).current;
+  const qrFoundAnim = React.useRef(new Animated.Value(1)).current;
+
+  // Mount animation
+  React.useEffect(() => {
+    Animated.timing(mountAnim, {
+      toValue: 1,
+      duration: 400,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [mountAnim]);
+
+  // Corner pulse
+  React.useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(cornerPulseAnim, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(cornerPulseAnim, { toValue: 0.45, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [cornerPulseAnim]);
 
   // Parse QR Payload Helper
   const parseScannedValue = (raw: string): { type: 'AUTH' | 'TRANSFER' | 'UNKNOWN'; data?: any } => {
@@ -197,8 +225,18 @@ export const QrScannerScreen: React.FC = () => {
       if (parsed.type === 'AUTH') {
         setIsProcessing(false);
         setDetectedAuthIntent(parsed.data);
+        // QR found animation
+        Animated.sequence([
+          Animated.timing(qrFoundAnim, { toValue: 1.06, duration: 120, useNativeDriver: true }),
+          Animated.timing(qrFoundAnim, { toValue: 1, duration: 120, useNativeDriver: true }),
+        ]).start();
       } else if (parsed.type === 'TRANSFER') {
         setIsProcessing(false);
+        // QR found animation
+        Animated.sequence([
+          Animated.timing(qrFoundAnim, { toValue: 1.06, duration: 120, useNativeDriver: true }),
+          Animated.timing(qrFoundAnim, { toValue: 1, duration: 120, useNativeDriver: true }),
+        ]).start();
         const { accountNumber, amount, accountName, reference } = parsed.data as TransferQrPayload;
         Alert.alert(
           'QR Transfer Detected',
@@ -216,10 +254,13 @@ export const QrScannerScreen: React.FC = () => {
             {
               text: 'Proceed to Transfer',
               onPress: () => {
-                navigation.navigate('Transfers', {
-                  destinationAccountNumber: accountNumber,
-                  amount,
-                  description: reference || 'QR Ph Instant Transfer',
+                navigation.navigate('MainTabs', {
+                  screen: 'Transfers',
+                  params: {
+                    destinationAccountNumber: accountNumber,
+                    amount,
+                    description: reference || 'QR Ph Instant Transfer',
+                  },
                 });
               },
             },
@@ -347,7 +388,7 @@ export const QrScannerScreen: React.FC = () => {
   if (!hasPermission) {
     return (
       <SecureScreenWrapper style={styles.centerContainer}>
-        <Ionicons name="camera-outline" size={64} color={colors.accent} />
+        <Ionicons name="camera-outline" size={64} color={colors.primary} />
         <Text style={styles.permissionTitle}>Camera Access Required</Text>
         <Text style={styles.permissionSub}>
           To scan QR Ph codes and authorize desktop transactions with Passkey pairing, please enable camera access.
@@ -426,12 +467,12 @@ export const QrScannerScreen: React.FC = () => {
           <View style={styles.overlaySide} />
 
           {/* Viewfinder Reticle Box */}
-          <View style={styles.scanWindow}>
+          <Animated.View style={[styles.scanWindow, { transform: [{ scale: qrFoundAnim }] }]}>
             {/* Viewfinder Corners */}
-            <View style={[styles.corner, styles.cornerTL]} />
-            <View style={[styles.corner, styles.cornerTR]} />
-            <View style={[styles.corner, styles.cornerBL]} />
-            <View style={[styles.corner, styles.cornerBR]} />
+            <Animated.View style={[styles.corner, styles.cornerTL, { opacity: cornerPulseAnim }]} />
+            <Animated.View style={[styles.corner, styles.cornerTR, { opacity: cornerPulseAnim }]} />
+            <Animated.View style={[styles.corner, styles.cornerBL, { opacity: cornerPulseAnim }]} />
+            <Animated.View style={[styles.corner, styles.cornerBR, { opacity: cornerPulseAnim }]} />
 
             {/* Scanning Laser Beam */}
             <Animated.View
@@ -449,12 +490,12 @@ export const QrScannerScreen: React.FC = () => {
                 <Text style={styles.processingText}>Decoding...</Text>
               </View>
             )}
-          </View>
+          </Animated.View>
 
           <View style={styles.overlaySide} />
         </View>
 
-        <View style={styles.overlayBottom}>
+        <Animated.View style={[styles.overlayBottom, { opacity: mountAnim, transform: [{ translateY: mountAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
           <View style={styles.badgeRow}>
             <View style={styles.supportedBadge}>
               <Ionicons name="qr-code-outline" size={16} color={colors.white} />
@@ -465,7 +506,22 @@ export const QrScannerScreen: React.FC = () => {
               <Text style={styles.badgeText}>Passkey Pairing</Text>
             </View>
           </View>
-        </View>
+          {!isWorkletFrameProcessorSupported() && (
+            <Button
+              title="Quick Test: Auto-Scan Demo QR"
+              variant="secondary"
+              onPress={() =>
+                handleCodeScanned([
+                  {
+                    value:
+                      '{"accountNumber":"4859222340669478","amount":500,"accountName":"Maria Santos","reference":"Demo Transfer"}',
+                  },
+                ])
+              }
+              style={{ marginHorizontal: 24, marginTop: 12 }}
+            />
+          )}
+        </Animated.View>
       </View>
 
       {/* Modal Dialog for Passkey Authorization */}
@@ -478,7 +534,7 @@ export const QrScannerScreen: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeaderIcon}>
-              <Ionicons name="finger-print" size={36} color={colors.accent} />
+              <Ionicons name="finger-print" size={36} color={colors.primary} />
             </View>
 
             <View style={styles.modalBadge}>
@@ -577,7 +633,7 @@ const styles = StyleSheet.create({
   },
   overlayTop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(18, 49, 43, 0.75)',
     paddingTop: 48,
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
@@ -603,7 +659,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   torchActive: {
-    backgroundColor: 'rgba(217, 119, 6, 0.4)',
+    backgroundColor: 'rgba(168, 105, 18, 0.4)',
   },
   instructionText: {
     color: 'rgba(255, 255, 255, 0.8)',
@@ -618,7 +674,7 @@ const styles = StyleSheet.create({
   },
   overlaySide: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(18, 49, 43, 0.75)',
   },
   scanWindow: {
     width: SCAN_AREA_SIZE,
@@ -630,7 +686,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 28,
     height: 28,
-    borderColor: colors.secondary,
+    borderColor: colors.primary,
   },
   cornerTL: {
     top: 0,
@@ -665,8 +721,8 @@ const styles = StyleSheet.create({
     left: 6,
     right: 6,
     height: 3,
-    backgroundColor: '#38BDF8',
-    shadowColor: '#38BDF8',
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.9,
     shadowRadius: 8,
@@ -674,8 +730,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   processingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    ...(StyleSheet.absoluteFill as object),
+    backgroundColor: 'rgba(18, 49, 43, 0.8)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -687,7 +743,7 @@ const styles = StyleSheet.create({
   },
   overlayBottom: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(18, 49, 43, 0.75)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingBottom: 40,
@@ -712,7 +768,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 44, 89, 0.75)',
+    backgroundColor: 'rgba(18, 49, 43, 0.75)',
     justifyContent: 'flex-end',
   },
   modalCard: {
@@ -732,9 +788,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   modalBadge: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: colors.successBg,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: colors.success,
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 12,
@@ -743,7 +799,7 @@ const styles = StyleSheet.create({
   modalBadgeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#065F46',
+    color: colors.success,
     letterSpacing: 0.5,
   },
   modalTitle: {
@@ -767,7 +823,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   detailRow: {
     flexDirection: 'row',
@@ -786,7 +842,7 @@ const styles = StyleSheet.create({
   },
   detailAmount: {
     fontSize: 16,
-    color: colors.accent,
+    color: colors.textPrimary,
     fontWeight: '800',
   },
   modalActions: {

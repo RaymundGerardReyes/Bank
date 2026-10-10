@@ -1,30 +1,46 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as React from 'react';
-import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context'; // <-- IMPORT THIS
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AccountBalanceCard } from '../../components/accounts/AccountBalanceCard';
+import { Card } from '../../components/common/Card';
+import { EmptyState } from '../../components/common/EmptyState';
+import { SectionHeader } from '../../components/common/SectionHeader';
+import { StatusBadge } from '../../components/common/StatusBadge';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useAuth } from '../../hooks/useAuth';
+import { DEFAULT_RATES_TO_PHP, fxService } from '../../services/fx/fxService';
 import { transactionService } from '../../services/transaction/transactionService';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 import { formatCurrency, formatDate, generateUUID, maskAccountNumber } from '../../utils/formatters';
-import { fxService, DEFAULT_RATES_TO_PHP } from '../../services/fx/fxService';
+
+type QuickAction = {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  route: string;
+  params?: Record<string, unknown>;
+};
+
+const QUICK_ACTIONS: QuickAction[] = [
+  { label: 'Scan', icon: 'qr-code-outline', route: 'QrScanner' },
+  { label: 'Transfer', icon: 'swap-horizontal-outline', route: 'Transfers' },
+  { label: 'Wire', icon: 'globe-outline', route: 'ExternalPayment' },
+  { label: 'Deposit', icon: 'arrow-down-circle-outline', route: 'Deposit' },
+  { label: 'Withdraw', icon: 'arrow-up-circle-outline', route: 'Withdraw' },
+  { label: 'Open', icon: 'add-circle-outline', route: 'OpenAccount' },
+  { label: 'Statements', icon: 'document-text-outline', route: 'Statements' },
+];
 
 export const DashboardScreen = () => {
   const { accounts, isLoading, refetch } = useAccounts();
   const { user } = useAuth();
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets(); // <-- HOOK TO GET OS NAVIGATION BAR HEIGHT
+  const insets = useSafeAreaInsets();
 
   const [refreshing, setRefreshing] = React.useState(false);
   const [lastSynced, setLastSynced] = React.useState(new Date().toISOString());
@@ -33,13 +49,11 @@ export const DashboardScreen = () => {
   const [traceId] = React.useState(generateUUID().split('-')[0].toUpperCase());
   const [ratesToPhp, setRatesToPhp] = React.useState<Record<string, number>>(DEFAULT_RATES_TO_PHP);
 
-  const isAdminOrTeller = user?.role === 'ADMIN' || user?.role === 'TELLER';
-
   const balancesByCurrency = React.useMemo(() => {
     const map: Record<string, number> = {};
     (accounts || []).forEach((acc) => {
-      const curr = acc.currency || 'USD';
-      map[curr] = (map[curr] || 0) + (acc.balance || 0);
+      const currency = acc.currency || 'USD';
+      map[currency] = (map[currency] || 0) + (acc.balance || 0);
     });
     return map;
   }, [accounts]);
@@ -48,34 +62,42 @@ export const DashboardScreen = () => {
 
   const totalNetLiquidityInPhp = React.useMemo(() => {
     return (accounts || []).reduce((sum, acc) => {
-      const curr = acc.currency || 'PHP';
-      const bal = acc.balance || 0;
-      return sum + fxService.convertAmountToPhp(bal, curr, ratesToPhp);
+      const currency = acc.currency || 'PHP';
+      return sum + fxService.convertAmountToPhp(acc.balance || 0, currency, ratesToPhp);
     }, 0);
   }, [accounts, ratesToPhp]);
 
-  const fetchLiveTransactions = React.useCallback(async () => {
-    if (!accounts || accounts.length === 0) return;
+  const primaryAccountNumber = accounts?.[0]?.accountNumber;
+
+  const fetchLiveTransactions = React.useCallback(async (accountNum?: string) => {
+    const target = accountNum || primaryAccountNumber;
+    if (!target) return;
     setLoadingTxns(true);
     try {
-      const primaryAccNumber = accounts[0].accountNumber;
-      const history = await transactionService.getTransactionHistory(primaryAccNumber);
-      if (history && history.length > 0) {
-        setRecentTransactions(history.slice(0, 5));
+      const history = await transactionService.getTransactionHistory(target);
+      setRecentTransactions((history || []).slice(0, 5));
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        console.log(`[Dashboard] Account ${target} not owned by active session. Refreshing accounts...`);
+        refetch?.();
+      } else {
+        console.log('Fetching live transactions fallback:', err);
       }
-    } catch (err) {
-      console.log('Fetching live transactions fallback:', err);
     } finally {
       setLoadingTxns(false);
     }
-  }, [accounts]);
+  }, [primaryAccountNumber, refetch]);
+
+  React.useEffect(() => {
+    if (primaryAccountNumber) {
+      fetchLiveTransactions(primaryAccountNumber);
+    }
+  }, [primaryAccountNumber, fetchLiveTransactions]);
 
   const fetchFxRates = React.useCallback(async () => {
     try {
       const res = await fxService.getRates('PHP');
-      if (res?.ratesToPhp) {
-        setRatesToPhp(res.ratesToPhp);
-      }
+      if (res?.ratesToPhp) setRatesToPhp(res.ratesToPhp);
     } catch (err) {
       console.log('Fetching FX rates fallback:', err);
     }
@@ -83,187 +105,113 @@ export const DashboardScreen = () => {
 
   useFocusEffect(
     React.useCallback(() => {
-      if (refetch) refetch();
-      fetchLiveTransactions();
+      refetch?.();
       fetchFxRates();
-      setLastSynced(new Date().toISOString());
-    }, [refetch, fetchLiveTransactions, fetchFxRates])
+    }, [refetch, fetchFxRates])
   );
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    if (refetch) await refetch();
-    await fetchLiveTransactions();
-    await fetchFxRates();
+    await Promise.allSettled([
+      refetch?.(),
+      fetchLiveTransactions(primaryAccountNumber),
+      fetchFxRates(),
+    ]);
     setLastSynced(new Date().toISOString());
     setRefreshing(false);
-  }, [refetch, fetchLiveTransactions, fetchFxRates]);
+  }, [refetch, fetchLiveTransactions, primaryAccountNumber, fetchFxRates]);
 
   return (
     <SecureScreenWrapper style={styles.container}>
       <ScrollView
-        // <-- ENTERPRISE FIX: DYNAMIC BOTTOM PADDING -->
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 88 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
-        <View style={styles.headerContainer}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>Good Morning,</Text>
-            <Text style={styles.userName}>
+        <View style={styles.header}>
+          <View style={styles.headerText}>
+            <Text style={styles.eyebrow}>Good morning</Text>
+            <Text style={styles.userName} numberOfLines={1}>
               {user?.firstName || 'Raymund'} {user?.lastName || 'Reyes'}
             </Text>
           </View>
-          <View style={styles.headerRightRow}>
-            <TouchableOpacity
-              style={styles.qrHeaderBtn}
-              onPress={() => navigation.navigate('QrScanner')}
-              activeOpacity={0.8}
-              accessibilityLabel="Scan QR Code"
-            >
-              <Ionicons name="qr-code-outline" size={20} color={colors.accent} />
-            </TouchableOpacity>
-            <View style={styles.securityBadge}>
-              <View style={styles.securityDot} />
-              <Text style={styles.securityBadgeText}>SECURE</Text>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => navigation.navigate('QrScanner')}
+            activeOpacity={0.82}
+            accessibilityRole="button"
+            accessibilityLabel="Scan QR code"
+          >
+            <Ionicons name="qr-code-outline" size={22} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        <Card style={styles.balancePanel}>
+          <View style={styles.balanceHeader}>
+            <View>
+              <Text style={styles.panelLabel}>Total balance</Text>
+              <Text style={styles.balanceValue}>{formatCurrency(totalNetLiquidityInPhp, 'PHP')}</Text>
             </View>
+            <StatusBadge label="Protected" tone="success" />
           </View>
-        </View>
 
-        <View style={styles.alertBanner}>
-          <Text style={styles.alertIcon}>🛡️</Text>
-          <Text style={styles.alertText}>New sign-in detected on Android SM-G998B</Text>
-        </View>
-
-        <View style={styles.netWorthCard}>
-          <View style={styles.netWorthHeader}>
-            <Text style={styles.netWorthLabel}>Total Net Liquidity</Text>
-            <Text style={styles.currencyBadge}>PHP (₱)</Text>
-          </View>
-          <Text style={styles.netWorthAmount}>
-            {formatCurrency(totalNetLiquidityInPhp, 'PHP')}
-          </Text>
-
-          {currencyEntries.length > 0 && (
-            <View style={styles.multiCurrencyList}>
-              <View style={styles.multiCurrencyHeader}>
-                <Text style={styles.multiCurrencyHeaderText}>Multi-Currency Sub-Accounts</Text>
-                <Text style={styles.multiCurrencySubText}>FX Converted to ₱</Text>
-              </View>
-              {currencyEntries.map(([currency, amount]) => {
-                const phpEquiv = fxService.convertAmountToPhp(amount, currency, ratesToPhp);
+          {currencyEntries.length > 0 ? (
+            <View style={styles.currencyList}>
+              {currencyEntries.map(([currency, amount]: [string, number]) => {
+                const converted = fxService.convertAmountToPhp(amount, currency, ratesToPhp);
                 const isPhp = currency === 'PHP';
                 return (
-                  <View key={currency} style={styles.multiCurrencyItem}>
-                    <View style={styles.multiCurrencyLeft}>
-                      <Text style={styles.multiCurrencyBadge}>{currency}</Text>
-                      <Text style={styles.multiCurrencyNative}>
-                        {formatCurrency(amount, currency)}
-                      </Text>
+                  <View key={currency} style={styles.currencyRow}>
+                    <Text style={styles.currencyCode}>{currency}</Text>
+                    <View style={styles.currencyAmounts}>
+                      <Text style={styles.currencyNative}>{formatCurrency(amount, currency)}</Text>
+                      {!isPhp ? (
+                        <Text style={styles.currencyConverted}>{formatCurrency(converted, 'PHP')}</Text>
+                      ) : null}
                     </View>
-                    {!isPhp && (
-                      <Text style={styles.multiCurrencyConverted}>
-                        ≈ {formatCurrency(phpEquiv, 'PHP')}
-                      </Text>
-                    )}
                   </View>
                 );
               })}
             </View>
-          )}
-          <View style={styles.netWorthFooter}>
-            <Text style={styles.netWorthFooterText}>
-              TLS Pinned • Root: PASS • FX Active • {traceId}
-            </Text>
-          </View>
+          ) : null}
+
+          <Text style={styles.balanceMeta}>
+            Synced {formatDate(lastSynced)} - Ref {traceId}
+          </Text>
+        </Card>
+
+        <SectionHeader title="Move Money" />
+        <View style={styles.actionsGrid}>
+          {QUICK_ACTIONS.map((action) => (
+            <TouchableOpacity
+              key={action.label}
+              style={styles.actionButton}
+              onPress={() => navigation.navigate(action.route, action.params)}
+              activeOpacity={0.82}
+              accessibilityRole="button"
+              accessibilityLabel={action.label}
+            >
+              <View style={styles.actionIcon}>
+                <Ionicons name={action.icon} size={22} color={colors.primary} />
+              </View>
+              <Text style={styles.actionLabel}>{action.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* --- UPGRADED QUICK ACTIONS UI --- */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-        </View>
-
-        <View style={styles.quickActionsGrid}>
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('QrScanner')}>
-            <View style={[styles.actionIconBg, { backgroundColor: '#EEF2FF' }]}>
-              <Ionicons name="qr-code" size={26} color={colors.accent} />
-            </View>
-            <Text style={styles.actionText}>Scan QR</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Transfers')}>
-            <View style={[styles.actionIconBg, { backgroundColor: '#F0F9FF' }]}>
-              <Text style={styles.actionIconText}>💸</Text>
-            </View>
-            <Text style={styles.actionText}>Transfer</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('ExternalPayment')}>
-            <View style={[styles.actionIconBg, { backgroundColor: '#EFF6FF' }]}>
-              <Text style={styles.actionIconText}>🌐</Text>
-            </View>
-            <Text style={styles.actionText}>Wire</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Deposit')}>
-            <View style={[styles.actionIconBg, { backgroundColor: '#ECFCCB' }]}>
-              <Text style={styles.actionIconText}>📥</Text>
-            </View>
-            <Text style={styles.actionText}>Deposit</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Withdraw')}>
-            <View style={[styles.actionIconBg, { backgroundColor: '#FEF3C7' }]}>
-              <Text style={styles.actionIconText}>📤</Text>
-            </View>
-            <Text style={styles.actionText}>Withdraw</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('OpenAccount')}>
-            <View style={[styles.actionIconBg, { backgroundColor: '#F3E8FF' }]}>
-              <Text style={styles.actionIconText}>✨</Text>
-            </View>
-            <Text style={styles.actionText}>Open New</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Statements')}>
-            <View style={[styles.actionIconBg, { backgroundColor: '#F1F5F9' }]}>
-              <Text style={styles.actionIconText}>📄</Text>
-            </View>
-            <Text style={styles.actionText}>Statements</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* High-Yield Promo Banner */}
-        <TouchableOpacity
-          style={styles.promoBanner}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate('OpenAccount', { productType: 'SAVINGS' })}
-        >
-          <View style={styles.promoBannerLeft}>
-            <View style={styles.promoBadge}>
-              <Text style={styles.promoBadgeText}>HIGH-YIELD SAVINGS</Text>
-            </View>
-            <Text style={styles.promoBannerTitle}>Earn 4.50% APY Guaranteed</Text>
-            <Text style={styles.promoBannerSub}>Open a savings sub-account with zero monthly maintenance fees.</Text>
-          </View>
-          <View style={styles.promoBannerArrow}>
-            <Text style={styles.promoArrowText}>→</Text>
-          </View>
-        </TouchableOpacity>
-
-        <View style={styles.sectionHeaderBetween}>
-          <Text style={styles.sectionTitle}>Your Accounts</Text>
-          <Text style={styles.syncText}>Synced {formatDate(lastSynced).split(',')[1]}</Text>
-        </View>
+        <SectionHeader
+          title="Accounts"
+          actionLabel={accounts && accounts.length > 0 ? 'All accounts' : undefined}
+          onActionPress={() => navigation.navigate('Accounts')}
+        />
 
         {isLoading ? (
-          <Text style={styles.loadingText}>Fetching secure balances...</Text>
+          <Text style={styles.loadingText}>Loading accounts...</Text>
         ) : accounts && accounts.length > 0 ? (
           accounts.map((acc) => (
-            <View key={acc.accountNumber} style={styles.cardWrapper}>
+            <View key={acc.accountNumber} style={styles.accountCardWrap}>
               <AccountBalanceCard
                 account={acc}
                 onPress={() => navigation.navigate('AccountDetail', { accountNumber: acc.accountNumber })}
@@ -274,73 +222,68 @@ export const DashboardScreen = () => {
             </View>
           ))
         ) : (
-          <View style={styles.hardenedEmptyCard}>
-            <View style={styles.warningIconContainer}>
-              <Text style={styles.warningIconText}>⚠️</Text>
-            </View>
-            <Text style={styles.emptyCardTitle}>No Active Accounts Found</Text>
-            <Text style={styles.emptyCardDescription}>
-              We could not locate a checking or savings account linked to your profile. This can happen if your registration was incomplete or your account is pending manual KYC verification.
-            </Text>
-            <TouchableOpacity style={styles.contactSupportBtn} activeOpacity={0.8}>
-              <Text style={styles.contactSupportText}>Contact Support / Complete KYC</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            icon="wallet-outline"
+            title="No accounts yet"
+            message="Open an account or complete verification to start banking in the app."
+            actionLabel="Open account"
+            onActionPress={() => navigation.navigate('OpenAccount')}
+          />
         )}
 
-        <View style={styles.sectionHeaderBetween}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
-            <Text style={styles.linkText}>View Ledger</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.activityCard}>
+        <SectionHeader
+          title="Recent Activity"
+          actionLabel="View ledger"
+          onActionPress={() => navigation.navigate('Transactions')}
+        />
+        <Card style={styles.activityPanel}>
           {recentTransactions.length === 0 && !loadingTxns ? (
-            <View style={{ padding: spacing.xl, alignItems: 'center' }}>
-              <Text style={styles.emptyIcon}>📭</Text>
-              <Text style={styles.emptyCardTitle}>No Recent Activity</Text>
-            </View>
+            <EmptyState
+              icon="receipt-outline"
+              title="No recent activity"
+              message="New transactions will appear here after your accounts are used."
+            />
           ) : (
             recentTransactions.map((txn, index) => {
-              const primaryAccNumber = accounts[0]?.accountNumber || '';
+              const primaryAccNumber = accounts?.[0]?.accountNumber || '';
               const isCredit = txn.destinationAccountNumber === primaryAccNumber;
               const targetAccount = isCredit ? txn.sourceAccountNumber : (txn.destinationAccountNumber || txn.recipientAccount);
-
-              let formattedTarget = 'External Bank';
-              if (targetAccount === 'CASH') formattedTarget = 'Cash Transaction';
-              else if (targetAccount) formattedTarget = maskAccountNumber(targetAccount);
-
-              let defaultTitle = 'Bank Transfer';
-              if (txn.sourceAccountNumber === 'CASH') defaultTitle = 'Cash Deposit';
-              if (txn.destinationAccountNumber === 'CASH') defaultTitle = 'Cash Withdrawal';
-
-              const displayTitle = txn.description || defaultTitle;
+              const formattedTarget =
+                targetAccount === 'CASH'
+                  ? 'Cash transaction'
+                  : targetAccount
+                    ? maskAccountNumber(targetAccount)
+                    : 'External bank';
+              const displayTitle =
+                txn.description ||
+                (txn.sourceAccountNumber === 'CASH'
+                  ? 'Cash deposit'
+                  : txn.destinationAccountNumber === 'CASH'
+                    ? 'Cash withdrawal'
+                    : 'Bank transfer');
 
               return (
                 <TouchableOpacity
                   key={txn.transactionReference || txn.id || index}
-                  activeOpacity={0.7}
+                  activeOpacity={0.82}
                   onPress={() => navigation.navigate('TransactionDetail', { transaction: txn, isCredit })}
-                  style={[
-                    styles.txnRow,
-                    index < recentTransactions.length - 1 && styles.txnBorder,
-                  ]}
+                  style={[styles.txnRow, index < recentTransactions.length - 1 && styles.txnDivider]}
                 >
-                  <View style={styles.txnLeft}>
-                    <Text style={styles.txnDesc} numberOfLines={1}>{displayTitle}</Text>
-                    <Text style={styles.txnTarget}>
-                      {isCredit ? 'From: ' : 'To: '} {formattedTarget}
-                    </Text>
-                    <Text style={styles.txnDate}>{formatDate(txn.createdAt || txn.timestamp)}</Text>
+                  <View style={styles.txnIcon}>
+                    <Ionicons
+                      name={isCredit ? 'arrow-down-outline' : 'arrow-up-outline'}
+                      size={18}
+                      color={isCredit ? colors.success : colors.primary}
+                    />
                   </View>
-                  <View style={styles.txnRight}>
-                    <Text
-                      style={[
-                        styles.txnAmount,
-                        isCredit ? styles.creditText : styles.debitText,
-                      ]}
-                    >
+                  <View style={styles.txnBody}>
+                    <Text style={styles.txnTitle} numberOfLines={1}>{displayTitle}</Text>
+                    <Text style={styles.txnMeta} numberOfLines={1}>
+                      {isCredit ? 'From ' : 'To '}{formattedTarget} - {formatDate(txn.createdAt || txn.timestamp)}
+                    </Text>
+                  </View>
+                  <View style={styles.txnAmountBlock}>
+                    <Text style={[styles.txnAmount, isCredit ? styles.creditText : styles.debitText]}>
                       {isCredit ? '+' : '-'}{formatCurrency(txn.amount, txn.currency || 'USD')}
                     </Text>
                     <Text style={styles.txnStatus}>{txn.status}</Text>
@@ -349,7 +292,7 @@ export const DashboardScreen = () => {
               );
             })
           )}
-        </View>
+        </Card>
       </ScrollView>
     </SecureScreenWrapper>
   );
@@ -358,445 +301,211 @@ export const DashboardScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   scroll: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.screen,
     paddingTop: spacing.xl,
-    // Bottom padding dynamically handled by insets now!
   },
-  headerContainer: {
+  header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: spacing.lg,
   },
-  headerLeft: {
-    flex: 1,
-  },
-  greeting: {
-    color: colors.secondary,
-    fontSize: 14,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  userName: {
-    color: colors.accent,
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-  },
-  headerRightRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  qrHeaderBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F8FAFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  securityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ECFCCB',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderRadius: spacing.borderRadius.full,
-  },
-  securityDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.success,
-    marginRight: 6,
-  },
-  securityBadgeText: {
-    color: colors.success,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  alertBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F8FF',
-    padding: spacing.md,
-    borderRadius: spacing.borderRadius.md,
-    marginBottom: spacing.xl,
-  },
-  alertIcon: {
-    marginRight: spacing.sm,
-    fontSize: 16,
-  },
-  alertText: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  netWorthCard: {
-    backgroundColor: colors.dominant,
-    borderRadius: spacing.borderRadius.lg,
-    padding: spacing.xl,
-    marginBottom: spacing.xxl,
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 6,
-    borderTopWidth: 4,
-    borderTopColor: colors.secondary,
-  },
-  netWorthHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  netWorthLabel: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  currencyBadge: {
-    backgroundColor: '#F1F5F9',
-    color: colors.textSecondary,
-    fontSize: 10,
-    fontWeight: '800',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  netWorthAmount: {
-    color: colors.accent,
-    fontSize: 42,
-    fontWeight: '900',
-    letterSpacing: -1,
-    marginVertical: spacing.xs,
-  },
-  multiCurrencyList: {
-    marginVertical: spacing.xs,
-    backgroundColor: '#F8FAFC',
-    borderRadius: spacing.borderRadius.md,
-    padding: spacing.sm,
-  },
-  multiCurrencyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-    paddingHorizontal: 4,
-  },
-  multiCurrencyHeaderText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  multiCurrencySubText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.textMuted,
-  },
-  multiCurrencyItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EDF2F7',
-  },
-  multiCurrencyLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  multiCurrencyBadge: {
-    backgroundColor: '#E2E8F0',
-    color: colors.accent,
-    fontSize: 11,
-    fontWeight: '800',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  multiCurrencyNative: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  multiCurrencyConverted: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  netWorthFooter: {
-    marginTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingTop: spacing.md,
-  },
-  netWorthFooterText: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  sectionHeader: {
-    marginBottom: spacing.lg,
-  },
-  sectionHeaderBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.xl,
-    marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    color: colors.accent,
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  syncText: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  linkText: {
-    color: colors.secondary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-    paddingHorizontal: spacing.xs,
-  },
-  actionBtn: {
-    alignItems: 'center',
-    width: '31%',
-    marginBottom: spacing.md,
-  },
-  actionIconBg: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  promoBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F9FF',
-    borderRadius: spacing.borderRadius.lg,
-    padding: spacing.md,
-    borderWidth: 1.5,
-    borderColor: '#BAE6FD',
-    marginBottom: spacing.md,
-  },
-  promoBannerLeft: {
-    flex: 1,
-    paddingRight: spacing.sm,
-  },
-  promoBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#ECFCCB',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: '#86EFAC',
-  },
-  promoBadgeText: {
-    color: colors.success,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  promoBannerTitle: {
-    color: colors.accent,
-    fontSize: 15,
-    fontWeight: '800',
-    marginBottom: 2,
-  },
-  promoBannerSub: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  promoBannerArrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.accent,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  promoArrowText: {
-    color: colors.dominant,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  actionIconText: {
-    fontSize: 26,
-  },
-  actionText: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  cardWrapper: {
-    marginBottom: spacing.lg,
-  },
-  loadingText: {
-    color: colors.textSecondary,
-    marginVertical: spacing.xl,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  hardenedEmptyCard: {
-    backgroundColor: '#F8FAFC',
-    padding: spacing.xl,
-    borderRadius: spacing.borderRadius.lg,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: spacing.xl,
-  },
-  warningIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#FFF1F2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  warningIconText: {
-    fontSize: 28,
-  },
-  emptyCardTitle: {
-    color: colors.accent,
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  emptyCardDescription: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 20,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-    paddingHorizontal: spacing.sm,
-  },
-  contactSupportBtn: {
-    backgroundColor: colors.accent,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: spacing.borderRadius.md,
-    width: '100%',
-    alignItems: 'center',
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  contactSupportText: {
-    color: colors.dominant,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  activityCard: {
-    backgroundColor: colors.dominant,
-    borderRadius: spacing.borderRadius.lg,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.xl,
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  txnRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.lg,
-  },
-  txnBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  txnLeft: {
+  headerText: {
     flex: 1,
     paddingRight: spacing.md,
   },
-  txnDesc: {
-    color: colors.accent,
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  txnTarget: {
+  eyebrow: {
     color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
-  txnDate: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '500',
+  userName: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.xxl,
+    lineHeight: typography.lineHeight.xxl,
+    fontWeight: typography.fontWeight.heavy,
+    marginTop: spacing.xs,
   },
-  txnRight: {
+  headerIconButton: {
+    width: 46,
+    height: 46,
+    borderRadius: spacing.borderRadius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.subtle,
+  },
+  balancePanel: {
+    marginBottom: spacing.lg,
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+  },
+  panelLabel: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  balanceValue: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.hero,
+    lineHeight: typography.lineHeight.hero,
+    fontWeight: typography.fontWeight.heavy,
+    marginTop: spacing.xs,
+  },
+  currencyList: {
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
+  },
+  currencyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  currencyCode: {
+    color: colors.primary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.heavy,
+  },
+  currencyAmounts: {
+    flex: 1,
     alignItems: 'flex-end',
   },
+  currencyNative: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  currencyConverted: {
+    color: colors.textMuted,
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
+  },
+  balanceMeta: {
+    color: colors.textMuted,
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
+    marginTop: spacing.md,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.ms,
+    marginBottom: spacing.lg,
+  },
+  actionButton: {
+    width: '30.8%',
+    minHeight: 88,
+    borderRadius: spacing.borderRadius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.md,
+  },
+  actionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: spacing.borderRadius.sm,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  actionLabel: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.fontWeight.semibold,
+    textAlign: 'center',
+  },
+  accountCardWrap: {
+    marginBottom: spacing.md,
+  },
+  loadingText: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    textAlign: 'center',
+    marginVertical: spacing.xl,
+  },
+  activityPanel: {
+    paddingVertical: 0,
+    marginBottom: spacing.xl,
+  },
+  txnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  txnDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  txnIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: spacing.borderRadius.sm,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  txnBody: {
+    flex: 1,
+    paddingRight: spacing.md,
+  },
+  txnTitle: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  txnMeta: {
+    color: colors.textMuted,
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
+    marginTop: spacing.xs,
+  },
+  txnAmountBlock: {
+    alignItems: 'flex-end',
+    maxWidth: 132,
+  },
   txnAmount: {
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 4,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.heavy,
+    textAlign: 'right',
   },
   creditText: {
     color: colors.success,
   },
   debitText: {
-    color: colors.accent,
+    color: colors.textPrimary,
   },
   txnStatus: {
     color: colors.textMuted,
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: spacing.sm,
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
+    marginTop: spacing.xs,
+    textTransform: 'capitalize',
   },
 });

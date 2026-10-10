@@ -29,7 +29,8 @@ export function usePendingAuthorizations() {
 
       const response = await fetch(`${ENV.API_BASE_URL}/mobile/authorizations/pending`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Cookie': `bank_session=${token}`,
         }
       });
       
@@ -69,7 +70,8 @@ export function usePendingAuthorizations() {
       const response = await fetch(`${ENV.API_BASE_URL}/mobile/authorizations/${intentId}/approve`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Cookie': `bank_session=${token}`,
         }
       });
       if (response.ok) {
@@ -94,7 +96,8 @@ export function usePendingAuthorizations() {
       const response = await fetch(`${ENV.API_BASE_URL}/mobile/authorizations/${intentId}/deny`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Cookie': `bank_session=${token}`,
         }
       });
       if (response.ok) {

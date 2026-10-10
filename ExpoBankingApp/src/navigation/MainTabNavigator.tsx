@@ -1,7 +1,7 @@
-import { Ionicons } from '@expo/vector-icons'; // <-- Premium Icon Set
+import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import * as React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AccountListScreen } from '../screens/accounts/AccountListScreen';
@@ -10,76 +10,71 @@ import { NotificationsScreen } from '../screens/dashboard/NotificationsScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { TransferFormScreen } from '../screens/transfers/TransferFormScreen';
 import { colors } from '../theme/colors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
 import { MainTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
+const getTabIcon = (routeName: keyof MainTabParamList, focused: boolean) => {
+  if (routeName === 'Accounts') return focused ? 'wallet' : 'wallet-outline';
+  if (routeName === 'Transfers') return focused ? 'swap-horizontal' : 'swap-horizontal-outline';
+  if (routeName === 'Notifications') return focused ? 'notifications' : 'notifications-outline';
+  if (routeName === 'Profile') return focused ? 'person' : 'person-outline';
+  return focused ? 'home' : 'home-outline';
+};
+
 export const MainTabNavigator = () => {
-  const insets = useSafeAreaInsets(); // Grabs exact Android Nav Bar height
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: colors.accent,
+        tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarShowLabel: false, // Cleaner look without text clutter
-        tabBarStyle: {
-          backgroundColor: colors.dominant,
-          position: 'absolute',
-          bottom: Math.max(insets.bottom, 16), // Elevate above Android Nav Bar
-          left: 16,
-          right: 16,
-          height: 64,
-          borderRadius: 32, // Perfect pill shape
-          borderTopWidth: 0,
-          elevation: 10,
-          shadowColor: colors.accent,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 12,
-        },
-        tabBarIcon: ({ color, focused }) => {
-          let iconName: any = 'home';
-          if (route.name === 'Dashboard') iconName = focused ? 'home' : 'home-outline';
-          else if (route.name === 'Accounts') iconName = focused ? 'wallet' : 'wallet-outline';
-          else if (route.name === 'Transfers') iconName = focused ? 'swap-horizontal' : 'swap-horizontal-outline';
-          else if (route.name === 'Notifications') iconName = focused ? 'notifications' : 'notifications-outline';
-          else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
-
-          return (
-            <View style={[styles.iconContainer, focused && styles.iconActive]}>
-              <Ionicons name={iconName} size={22} color={color} />
-              {focused && <Text style={styles.label}>{route.name.substring(0, 4)}</Text>}
-            </View>
-          );
-        },
+        tabBarLabelStyle: styles.label,
+        tabBarIconStyle: styles.icon,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: 58 + Math.max(insets.bottom, spacing.sm),
+            paddingBottom: Math.max(insets.bottom, spacing.sm),
+          },
+        ],
+        tabBarIcon: ({ color, focused }) => (
+          <Ionicons
+            name={getTabIcon(route.name as keyof MainTabParamList, focused)}
+            size={22}
+            color={color}
+          />
+        ),
       })}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="Accounts" component={AccountListScreen} />
       <Tab.Screen name="Transfers" component={TransferFormScreen} />
-      <Tab.Screen name="Notifications" component={NotificationsScreen} />
+      <Tab.Screen name="Notifications" component={NotificationsScreen} options={{ tabBarLabel: 'Alerts' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 };
 
 const styles = StyleSheet.create({
-  iconContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+  tabBar: {
+    backgroundColor: colors.surface,
+    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    elevation: 0,
+    shadowOpacity: 0,
+    paddingTop: spacing.xs,
   },
-  iconActive: {
-    backgroundColor: '#F0F9FF', // Subtle blue highlight
+  icon: {
+    marginTop: spacing.xs,
   },
   label: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: '800',
-    marginLeft: 6,
-  }
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.fontWeight.semibold,
+  },
 });

@@ -1,271 +1,217 @@
+import { Ionicons } from '@expo/vector-icons';
 import * as React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AccountSummary } from '../../models/Account';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 import { formatCurrency, maskAccountNumber } from '../../utils/formatters';
 import { Card } from '../common/Card';
+import { StatusBadge } from '../common/StatusBadge';
 
 interface AccountBalanceCardProps {
   account: AccountSummary;
   onPress?: () => void;
   onTransfer?: (accountNumber: string) => void;
   onViewStatements?: (accountNumber: string) => void;
-  onViewLedger?: (accountNumber: string) => void; // NEW: Direct link to the transaction history
+  onViewLedger?: (accountNumber: string) => void;
 }
+
+const statusTone = (status: string) => {
+  if (status === 'ACTIVE') return 'success' as const;
+  if (status === 'FROZEN') return 'warning' as const;
+  return 'danger' as const;
+};
 
 export const AccountBalanceCard = ({
   account,
   onPress,
   onTransfer,
   onViewStatements,
-  onViewLedger
+  onViewLedger,
 }: AccountBalanceCardProps) => {
-
-  // Local state to toggle secure visibility of the account number
   const [isNumberRevealed, setIsNumberRevealed] = React.useState(false);
-
-  // Backend policy rule: only active accounts can initiate money movement
   const isActionable = account.status === 'ACTIVE';
-
-  const toggleNumberVisibility = () => {
-    setIsNumberRevealed(!isNumberRevealed);
-  };
+  const accountNumber = isNumberRevealed ? account.accountNumber : maskAccountNumber(account.accountNumber);
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
-      onPress={onPress}
-      disabled={!onPress}
-    >
+    <Pressable onPress={onPress} disabled={!onPress} style={({ pressed }) => pressed && styles.pressed}>
       <Card style={styles.card}>
-        {/* Header: Account Type & Status Badge */}
         <View style={styles.header}>
-          <Text style={styles.type}>{account.accountType} ACCOUNT</Text>
-          <View style={[
-            styles.statusBadge,
-            account.status === 'ACTIVE' ? styles.badgeActive : styles.badgeFrozen
-          ]}>
-            <Text style={[
-              styles.statusText,
-              account.status === 'ACTIVE' ? styles.textActive : styles.textFrozen
-            ]}>
-              {account.status}
-            </Text>
+          <View>
+            <Text style={styles.type}>{account.accountType}</Text>
+            <Text style={styles.number}>{accountNumber}</Text>
           </View>
+          <StatusBadge label={account.status} tone={statusTone(account.status)} />
         </View>
 
-        {/* Body: Secure Account Number Toggle */}
-        <View style={styles.accountNumberContainer}>
-          <Text style={styles.accountNo}>
-            {isNumberRevealed
-              ? account.accountNumber
-              : maskAccountNumber(account.accountNumber)}
-          </Text>
-          <TouchableOpacity
-            style={styles.revealButton}
-            onPress={toggleNumberVisibility}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.revealText}>
-              {isNumberRevealed ? '👁️ Hide' : '👁️‍🗨️ Reveal'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Body: Secure Balance & Limit Context */}
-        <View style={styles.balanceContainer}>
-          <Text style={styles.balanceLabel}>Available Balance</Text>
-          <Text style={[
-            styles.balanceAmount,
-            !isActionable && styles.balanceAmountDimmed
-          ]}>
+        <View style={styles.balanceBlock}>
+          <Text style={styles.balanceLabel}>Available balance</Text>
+          <Text style={[styles.balance, !isActionable && styles.balanceDimmed]}>
             {formatCurrency(account.balance, account.currency)}
           </Text>
-          <Text style={styles.limitHint}>
-            Includes pending holds. Subject to daily withdrawal limits.
-          </Text>
         </View>
 
-        {/* Footer: Contextual Quick Actions */}
-        <View style={styles.footer}>
+        <View style={styles.metadataRow}>
           <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => onViewLedger && onViewLedger(account.accountNumber)}
+            onPress={() => setIsNumberRevealed((current) => !current)}
+            style={styles.subtleAction}
+            accessibilityRole="button"
+            accessibilityLabel={isNumberRevealed ? 'Hide account number' : 'Reveal account number'}
           >
-            <Text style={styles.actionText}>📊 History</Text>
+            <Ionicons name={isNumberRevealed ? 'eye-off-outline' : 'eye-outline'} size={16} color={colors.textSecondary} />
+            <Text style={styles.subtleActionText}>{isNumberRevealed ? 'Hide number' : 'Reveal number'}</Text>
+          </TouchableOpacity>
+          <Text style={styles.limitHint}>Limits apply</Text>
+        </View>
+
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={styles.action}
+            onPress={() => onViewLedger?.(account.accountNumber)}
+            accessibilityRole="button"
+          >
+            <Ionicons name="time-outline" size={17} color={colors.primary} />
+            <Text style={styles.actionText}>Activity</Text>
           </TouchableOpacity>
 
-          <View style={styles.divider} />
-
           <TouchableOpacity
-            style={[styles.actionButton, !isActionable && styles.actionButtonDisabled]}
+            style={[styles.action, !isActionable && styles.actionDisabled]}
             disabled={!isActionable}
-            onPress={() => onTransfer && onTransfer(account.accountNumber)}
+            onPress={() => onTransfer?.(account.accountNumber)}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !isActionable }}
           >
-            <Text style={[styles.actionText, !isActionable && styles.actionTextDisabled]}>
-              ↗️ Transfer
-            </Text>
+            <Ionicons name="swap-horizontal-outline" size={17} color={isActionable ? colors.primary : colors.textMuted} />
+            <Text style={[styles.actionText, !isActionable && styles.actionTextDisabled]}>Transfer</Text>
           </TouchableOpacity>
 
-          <View style={styles.divider} />
-
           <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => onViewStatements && onViewStatements(account.accountNumber)}
+            style={styles.action}
+            onPress={() => onViewStatements?.(account.accountNumber)}
+            accessibilityRole="button"
           >
-            <Text style={styles.actionText}>📄 Stmts</Text>
+            <Ionicons name="document-text-outline" size={17} color={colors.primary} />
+            <Text style={styles.actionText}>Statements</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Security Warning for Non-Active Accounts */}
-        {!isActionable && (
-          <View style={styles.warningContainer}>
-            <Text style={styles.warningText}>
-              Transfers disabled. Account is currently {account.status.toLowerCase()}.
-            </Text>
+        {!isActionable ? (
+          <View style={styles.warning}>
+            <Text style={styles.warningText}>Money movement is paused while this account is {account.status.toLowerCase()}.</Text>
           </View>
-        )}
+        ) : null}
       </Card>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
+  pressed: {
+    opacity: 0.92,
+  },
   card: {
-    backgroundColor: colors.dominant, // 60% White
-    borderColor: colors.secondary,    // 30% Soft Blue
-    borderWidth: 1.5,
     padding: 0,
     overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    marginBottom: spacing.xs,
+    alignItems: 'flex-start',
+    paddingHorizontal: spacing.ml,
+    paddingTop: spacing.ml,
   },
   type: {
-    color: colors.secondary,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1.2,
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.md,
+    lineHeight: typography.lineHeight.md,
+    fontWeight: typography.fontWeight.bold,
   },
-  statusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: spacing.borderRadius.sm,
-    borderWidth: 1,
-  },
-  badgeActive: {
-    backgroundColor: '#ECFCCB',
-    borderColor: colors.success,
-  },
-  badgeFrozen: {
-    backgroundColor: '#FEF2F2',
-    borderColor: colors.danger,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  textActive: {
-    color: colors.success,
-  },
-  textFrozen: {
-    color: colors.danger,
-  },
-  accountNumberContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  accountNo: {
+  number: {
     color: colors.textMuted,
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: 1,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    marginTop: spacing.xs,
   },
-  revealButton: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.secondary,
-  },
-  revealText: {
-    color: colors.accent,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  balanceContainer: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+  balanceBlock: {
+    paddingHorizontal: spacing.ml,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
   },
   balanceLabel: {
     color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
   },
-  balanceAmount: {
-    color: colors.accent, // 10% Deep Navy
-    fontSize: 28,
-    fontWeight: '800',
-    marginTop: 4,
+  balance: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.xxl,
+    lineHeight: typography.lineHeight.xxl,
+    fontWeight: typography.fontWeight.heavy,
+    marginTop: spacing.xs,
   },
-  balanceAmountDimmed: {
+  balanceDimmed: {
     color: colors.textMuted,
+  },
+  metadataRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.ml,
+    paddingBottom: spacing.md,
+  },
+  subtleAction: {
+    minHeight: spacing.touchTarget,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  subtleActionText: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    marginLeft: spacing.xs,
   },
   limitHint: {
     color: colors.textMuted,
-    fontSize: 10,
-    marginTop: 4,
-    fontStyle: 'italic',
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
   },
-  footer: {
+  actions: {
     flexDirection: 'row',
-    borderTopWidth: 1.5,
-    borderTopColor: colors.surface,
-    backgroundColor: '#F8FAFC',
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
   },
-  actionButton: {
+  action: {
     flex: 1,
-    paddingVertical: spacing.md,
+    minHeight: 54,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.xs,
   },
-  actionButtonDisabled: {
-    opacity: 0.5,
+  actionDisabled: {
+    opacity: 0.55,
   },
   actionText: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: '700',
+    color: colors.primary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   actionTextDisabled: {
     color: colors.textMuted,
   },
-  divider: {
-    width: 1.5,
-    backgroundColor: colors.surface,
-  },
-  warningContainer: {
-    backgroundColor: '#FEF2F2',
+  warning: {
+    backgroundColor: colors.warningBg,
+    paddingHorizontal: spacing.ml,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: '#FECACA',
+    borderTopColor: colors.divider,
   },
   warningText: {
-    color: colors.danger,
-    fontSize: 12,
-    fontWeight: '600',
+    color: colors.warning,
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
     textAlign: 'center',
   },
 });

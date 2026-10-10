@@ -1,22 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
-import {
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AccountBalanceCard } from '../../components/accounts/AccountBalanceCard';
+import { Button } from '../../components/common/Button';
+import { Card } from '../../components/common/Card';
+import { EmptyState } from '../../components/common/EmptyState';
+import { SectionHeader } from '../../components/common/SectionHeader';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
 import { useAccounts } from '../../hooks/useAccounts';
+import { DEFAULT_RATES_TO_PHP, fxService } from '../../services/fx/fxService';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 import { formatCurrency } from '../../utils/formatters';
-import { fxService, DEFAULT_RATES_TO_PHP } from '../../services/fx/fxService';
 
 export const AccountListScreen = () => {
   const { accounts, refetch } = useAccounts();
@@ -25,27 +23,31 @@ export const AccountListScreen = () => {
   const [refreshing, setRefreshing] = React.useState(false);
   const [ratesToPhp, setRatesToPhp] = React.useState<Record<string, number>>(DEFAULT_RATES_TO_PHP);
 
-  React.useEffect(() => {
-    fxService.getRates('PHP').then((res) => {
-      if (res?.ratesToPhp) setRatesToPhp(res.ratesToPhp);
-    }).catch(() => {});
-  }, []);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    if (refetch) await refetch();
+  const refreshRates = React.useCallback(async () => {
     try {
       const res = await fxService.getRates('PHP');
       if (res?.ratesToPhp) setRatesToPhp(res.ratesToPhp);
-    } catch (e) {}
+    } catch (err) {
+      console.log('Fetching FX rates fallback:', err);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    refreshRates();
+  }, [refreshRates]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetch?.();
+    await refreshRates();
     setRefreshing(false);
   };
 
   const balancesByCurrency = React.useMemo(() => {
     const map: Record<string, number> = {};
     (accounts || []).forEach((acc) => {
-      const curr = acc.currency || 'USD';
-      map[curr] = (map[curr] || 0) + (acc.balance || 0);
+      const currency = acc.currency || 'USD';
+      map[currency] = (map[currency] || 0) + (acc.balance || 0);
     });
     return map;
   }, [accounts]);
@@ -54,116 +56,88 @@ export const AccountListScreen = () => {
 
   const totalNetLiquidityInPhp = React.useMemo(() => {
     return (accounts || []).reduce((sum, acc) => {
-      const curr = acc.currency || 'PHP';
-      const bal = acc.balance || 0;
-      return sum + fxService.convertAmountToPhp(bal, curr, ratesToPhp);
+      const currency = acc.currency || 'PHP';
+      return sum + fxService.convertAmountToPhp(acc.balance || 0, currency, ratesToPhp);
     }, 0);
   }, [accounts, ratesToPhp]);
 
   const renderHeader = () => (
     <View style={styles.headerArea}>
       <View style={styles.titleRow}>
-        <View>
-          <Text style={styles.title}>Your Accounts</Text>
+        <View style={styles.titleBlock}>
+          <Text style={styles.title}>Accounts</Text>
           <Text style={styles.subtitle}>
-            {accounts?.length || 0} active {accounts?.length === 1 ? 'account' : 'accounts'} registered
+            {accounts?.length || 0} active {accounts?.length === 1 ? 'account' : 'accounts'}
           </Text>
         </View>
         <TouchableOpacity
-          style={styles.openAccountHeaderBtn}
+          style={styles.iconButton}
           onPress={() => navigation.navigate('OpenAccount')}
-          activeOpacity={0.8}
+          activeOpacity={0.82}
+          accessibilityRole="button"
+          accessibilityLabel="Open account"
         >
-          <Ionicons name="add" size={18} color={colors.dominant} style={{ marginRight: 4 }} />
-          <Text style={styles.openAccountBtnText}>Open Account</Text>
+          <Ionicons name="add" size={24} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Portfolio Summary Pill */}
-      {accounts && accounts.length > 0 && (
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryLeft}>
-            <Text style={styles.summaryLabel}>Total Net Liquidity</Text>
-            <Text style={styles.summaryAmount}>
-              {formatCurrency(totalNetLiquidityInPhp, 'PHP')}
-            </Text>
-            {currencyEntries.length > 0 && (
-              <View style={styles.multiCurrencySummary}>
-                {currencyEntries.map(([currency, amount]) => {
-                  const phpEquiv = fxService.convertAmountToPhp(amount, currency, ratesToPhp);
-                  const isPhp = currency === 'PHP';
-                  return (
-                    <Text key={currency} style={styles.summaryAmountItem}>
-                      <Text style={styles.currencyTag}>{currency}: </Text>
-                      {formatCurrency(amount, currency)}
-                      {!isPhp && (
-                        <Text style={styles.currencyConvertedText}>
-                          {' '}(≈ {formatCurrency(phpEquiv, 'PHP')})
-                        </Text>
-                      )}
-                    </Text>
-                  );
-                })}
-              </View>
-            )}
+      {accounts && accounts.length > 0 ? (
+        <Card style={styles.summaryCard}>
+          <Text style={styles.summaryLabel}>Total balance</Text>
+          <Text style={styles.summaryAmount}>{formatCurrency(totalNetLiquidityInPhp, 'PHP')}</Text>
+          <View style={styles.currencySummary}>
+            {currencyEntries.map(([currency, amount]: [string, number]) => {
+              const phpEquiv = fxService.convertAmountToPhp(amount, currency, ratesToPhp);
+              const isPhp = currency === 'PHP';
+              return (
+                <View key={currency} style={styles.currencyRow}>
+                  <Text style={styles.currencyTag}>{currency}</Text>
+                  <Text style={styles.currencyValue} numberOfLines={1}>
+                    {formatCurrency(amount, currency)}
+                    {!isPhp ? ` (${formatCurrency(phpEquiv, 'PHP')})` : ''}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
-          <TouchableOpacity
-            style={styles.ratesPill}
-            onPress={() => navigation.navigate('ProductCatalog')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="sparkles" size={14} color={colors.accent} style={{ marginRight: 4 }} />
-            <Text style={styles.ratesPillText}>Rates & Yields</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        </Card>
+      ) : null}
+
+      <SectionHeader title="Account Portfolio" />
     </View>
   );
 
-  const renderFooter = () => (
-    <View style={styles.footerPromoCard}>
-      <View style={styles.promoIconContainer}>
-        <Ionicons name="trending-up" size={24} color={colors.accent} />
-      </View>
-      <View style={styles.promoTextContainer}>
-        <Text style={styles.promoTitle}>Earn 4.50% APY on Savings</Text>
-        <Text style={styles.promoDesc}>Open a high-yield sub-account in under 60 seconds with zero paperwork.</Text>
-      </View>
-      <TouchableOpacity
-        style={styles.promoActionBtn}
-        onPress={() => navigation.navigate('OpenAccount', { productType: 'SAVINGS' })}
-      >
-        <Ionicons name="arrow-forward" size={18} color={colors.dominant} />
-      </TouchableOpacity>
-    </View>
-  );
+  const renderFooter = () =>
+    accounts && accounts.length > 0 ? (
+      <Card style={styles.footerCard}>
+        <View style={styles.footerIcon}>
+          <Ionicons name="briefcase-outline" size={22} color={colors.primary} />
+        </View>
+        <View style={styles.footerText}>
+          <Text style={styles.footerTitle}>Product options</Text>
+          <Text style={styles.footerCopy}>Review available account types before opening another account.</Text>
+        </View>
+        <Button title="View" onPress={() => navigation.navigate('ProductCatalog')} variant="secondary" />
+      </Card>
+    ) : null;
 
   const renderEmptyState = () => (
-    <View style={styles.hardenedEmptyCard}>
-      <View style={styles.warningIconContainer}>
-        <Text style={styles.warningIconText}>⚠️</Text>
-      </View>
-      <Text style={styles.emptyCardTitle}>No Active Accounts Found</Text>
-      <Text style={styles.emptyCardDescription}>
-        We could not locate a checking or savings account linked to your profile. This can happen if your registration was incomplete or your account is pending manual KYC verification.
-      </Text>
-      <TouchableOpacity
-        style={styles.contactSupportBtn}
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('OpenAccount')}
-      >
-        <Text style={styles.contactSupportText}>+ Open New Account</Text>
-      </TouchableOpacity>
-    </View>
+    <EmptyState
+      icon="wallet-outline"
+      title="No accounts found"
+      message="Open an account or complete verification to start using NovaBank."
+      actionLabel="Open account"
+      onActionPress={() => navigation.navigate('OpenAccount')}
+    />
   );
 
   return (
     <SecureScreenWrapper style={styles.container}>
       <FlatList
-        data={accounts}
+        data={accounts || []}
         keyExtractor={(item) => item.accountNumber}
         ListHeaderComponent={renderHeader}
-        ListFooterComponent={accounts && accounts.length > 0 ? renderFooter : null}
+        ListFooterComponent={renderFooter}
         renderItem={({ item }) => (
           <View style={styles.cardItemWrapper}>
             <AccountBalanceCard
@@ -178,11 +152,11 @@ export const AccountListScreen = () => {
         ListEmptyComponent={renderEmptyState}
         contentContainerStyle={[
           styles.flatListContent,
-          { paddingBottom: insets.bottom + 90 },
+          { paddingBottom: insets.bottom + 88 },
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       />
     </SecureScreenWrapper>
@@ -192,13 +166,14 @@ export const AccountListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   flatListContent: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.xl,
   },
   headerArea: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
   },
   titleRow: {
     flexDirection: 'row',
@@ -206,189 +181,105 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
+  titleBlock: {
+    flex: 1,
+    paddingRight: spacing.md,
+  },
   title: {
-    color: colors.accent,
-    fontSize: 26,
-    fontWeight: '900',
-    letterSpacing: -0.5,
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.xxl,
+    lineHeight: typography.lineHeight.xxl,
+    fontWeight: typography.fontWeight.heavy,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 2,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    marginTop: spacing.xs,
   },
-  openAccountHeaderBtn: {
-    flexDirection: 'row',
+  iconButton: {
+    width: 46,
+    height: 46,
+    borderRadius: spacing.borderRadius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
-    backgroundColor: colors.accent,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: spacing.borderRadius.full,
-  },
-  openAccountBtnText: {
-    color: colors.dominant,
-    fontSize: 12,
-    fontWeight: '700',
+    justifyContent: 'center',
   },
   summaryCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: spacing.borderRadius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  summaryLeft: {
-    flex: 1,
+    marginBottom: spacing.md,
   },
   summaryLabel: {
     color: colors.textSecondary,
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   summaryAmount: {
-    color: colors.accent,
-    fontSize: 22,
-    fontWeight: '900',
-    marginTop: 2,
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.hero,
+    lineHeight: typography.lineHeight.hero,
+    fontWeight: typography.fontWeight.heavy,
+    marginTop: spacing.xs,
   },
-  multiCurrencySummary: {
-    marginTop: 4,
+  currencySummary: {
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
   },
-  summaryAmountItem: {
-    color: colors.accent,
-    fontSize: 15,
-    fontWeight: '800',
-    marginVertical: 1,
+  currencyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   currencyTag: {
+    color: colors.primary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.heavy,
+  },
+  currencyValue: {
+    flex: 1,
     color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  currencyConvertedText: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  ratesPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-  },
-  ratesPillText: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    textAlign: 'right',
   },
   cardItemWrapper: {
     marginBottom: spacing.md,
   },
-  footerPromoCard: {
+  footerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F9FF',
-    borderRadius: spacing.borderRadius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
+    gap: spacing.md,
     marginTop: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
-  promoIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  promoTextContainer: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  promoTitle: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  promoDesc: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    lineHeight: 15,
-    marginTop: 2,
-  },
-  promoActionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.accent,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  hardenedEmptyCard: {
-    backgroundColor: '#F8FAFC',
-    padding: spacing.xl,
-    borderRadius: spacing.borderRadius.lg,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginTop: spacing.xl,
-  },
-  warningIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#FFF1F2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  warningIconText: {
-    fontSize: 28,
-  },
-  emptyCardTitle: {
-    color: colors.accent,
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  emptyCardDescription: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 20,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-    paddingHorizontal: spacing.sm,
-  },
-  contactSupportBtn: {
-    backgroundColor: colors.accent,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+  footerIcon: {
+    width: 44,
+    height: 44,
     borderRadius: spacing.borderRadius.md,
-    width: '100%',
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    justifyContent: 'center',
   },
-  contactSupportText: {
-    color: colors.dominant,
-    fontSize: 14,
-    fontWeight: '700',
+  footerText: {
+    flex: 1,
+  },
+  footerTitle: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  footerCopy: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
+    marginTop: spacing.xs,
   },
 });

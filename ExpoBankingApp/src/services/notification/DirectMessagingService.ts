@@ -1,4 +1,4 @@
-import notifee, { AndroidImportance } from '@notifee/react-native';
+import notifee, { AndroidImportance } from './notifeeSafe';
 import { Client } from '@stomp/stompjs';
 import { ENV } from '../../config/env';
 import { tokenStorageService } from '../auth/tokenStorageService';

@@ -3,7 +3,7 @@
     "target": "esnext",
     "module": "esnext",
     "lib": [
-      "es6"
+      "esnext"
     ],
     "allowJs": true,
     "jsx": "react-native",
@@ -12,6 +12,7 @@
     "strict": true,
     "moduleResolution": "bundler",
     "baseUrl": "./",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "src/*": [
         "./src/*"
@@ -20,7 +21,10 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "src/**/*"

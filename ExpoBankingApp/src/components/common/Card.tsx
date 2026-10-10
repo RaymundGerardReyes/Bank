@@ -1,11 +1,12 @@
 import * as React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { spacing } from '../../theme/spacing';
 
 interface CardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const Card = ({ children, style }: CardProps) => {
@@ -15,10 +16,11 @@ export const Card = ({ children, style }: CardProps) => {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card,
-    borderRadius: spacing.borderRadius.lg,
+    borderRadius: spacing.borderRadius.md,
     borderColor: colors.cardBorder,
     borderWidth: 1,
-    padding: spacing.lg,
+    padding: spacing.ml,
     marginVertical: spacing.sm,
+    ...shadows.subtle,
   },
 });

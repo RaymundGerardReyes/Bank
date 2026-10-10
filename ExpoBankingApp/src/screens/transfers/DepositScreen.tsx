@@ -19,6 +19,7 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { transactionService } from '../../services/transaction/transactionService';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 import { formatCurrency, generateUUID, maskAccountNumber } from '../../utils/formatters';
 
 const PRESET_AMOUNTS = [50, 100, 250, 500, 1000];
@@ -145,8 +146,8 @@ export const DepositScreen = () => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Text style={styles.title}>Deposit Cash</Text>
-            <Text style={styles.subtitle}>Instantly fund your verified accounts</Text>
+            <Text style={styles.title}>Deposit Funds</Text>
+            <Text style={styles.subtitle}>Direct Electronic Credit & Check Clearing</Text>
           </View>
 
           {error ? <ErrorBanner message={error} onDismiss={() => setError('')} /> : null}
@@ -160,27 +161,28 @@ export const DepositScreen = () => {
               onChangeText={setAmount}
               keyboardType="decimal-pad"
               placeholder="0.00"
-              placeholderTextColor={`${colors.secondary}80`}
+              placeholderTextColor={colors.textMuted}
             />
           </View>
 
-          {/* Quick Amount Chips */}
+          {/* Amount Preset Chips */}
           <View style={styles.chipsRow}>
-            {PRESET_AMOUNTS.map((val) => (
-              <TouchableOpacity
-                key={val}
-                style={[styles.chip, amount === String(val) && styles.chipActive]}
-                onPress={() => setAmount(String(val))}
-              >
-                <Text style={[styles.chipText, amount === String(val) && styles.chipTextActive]}>
-                  ${val}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {PRESET_AMOUNTS.map((val) => {
+              const isSelected = amount === String(val);
+              return (
+                <TouchableOpacity
+                  key={val}
+                  style={[styles.chip, isSelected && styles.chipActive]}
+                  onPress={() => setAmount(String(val))}
+                >
+                  <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>${val}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          {/* Target Account Selector */}
-          <Text style={styles.sectionLabel}>Deposit Into Account</Text>
+          {/* Account Selector */}
+          <Text style={styles.sectionLabel}>Deposit To Account</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -200,7 +202,7 @@ export const DepositScreen = () => {
                       {acc.accountType}
                     </Text>
                     {isSelected && (
-                      <Ionicons name="checkmark-circle" size={16} color={colors.dominant} />
+                      <Ionicons name="checkmark-circle" size={16} color={colors.textInverse} />
                     )}
                   </View>
                   <Text style={[styles.accountPillNumber, isSelected && styles.accountPillTextActive]}>
@@ -229,23 +231,23 @@ export const DepositScreen = () => {
                   <Ionicons
                     name={m.icon}
                     size={20}
-                    color={isSelected ? colors.accent : colors.textSecondary}
+                    color={isSelected ? colors.primary : colors.textSecondary}
                     style={{ marginRight: 10 }}
                   />
                   <Text style={[styles.methodTitle, isSelected && styles.methodTitleActive]}>
                     {m.title}
                   </Text>
                   {isSelected && (
-                    <Ionicons name="checkmark-circle" size={18} color={colors.accent} style={{ marginLeft: 'auto' }} />
+                    <Ionicons name="checkmark-circle" size={18} color={colors.primary} style={{ marginLeft: 'auto' }} />
                   )}
                 </TouchableOpacity>
               );
             })}
           </View>
 
-          {/* Action Button */}
+          {/* Submit Button */}
           <Button
-            title={`Deposit $${parseFloat(amount || '0').toFixed(2)} Now`}
+            title={`Confirm Deposit of $${parseFloat(amount || '0').toFixed(2)}`}
             onPress={handleDeposit}
             loading={loading}
             style={styles.submitBtn}
@@ -259,7 +261,7 @@ export const DepositScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   flex: {
     flex: 1,
@@ -272,16 +274,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   title: {
-    color: colors.accent,
-    fontSize: 28,
-    fontWeight: '900',
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.xxl,
+    lineHeight: typography.lineHeight.xxl,
+    fontWeight: typography.fontWeight.heavy,
     letterSpacing: -0.5,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 2,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.medium,
+    marginTop: 4,
   },
   amountContainer: {
     flexDirection: 'row',
@@ -290,16 +294,16 @@ const styles = StyleSheet.create({
     marginVertical: spacing.md,
   },
   currencySymbol: {
-    fontSize: 44,
-    fontWeight: '800',
-    color: colors.accent,
+    fontSize: 36,
+    fontWeight: typography.fontWeight.heavy,
+    color: colors.primary,
     marginRight: 6,
     marginTop: -4,
   },
   amountInput: {
-    fontSize: 54,
-    fontWeight: '900',
-    color: colors.accent,
+    fontSize: 48,
+    fontWeight: typography.fontWeight.heavy,
+    color: colors.textPrimary,
     minWidth: 140,
     textAlign: 'center',
   },
@@ -313,27 +317,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.surface,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: spacing.borderRadius.sm,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.border,
   },
   chipActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   chipText: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '700',
+    color: colors.primary,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
   },
   chipTextActive: {
-    color: colors.dominant,
+    color: colors.textInverse,
   },
   sectionLabel: {
-    color: colors.accent,
-    fontSize: 14,
-    fontWeight: '800',
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
     marginBottom: spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -348,16 +353,16 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.md,
     padding: spacing.md,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   accountCardSelected: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-    shadowColor: colors.accent,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
   accountPillHeader: {
     flexDirection: 'row',
@@ -366,26 +371,26 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   accountPillType: {
-    color: colors.secondary,
-    fontSize: 11,
-    fontWeight: '800',
+    color: colors.primary,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.heavy,
   },
   accountPillTypeActive: {
-    color: colors.dominant,
+    color: colors.textInverse,
   },
   accountPillNumber: {
     color: colors.textMuted,
-    fontSize: 12,
+    fontSize: typography.fontSize.xs,
     fontFamily: 'monospace',
     marginBottom: 6,
   },
   accountPillBalance: {
-    color: colors.accent,
-    fontSize: 15,
-    fontWeight: '800',
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.heavy,
   },
   accountPillTextActive: {
-    color: colors.dominant,
+    color: colors.textInverse,
   },
   methodsContainer: {
     gap: 8,
@@ -398,37 +403,32 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.md,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   methodCardSelected: {
-    borderColor: colors.accent,
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
   },
   methodTitle: {
     color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
   },
   methodTitleActive: {
-    color: colors.accent,
-    fontWeight: '700',
+    color: colors.primary,
+    fontWeight: typography.fontWeight.bold,
   },
   submitBtn: {
     borderRadius: spacing.borderRadius.md,
     paddingVertical: 16,
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
   successContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   successCard: {
     width: '100%',
@@ -437,38 +437,38 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   successIconBg: {
     marginBottom: spacing.md,
   },
   successTitle: {
-    color: colors.accent,
-    fontSize: 24,
-    fontWeight: '900',
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.xxl,
+    fontWeight: typography.fontWeight.heavy,
     textAlign: 'center',
   },
   successSubtitle: {
     color: colors.textSecondary,
-    fontSize: 14,
+    fontSize: typography.fontSize.sm,
     textAlign: 'center',
     marginTop: 4,
     marginBottom: spacing.lg,
   },
   receiptBox: {
     width: '100%',
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.surfaceAlt,
     borderRadius: spacing.borderRadius.md,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     marginBottom: spacing.xl,
     alignItems: 'center',
   },
   receiptAmount: {
     color: colors.success,
-    fontSize: 32,
-    fontWeight: '900',
+    fontSize: typography.fontSize.hero,
+    fontWeight: typography.fontWeight.heavy,
     marginBottom: spacing.md,
   },
   receiptRow: {
@@ -477,16 +477,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 6,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: colors.divider,
   },
   receiptLabel: {
     color: colors.textSecondary,
-    fontSize: 12,
+    fontSize: typography.fontSize.xs,
   },
   receiptValue: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '700',
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   doneBtn: {
     width: '100%',

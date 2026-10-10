@@ -1,4 +1,4 @@
-import notifee, { EventType } from '@notifee/react-native';
+import notifee, { EventType } from './src/services/notification/notifeeSafe';
 import { registerRootComponent } from 'expo';
 import { AppRegistry } from 'react-native';
 

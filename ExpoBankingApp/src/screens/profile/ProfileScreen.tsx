@@ -1,155 +1,199 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as React from 'react';
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Button } from '../../components/common/Button';
+import { Card } from '../../components/common/Card';
+import { SectionHeader } from '../../components/common/SectionHeader';
+import { StatusBadge } from '../../components/common/StatusBadge';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
 import { useAuth } from '../../hooks/useAuth';
+import { faceEnrollmentService } from '../../services/auth/faceEnrollmentService';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
+
+type MenuItem = {
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  route: string;
+};
+
+const SETTINGS_SECTIONS: { title: string; items: MenuItem[] }[] = [
+  {
+    title: 'Security',
+    items: [
+      {
+        title: 'Security controls',
+        subtitle: 'Biometrics, PIN, password, and second factors',
+        icon: 'shield-checkmark-outline',
+        route: 'SecuritySettings',
+      },
+      {
+        title: 'Face recognition',
+        subtitle: 'Enroll or update your facial biometric profile',
+        icon: 'scan-outline',
+        route: 'FaceEnrollment',
+      },
+      {
+        title: 'Trusted devices',
+        subtitle: 'Review active sessions and registered hardware',
+        icon: 'phone-portrait-outline',
+        route: 'DeviceManagement',
+      },
+      {
+        title: 'Audit trail',
+        subtitle: 'View recent account and access events',
+        icon: 'document-text-outline',
+        route: 'AuditLogs',
+      },
+    ],
+  },
+  {
+    title: 'Banking',
+    items: [
+      {
+        title: 'Products',
+        subtitle: 'Compare account types before opening a new account',
+        icon: 'briefcase-outline',
+        route: 'ProductCatalog',
+      },
+      {
+        title: 'Statements',
+        subtitle: 'Download monthly account statements',
+        icon: 'folder-open-outline',
+        route: 'Statements',
+      },
+    ],
+  },
+];
 
 export const ProfileScreen = () => {
   const { user, logout } = useAuth();
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const initials = `${user?.firstName?.charAt(0) || 'U'}${user?.lastName?.charAt(0) || ''}`;
+  const [isFaceEnrolled, setIsFaceEnrolled] = React.useState<boolean>(false);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let isMounted = true;
+      async function checkBiometrics() {
+        const enrolled = await faceEnrollmentService.isFaceEnrolled(user?.email);
+        if (isMounted) {
+          setIsFaceEnrolled(enrolled);
+        }
+      }
+      checkBiometrics();
+      return () => {
+        isMounted = false;
+      };
+    }, [user?.email])
+  );
 
   const handleLogout = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to end your secure session?', [
+    Alert.alert('Sign out', 'End this NovaBank session?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: logout },
+      { text: 'Sign out', style: 'destructive', onPress: logout },
     ]);
   };
-
-  const SETTINGS_SECTIONS = [
-    {
-      title: 'Security & Access',
-      items: [
-        {
-          title: 'Security Controls',
-          subtitle: 'Biometrics, PIN, Password & 2FA',
-          icon: 'shield-checkmark-outline' as const,
-          action: () => navigation.navigate('SecuritySettings'),
-        },
-        {
-          title: 'Trusted Devices',
-          subtitle: 'Manage active sessions & hardware keys',
-          icon: 'phone-portrait-outline' as const,
-          action: () => navigation.navigate('DeviceManagement'),
-        },
-        {
-          title: 'Audit Trail',
-          subtitle: 'Immutable cryptographic security log',
-          icon: 'document-text-outline' as const,
-          action: () => navigation.navigate('AuditLogs'),
-        },
-      ],
-    },
-    {
-      title: 'Banking & Statements',
-      items: [
-        {
-          title: 'Products & Yield Rates',
-          subtitle: 'Explore High-Yield Savings & checking plans',
-          icon: 'sparkles-outline' as const,
-          action: () => navigation.navigate('ProductCatalog'),
-        },
-        {
-          title: 'Monthly Statements',
-          subtitle: 'Download encrypted PDF e-statements',
-          icon: 'folder-open-outline' as const,
-          action: () => navigation.navigate('Statements'),
-        },
-      ],
-    },
-  ];
 
   return (
     <SecureScreenWrapper style={styles.container}>
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 90 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 88 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Aesthetic Profile Header */}
-        <View style={styles.topProfileHeader}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>
-              {user?.firstName?.charAt(0) || 'U'}
-              {user?.lastName?.charAt(0) || ''}
+        <View style={styles.header}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+          <View style={styles.identity}>
+            <Text style={styles.name} numberOfLines={1}>
+              {user?.firstName} {user?.lastName}
             </Text>
-          </View>
-          <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
-          <Text style={styles.email}>{user?.email}</Text>
-          <View style={styles.roleBadge}>
-            <View style={styles.roleDot} />
-            <Text style={styles.roleText}>{user?.role || 'CUSTOMER'}</Text>
+            <Text style={styles.email} numberOfLines={1}>{user?.email}</Text>
+            <StatusBadge label={user?.role || 'CUSTOMER'} tone="neutral" />
           </View>
         </View>
 
-        {/* Status Highlights */}
-        <View style={styles.infoSection}>
-          <View style={styles.infoRow}>
-            <View style={styles.infoIconBg}>
-              <Ionicons name="shield-checkmark" size={18} color={colors.success} />
+        <Card style={styles.statusCard}>
+          <View style={styles.statusRow}>
+            <View style={styles.statusIcon}>
+              <Ionicons name="checkmark-circle-outline" size={22} color={colors.success} />
             </View>
-            <View style={styles.infoRowContent}>
-              <Text style={styles.infoLabel}>KYC Verification</Text>
-              <Text style={styles.infoValue}>Tier 3 Institutional Verified</Text>
-            </View>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.infoRow}>
-            <View style={styles.infoIconBg}>
-              <Ionicons name="lock-closed" size={18} color={colors.accent} />
-            </View>
-            <View style={styles.infoRowContent}>
-              <Text style={styles.infoLabel}>Session Protocol</Text>
-              <Text style={styles.infoValue}>TLS 1.3 / Hardware Biometric Pinned</Text>
+            <View style={styles.statusText}>
+              <Text style={styles.statusTitle}>Identity verified</Text>
+              <Text style={styles.statusCopy}>Your account is eligible for standard mobile banking actions.</Text>
             </View>
           </View>
-        </View>
+          <View style={styles.statusDivider} />
+          <View style={styles.statusRow}>
+            <View style={styles.statusIcon}>
+              <Ionicons name="lock-closed-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.statusText}>
+              <Text style={styles.statusTitle}>Session protected</Text>
+              <Text style={styles.statusCopy}>Sensitive actions may request biometric confirmation.</Text>
+            </View>
+          </View>
+          <View style={styles.statusDivider} />
+          <TouchableOpacity
+            style={styles.statusRow}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate(isFaceEnrolled ? 'SecuritySettings' : 'FaceEnrollment')}
+          >
+            <View style={styles.statusIcon}>
+              <Ionicons
+                name={isFaceEnrolled ? 'shield-checkmark-outline' : 'scan-outline'}
+                size={22}
+                color={isFaceEnrolled ? colors.success : colors.warning}
+              />
+            </View>
+            <View style={styles.statusText}>
+              <Text style={styles.statusTitle}>
+                {isFaceEnrolled ? 'Face Biometrics: Active' : 'Face Biometrics: Not Set'}
+              </Text>
+              <Text style={styles.statusCopy}>
+                {isFaceEnrolled
+                  ? 'Hardware-backed facial biometric vector profile active.'
+                  : 'Tap here to enroll face biometrics for passwordless login.'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </Card>
 
-        {/* Navigation Sections */}
-        {SETTINGS_SECTIONS.map((sec, sIdx) => (
-          <View key={sIdx} style={styles.menuSection}>
-            <Text style={styles.menuSectionTitle}>{sec.title}</Text>
-            <View style={styles.menuCard}>
-              {sec.items.map((item, iIdx) => (
+        {SETTINGS_SECTIONS.map((section) => (
+          <View key={section.title}>
+            <SectionHeader title={section.title} />
+            <Card style={styles.menuCard}>
+              {section.items.map((item, index) => (
                 <TouchableOpacity
-                  key={iIdx}
-                  style={[styles.menuRow, iIdx < sec.items.length - 1 && styles.menuRowBorder]}
-                  onPress={item.action}
-                  activeOpacity={0.7}
+                  key={item.title}
+                  style={[styles.menuRow, index < section.items.length - 1 && styles.menuDivider]}
+                  onPress={() => navigation.navigate(item.route)}
+                  activeOpacity={0.82}
+                  accessibilityRole="button"
                 >
-                  <View style={styles.menuIconBg}>
-                    <Ionicons name={item.icon} size={20} color={colors.accent} />
+                  <View style={styles.menuIcon}>
+                    <Ionicons name={item.icon} size={20} color={colors.primary} />
                   </View>
-                  <View style={styles.menuRowContent}>
-                    <Text style={styles.menuRowTitle}>{item.title}</Text>
-                    <Text style={styles.menuRowSub}>{item.subtitle}</Text>
+                  <View style={styles.menuText}>
+                    <Text style={styles.menuTitle}>{item.title}</Text>
+                    <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
               ))}
-            </View>
+            </Card>
           </View>
         ))}
 
-        {/* Sign Out Button */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-          <Ionicons name="log-out-outline" size={20} color={colors.dominant} style={{ marginRight: 8 }} />
-          <Text style={styles.logoutTitle}>Secure Sign Out</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.footerText}>
-          NovaBank Enterprise Mobile • v2.4.0 (Hardened Build)
-        </Text>
+        <Button title="Sign out" onPress={handleLogout} variant="danger" fullWidth style={styles.logoutButton} />
+        <Text style={styles.footerText}>NovaBank Mobile v2.4.0</Text>
       </ScrollView>
     </SecureScreenWrapper>
   );
@@ -158,194 +202,131 @@ export const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   scroll: {
-    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.xl,
   },
-  topProfileHeader: {
-    backgroundColor: colors.surface,
-    paddingTop: spacing.xl * 1.5,
-    paddingBottom: spacing.xl,
-    paddingHorizontal: spacing.lg,
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderBottomLeftRadius: spacing.borderRadius.xl,
-    borderBottomRightRadius: spacing.borderRadius.xl,
-    borderBottomWidth: 1,
-    borderColor: '#E2E8F0',
     marginBottom: spacing.lg,
   },
-  avatarCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: colors.accent,
-    justifyContent: 'center',
+  avatar: {
+    width: 68,
+    height: 68,
+    borderRadius: spacing.borderRadius.lg,
+    backgroundColor: colors.primary,
     alignItems: 'center',
-    marginBottom: spacing.md,
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    justifyContent: 'center',
+    marginRight: spacing.md,
   },
   avatarText: {
-    color: colors.dominant,
-    fontSize: 32,
-    fontWeight: '800',
+    color: colors.textInverse,
+    fontSize: typography.fontSize.xxl,
+    lineHeight: typography.lineHeight.xxl,
+    fontWeight: typography.fontWeight.heavy,
+  },
+  identity: {
+    flex: 1,
+    gap: spacing.xs,
   },
   name: {
-    color: colors.accent,
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.xxl,
+    lineHeight: typography.lineHeight.xxl,
+    fontWeight: typography.fontWeight.heavy,
   },
   email: {
     color: colors.textSecondary,
-    fontSize: 14,
-    marginTop: 2,
-    marginBottom: spacing.sm,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
   },
-  roleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.dominant,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  roleDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.success,
-    marginRight: 6,
-  },
-  roleText: {
-    color: colors.accent,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  infoSection: {
-    backgroundColor: colors.surface,
-    marginHorizontal: spacing.lg,
-    borderRadius: spacing.borderRadius.lg,
-    padding: spacing.md,
+  statusCard: {
     marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
-  infoRow: {
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  infoIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
+  statusIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: spacing.borderRadius.md,
+    backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'center',
+    marginRight: spacing.md,
   },
-  infoRowContent: {
+  statusText: {
     flex: 1,
   },
-  infoLabel: {
+  statusTitle: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  statusCopy: {
     color: colors.textSecondary,
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
+    marginTop: spacing.xs,
   },
-  infoValue: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 1,
-  },
-  divider: {
+  statusDivider: {
     height: 1,
-    backgroundColor: '#E2E8F0',
-    marginVertical: spacing.sm,
-  },
-  menuSection: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-  },
-  menuSectionTitle: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: spacing.sm,
+    backgroundColor: colors.divider,
+    marginVertical: spacing.md,
   },
   menuCard: {
-    backgroundColor: colors.dominant,
-    borderRadius: spacing.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    padding: 0,
     overflow: 'hidden',
   },
   menuRow: {
+    minHeight: 72,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
   },
-  menuRowBorder: {
+  menuDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.divider,
   },
-  menuIconBg: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
+  menuIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: spacing.borderRadius.sm,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'center',
+    marginRight: spacing.md,
   },
-  menuRowContent: {
+  menuText: {
     flex: 1,
+    paddingRight: spacing.md,
   },
-  menuRowTitle: {
-    color: colors.accent,
-    fontSize: 14,
-    fontWeight: '700',
+  menuTitle: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
-  menuRowSub: {
+  menuSubtitle: {
     color: colors.textSecondary,
-    fontSize: 11,
-    marginTop: 1,
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
+    marginTop: spacing.xs,
   },
-  logoutBtn: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
-    backgroundColor: colors.danger,
-    height: 50,
-    borderRadius: spacing.borderRadius.md,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: colors.danger,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  logoutTitle: {
-    color: colors.dominant,
-    fontSize: 15,
-    fontWeight: '700',
+  logoutButton: {
+    marginTop: spacing.lg,
   },
   footerText: {
     color: colors.textMuted,
-    fontSize: 11,
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
     textAlign: 'center',
     marginTop: spacing.md,
-    fontFamily: 'monospace',
   },
 });

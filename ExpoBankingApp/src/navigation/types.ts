@@ -53,6 +53,7 @@ export type MainStackParamList = {
   SecuritySettings: undefined;
   DeviceManagement: undefined;
   AuditLogs: undefined;
+  FaceEnrollment: undefined;
 
   // QR Code Scanner & Passkey Authorization
   QrScanner: undefined;

@@ -45,7 +45,7 @@ export const StatementViewerScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A192F', // Deep navy background framing the document
+    backgroundColor: colors.primary,
   },
   toolbar: {
     flexDirection: 'row',

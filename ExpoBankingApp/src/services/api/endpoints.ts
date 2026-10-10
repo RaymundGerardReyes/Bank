@@ -23,7 +23,9 @@ export const ENDPOINTS = {
     DEPOSIT: '/transactions/deposit',
     WITHDRAW: '/transactions/withdraw',
     EXTERNAL_PAYMENT: '/transactions/external-payment',
-    HISTORY: (accountNumber: string) => `/transactions/history/${accountNumber}`,
+    INSTITUTIONS: (rail?: string) =>
+      rail ? `/transfers/institutions?rail=${encodeURIComponent(rail)}` : '/transfers/institutions',
+    HISTORY: (accountNumber: string) => `/transactions/history?accountNumber=${encodeURIComponent(accountNumber)}`,
   },
   STATEMENTS: {
     GENERATE: '/statements/generate',

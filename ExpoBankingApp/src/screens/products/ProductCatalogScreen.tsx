@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   filterChipActive: {
     backgroundColor: colors.accent,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.lg,
     padding: spacing.lg,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   typeBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
@@ -275,12 +275,12 @@ const styles = StyleSheet.create({
   },
   rateContainer: {
     alignItems: 'flex-end',
-    backgroundColor: '#ECFCCB',
+    backgroundColor: colors.successBg,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#86EFAC',
+    borderColor: colors.success,
   },
   rateValue: {
     color: colors.success,
@@ -302,9 +302,9 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: colors.divider,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.divider,
     marginBottom: spacing.md,
   },
   perkItem: {

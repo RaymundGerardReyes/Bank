@@ -1,4 +1,4 @@
-import notifee, { AndroidImportance } from '@notifee/react-native';
+import notifee, { AndroidImportance } from './notifeeSafe';
 import { Client } from '@stomp/stompjs';
 import { ENV } from '../../config/env';
 import { navigate } from '../../navigation/navigationUtils';
@@ -88,7 +88,7 @@ export const pushNotificationService = {
 
     stompClient.activate();
 
-    notifee.onForegroundEvent(({ type, detail }) => {
+    notifee.onForegroundEvent(({ type, detail }: any) => {
       if (type === 1 && detail.notification?.data?.route) {
         const targetRoute = detail.notification.data.route;
         if (targetRoute === '/transactions/history') navigate('Transactions');

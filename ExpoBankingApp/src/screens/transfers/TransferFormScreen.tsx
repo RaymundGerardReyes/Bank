@@ -13,13 +13,17 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../../components/common/Button';
+import { Card } from '../../components/common/Card';
+import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { Input } from '../../components/common/Input';
+import { SectionHeader } from '../../components/common/SectionHeader';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
 import { useAccounts } from '../../hooks/useAccounts';
 import { idempotencyKeyService } from '../../services/transaction/idempotencyKeyService';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 import { formatCurrency, maskAccountNumber } from '../../utils/formatters';
 
 const PRESET_AMOUNTS = [25, 50, 100, 250, 500];
@@ -31,28 +35,43 @@ export const TransferFormScreen = () => {
   const { accounts } = useAccounts();
 
   const initialSource = route.params?.sourceAccountNumber;
+  const initialDest = route.params?.destinationAccountNumber;
+  const initialAmount = route.params?.amount;
+
   const [selectedSourceAcc, setSelectedSourceAcc] = React.useState<string>(initialSource || '');
-  const [destAcc, setDestAcc] = React.useState('');
-  const [amount, setAmount] = React.useState('');
+  const [destAcc, setDestAcc] = React.useState<string>(initialDest || '');
+  const [amount, setAmount] = React.useState<string>(initialAmount ? String(initialAmount) : '');
   const [description, setDescription] = React.useState('');
   const [error, setError] = React.useState('');
 
-  // Auto-select first active account if not already selected
   React.useEffect(() => {
     if (initialSource) {
       setSelectedSourceAcc(initialSource);
     } else if (accounts && accounts.length > 0 && !selectedSourceAcc) {
-      const active = accounts.find((a) => a.status === 'ACTIVE') || accounts[0];
+      const active = accounts.find((account) => account.status === 'ACTIVE') || accounts[0];
       setSelectedSourceAcc(active.accountNumber);
     }
   }, [accounts, initialSource, selectedSourceAcc]);
 
-  const activeAccount = accounts?.find((a) => a.accountNumber === selectedSourceAcc);
+  React.useEffect(() => {
+    if (initialDest && !destAcc) {
+      setDestAcc(initialDest);
+    }
+    if (initialAmount && !amount) {
+      setAmount(String(initialAmount));
+    }
+  }, [initialDest, initialAmount]);
+
+  const activeAccount = accounts?.find((account) => account.accountNumber === selectedSourceAcc);
+  const activeCurrency = activeAccount?.currency || 'PHP';
+
+  const otherOwnAccounts = React.useMemo(() => {
+    if (!accounts) return [];
+    return accounts.filter((account) => account.accountNumber !== selectedSourceAcc && account.status === 'ACTIVE');
+  }, [accounts, selectedSourceAcc]);
 
   const handleSetMax = () => {
-    if (activeAccount) {
-      setAmount(String(activeAccount.balance || 0));
-    }
+    if (activeAccount) setAmount(String(activeAccount.balance || 0));
   };
 
   const handleProceed = () => {
@@ -62,19 +81,43 @@ export const TransferFormScreen = () => {
     const cleanDest = destAcc.replace(/\s/g, '');
 
     if (!cleanSource) {
-      setError('Please select a source funding account.');
+      setError('Select the account to transfer from.');
+      return;
+    }
+    if (cleanSource.includes('*') || cleanSource.includes('•')) {
+      setError('Source account number cannot be masked.');
       return;
     }
     if (!cleanDest) {
-      setError('Please enter the recipient account number.');
+      setError('Enter the recipient account number.');
+      return;
+    }
+    if (cleanDest.includes('*') || cleanDest.includes('•')) {
+      setError('Masked account numbers cannot be used for transfers. Please enter the complete unmasked account number.');
+      return;
+    }
+    if (!/^[A-Za-z0-9_-]{3,50}$/.test(cleanDest)) {
+      setError('Recipient account number must be between 3 and 50 valid characters.');
       return;
     }
     if (cleanSource === cleanDest) {
       setError('Source and recipient account numbers cannot be identical.');
       return;
     }
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError('Transfer amount must be greater than $0.00.');
+
+    // Pre-flight check: Prevent cross-currency failure if target is another known own account
+    const destOwnAccount = accounts?.find((account) => account.accountNumber === cleanDest);
+    if (destOwnAccount && destOwnAccount.currency && activeAccount && activeAccount.currency) {
+      if (destOwnAccount.currency !== activeAccount.currency) {
+        setError(
+          `Cross-currency transfer between ${activeAccount.currency} and ${destOwnAccount.currency} is currently disabled. Both accounts must hold ${activeAccount.currency}.`
+        );
+        return;
+      }
+    }
+
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      setError('Transfer amount must be greater than 0.');
       return;
     }
     if (activeAccount && activeAccount.status !== 'ACTIVE') {
@@ -82,12 +125,7 @@ export const TransferFormScreen = () => {
       return;
     }
     if (activeAccount && parsedAmount > activeAccount.balance) {
-      setError(
-        `Insufficient funds. Available balance is ${formatCurrency(
-          activeAccount.balance,
-          activeAccount.currency || 'USD'
-        )}.`
-      );
+      setError(`Available balance is ${formatCurrency(activeAccount.balance, activeCurrency)}.`);
       return;
     }
 
@@ -96,6 +134,7 @@ export const TransferFormScreen = () => {
       sourceAccountNumber: cleanSource,
       destinationAccountNumber: cleanDest,
       amount: parsedAmount,
+      currency: activeCurrency,
       description: description.trim() || 'Internal NovaBank Transfer',
       idempotencyKey,
     });
@@ -105,127 +144,198 @@ export const TransferFormScreen = () => {
     <SecureScreenWrapper style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <ScrollView
-          contentContainerStyle={[styles.scrollContainer, { paddingBottom: insets.bottom + 100 }]}
+          contentContainerStyle={[styles.scrollContainer, { paddingBottom: insets.bottom + 88 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Send Money</Text>
-            <Text style={styles.subtitle}>Instant fee-free internal transfer</Text>
+            <Text style={styles.title}>Transfer</Text>
+            <Text style={styles.subtitle}>Send money between NovaBank accounts.</Text>
           </View>
 
-          {/* Transfer Rail Toggle (Internal vs External Wire) */}
           <View style={styles.railToggleContainer}>
             <View style={[styles.railTab, styles.railTabActive]}>
-              <Ionicons name="flash-outline" size={16} color={colors.dominant} style={{ marginRight: 6 }} />
-              <Text style={styles.railTextActive}>NovaBank Instant</Text>
+              <Ionicons name="swap-horizontal-outline" size={16} color={colors.textInverse} />
+              <Text style={styles.railTextActive}>Internal</Text>
             </View>
             <TouchableOpacity
               style={styles.railTab}
               onPress={() => navigation.navigate('ExternalPayment', { sourceAccountNumber: selectedSourceAcc })}
+              accessibilityRole="button"
             >
-              <Ionicons name="globe-outline" size={16} color={colors.accent} style={{ marginRight: 6 }} />
-              <Text style={styles.railText}>External Wire / ACH</Text>
+              <Ionicons name="globe-outline" size={16} color={colors.primary} />
+              <Text style={styles.railText}>External</Text>
             </TouchableOpacity>
           </View>
 
           {error ? <ErrorBanner message={error} onDismiss={() => setError('')} /> : null}
 
-          {/* Hero Amount Input */}
-          <View style={styles.amountContainer}>
-            <Text style={styles.currencySymbol}>$</Text>
-            <TextInput
-              style={styles.amountInput}
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              placeholderTextColor={`${colors.secondary}80`}
-            />
-          </View>
-
-          {/* Quick Amount Chips */}
-          <View style={styles.chipsRow}>
-            {PRESET_AMOUNTS.map((val) => (
-              <TouchableOpacity
-                key={val}
-                style={[styles.chip, amount === String(val) && styles.chipActive]}
-                onPress={() => setAmount(String(val))}
-              >
-                <Text style={[styles.chipText, amount === String(val) && styles.chipTextActive]}>
-                  ${val}
-                </Text>
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity style={styles.chipMax} onPress={handleSetMax}>
-              <Text style={styles.chipMaxText}>MAX</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Source Account Carousel */}
-          <Text style={styles.sectionLabel}>Pay From Account</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.accountSelectorScroll}
-          >
-            {accounts?.map((acc) => {
-              const isSelected = acc.accountNumber === selectedSourceAcc;
-              const isAccActive = acc.status === 'ACTIVE';
-
-              return (
+          <Card style={styles.amountCard}>
+            <Text style={styles.sectionLabel}>Amount</Text>
+            <View style={styles.amountContainer}>
+              <Text style={styles.currencySymbol}>{activeCurrency}</Text>
+              <TextInput
+                style={styles.amountInput}
+                value={amount}
+                onChangeText={setAmount}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+                placeholderTextColor={colors.textMuted}
+                accessibilityLabel="Transfer amount"
+              />
+            </View>
+            <View style={styles.chipsRow}>
+              {PRESET_AMOUNTS.map((value) => (
                 <TouchableOpacity
-                  key={acc.accountNumber}
-                  style={[
-                    styles.accountCardPill,
-                    isSelected && styles.accountCardSelected,
-                    !isAccActive && styles.accountCardDisabled,
-                  ]}
-                  onPress={() => setSelectedSourceAcc(acc.accountNumber)}
-                  activeOpacity={0.8}
+                  key={value}
+                  style={[styles.chip, amount === String(value) && styles.chipActive]}
+                  onPress={() => setAmount(String(value))}
+                  accessibilityRole="button"
                 >
-                  <View style={styles.accountPillHeader}>
-                    <Text style={[styles.accountPillType, isSelected && styles.accountPillTypeActive]}>
-                      {acc.accountType}
-                    </Text>
-                    {isSelected && (
-                      <Ionicons name="checkmark-circle" size={16} color={colors.dominant} />
-                    )}
-                  </View>
-                  <Text style={[styles.accountPillNumber, isSelected && styles.accountPillTextActive]}>
-                    {maskAccountNumber(acc.accountNumber)}
-                  </Text>
-                  <Text style={[styles.accountPillBalance, isSelected && styles.accountPillTextActive]}>
-                    {formatCurrency(acc.balance, acc.currency || 'USD')}
+                  <Text style={[styles.chipText, amount === String(value) && styles.chipTextActive]}>
+                    {formatCurrency(value, activeCurrency)}
                   </Text>
                 </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+              ))}
+              <TouchableOpacity style={styles.chip} onPress={handleSetMax} accessibilityRole="button">
+                <Text style={styles.chipText}>Max</Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
 
-          {/* Form Fields Card */}
-          <View style={styles.card}>
+          <SectionHeader title="From Account" />
+          {accounts && accounts.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.accountSelectorScroll}
+            >
+              {accounts.map((account) => {
+                const isSelected = account.accountNumber === selectedSourceAcc;
+                const isActive = account.status === 'ACTIVE';
+
+                return (
+                  <TouchableOpacity
+                    key={account.accountNumber}
+                    style={[
+                      styles.accountOption,
+                      isSelected && styles.accountOptionSelected,
+                      !isActive && styles.accountOptionDisabled,
+                    ]}
+                    onPress={() => setSelectedSourceAcc(account.accountNumber)}
+                    activeOpacity={0.82}
+                    accessibilityRole="button"
+                  >
+                    <View style={styles.accountOptionHeader}>
+                      <Text style={[styles.accountType, isSelected && styles.selectedText]}>
+                        {account.accountType}
+                      </Text>
+                      {isSelected ? (
+                        <Ionicons name="checkmark-circle" size={18} color={colors.textInverse} />
+                      ) : null}
+                    </View>
+                    <Text style={[styles.accountNumber, isSelected && styles.selectedText]}>
+                      {maskAccountNumber(account.accountNumber)}
+                    </Text>
+                    <Text style={[styles.accountBalance, isSelected && styles.selectedText]}>
+                      {formatCurrency(account.balance, account.currency || 'PHP')}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          ) : (
+            <EmptyState
+              icon="wallet-outline"
+              title="No source accounts"
+              message="Open an account before starting an internal transfer."
+              actionLabel="Open account"
+              onActionPress={() => navigation.navigate('OpenAccount')}
+            />
+          )}
+
+          <SectionHeader title="Recipient" />
+          {otherOwnAccounts.length > 0 ? (
+            <View style={styles.ownAccountsSection}>
+              <Text style={styles.ownAccountsTitle}>My Other Accounts</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.ownAccountsScroll}
+              >
+                {otherOwnAccounts.map((account) => {
+                  const isSelected = destAcc === account.accountNumber;
+                  const isSameCurrency = account.currency === activeCurrency;
+                  return (
+                    <TouchableOpacity
+                      key={account.accountNumber}
+                      style={[
+                        styles.ownAccountChip,
+                        isSelected && styles.ownAccountChipSelected,
+                        !isSameCurrency && styles.ownAccountChipMismatch,
+                      ]}
+                      onPress={() => {
+                        if (isSameCurrency) {
+                          setDestAcc(account.accountNumber);
+                          setError('');
+                        } else {
+                          setError(
+                            `Cross-currency transfer from ${activeCurrency} to ${account.currency} is currently disabled. Both accounts must hold ${activeCurrency}.`
+                          );
+                        }
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.ownAccountChipHeader}>
+                        <Text style={[styles.ownAccountChipType, isSelected && styles.ownAccountChipTextSelected]}>
+                          {account.accountType}
+                        </Text>
+                        <Text style={[styles.ownAccountChipCurrency, isSelected && styles.ownAccountChipTextSelected]}>
+                          {account.currency}
+                        </Text>
+                      </View>
+                      <Text style={[styles.ownAccountChipNumber, isSelected && styles.ownAccountChipTextSelected]}>
+                        {maskAccountNumber(account.accountNumber)}
+                      </Text>
+                      {!isSameCurrency && (
+                        <View style={styles.currencyMismatchBadge}>
+                          <Text style={styles.currencyMismatchText}>Different Currency</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          ) : null}
+
+          <Card style={styles.formCard}>
             <Input
-              label="Recipient NovaBank Account Number"
-              placeholder="e.g. 4859 2200 1337 9999"
+              label="Recipient account number"
+              placeholder="Enter 16-digit account number"
               value={destAcc}
-              onChangeText={setDestAcc}
+              onChangeText={(text) => {
+                setDestAcc(text);
+                if (text.includes('*') || text.includes('•')) {
+                  setError('Masked account numbers cannot be used for transfers. Please enter the full unmasked digits.');
+                } else {
+                  setError('');
+                }
+              }}
               keyboardType="number-pad"
             />
-            <View style={styles.divider} />
             <Input
-              label="Memo / Reference Note (Optional)"
-              placeholder="e.g. Rent, Freelance Invoice, Dinner"
+              label="Memo"
+              placeholder="Optional note"
               value={description}
               onChangeText={setDescription}
             />
-          </View>
+          </Card>
 
-          {/* Review Transfer Button inside flow */}
           <Button
-            title="Review & Confirm Transfer"
+            title="Review transfer"
             onPress={handleProceed}
+            fullWidth
             style={styles.reviewButton}
           />
         </ScrollView>
@@ -237,202 +347,241 @@ export const TransferFormScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   flex: {
     flex: 1,
   },
   scrollContainer: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.xl,
   },
   header: {
     marginBottom: spacing.md,
-    marginTop: spacing.xs,
   },
   title: {
-    color: colors.accent,
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: -0.5,
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.xxl,
+    lineHeight: typography.lineHeight.xxl,
+    fontWeight: typography.fontWeight.heavy,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 2,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    marginTop: spacing.xs,
   },
   railToggleContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceAlt,
     borderRadius: spacing.borderRadius.md,
-    padding: 4,
+    padding: spacing.xs,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   railTab: {
     flex: 1,
+    minHeight: 42,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 8,
+    gap: spacing.sm,
+    borderRadius: spacing.borderRadius.sm,
   },
   railTabActive: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
   },
   railTextActive: {
-    color: colors.dominant,
-    fontSize: 12,
-    fontWeight: '800',
+    color: colors.textInverse,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   railText: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: '700',
+    color: colors.primary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  amountCard: {
+    marginBottom: spacing.lg,
+  },
+  sectionLabel: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   amountContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
   },
   currencySymbol: {
-    fontSize: 44,
-    fontWeight: '800',
-    color: colors.accent,
-    marginRight: 6,
-    marginTop: -4,
+    color: colors.primary,
+    fontSize: typography.fontSize.lg,
+    lineHeight: typography.lineHeight.lg,
+    fontWeight: typography.fontWeight.heavy,
+    marginRight: spacing.sm,
   },
   amountInput: {
-    fontSize: 54,
-    fontWeight: '900',
-    color: colors.accent,
-    minWidth: 140,
-    textAlign: 'center',
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 40,
+    lineHeight: 48,
+    fontWeight: typography.fontWeight.heavy,
+    paddingVertical: 0,
   },
   chipsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 6,
-    marginBottom: spacing.xl,
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
   chip: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
+    minHeight: spacing.touchTarget,
+    borderRadius: spacing.borderRadius.sm,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
   },
   chipActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   chipText: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '700',
+    color: colors.primary,
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.fontWeight.semibold,
   },
   chipTextActive: {
-    color: colors.dominant,
-  },
-  chipMax: {
-    backgroundColor: '#FEF3C7',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  chipMaxText: {
-    color: '#B45309',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  sectionLabel: {
-    color: colors.accent,
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: spacing.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: colors.textInverse,
   },
   accountSelectorScroll: {
-    gap: 12,
-    paddingBottom: spacing.lg,
+    gap: spacing.ms,
+    paddingBottom: spacing.sm,
   },
-  accountCardPill: {
-    width: 170,
+  accountOption: {
+    width: 176,
     backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.md,
     padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  accountOptionSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  accountOptionDisabled: {
+    opacity: 0.45,
+  },
+  accountOptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  accountType: {
+    color: colors.primary,
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.fontWeight.heavy,
+  },
+  accountNumber: {
+    color: colors.textMuted,
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
+    marginBottom: spacing.sm,
+  },
+  accountBalance: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.md,
+    lineHeight: typography.lineHeight.md,
+    fontWeight: typography.fontWeight.heavy,
+  },
+  selectedText: {
+    color: colors.textInverse,
+  },
+  ownAccountsSection: {
+    marginBottom: spacing.md,
+  },
+  ownAccountsTitle: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  ownAccountsScroll: {
+    gap: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
+  ownAccountChip: {
+    backgroundColor: colors.surface,
+    borderRadius: spacing.borderRadius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
+    minWidth: 130,
   },
-  accountCardSelected: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+  ownAccountChipSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
-  accountCardDisabled: {
-    opacity: 0.4,
+  ownAccountChipMismatch: {
+    borderColor: colors.warning,
+    backgroundColor: colors.surfaceAlt,
   },
-  accountPillHeader: {
+  ownAccountChipHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
   },
-  accountPillType: {
-    color: colors.secondary,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+  ownAccountChipType: {
+    color: colors.primary,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.heavy,
   },
-  accountPillTypeActive: {
-    color: colors.dominant,
+  ownAccountChipCurrency: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
   },
-  accountPillNumber: {
+  ownAccountChipNumber: {
     color: colors.textMuted,
-    fontSize: 12,
+    fontSize: typography.fontSize.xs,
     fontFamily: 'monospace',
-    marginBottom: 6,
   },
-  accountPillBalance: {
-    color: colors.accent,
-    fontSize: 15,
-    fontWeight: '800',
+  ownAccountChipTextSelected: {
+    color: colors.textInverse,
   },
-  accountPillTextActive: {
-    color: colors.dominant,
+  currencyMismatchBadge: {
+    marginTop: 4,
+    backgroundColor: colors.warningBg,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
   },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: spacing.borderRadius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: spacing.xl,
+  currencyMismatchText: {
+    color: colors.warning,
+    fontSize: 9,
+    fontWeight: typography.fontWeight.bold,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#E2E8F0',
-    marginVertical: spacing.md,
+  formCard: {
+    paddingBottom: spacing.xs,
+    marginBottom: spacing.lg,
   },
   reviewButton: {
-    borderRadius: spacing.borderRadius.md,
-    paddingVertical: 16,
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: spacing.sm,
   },
 });

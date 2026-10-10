@@ -43,7 +43,7 @@ export const ForgotPasswordScreen = () => {
     setLoading(true);
     try {
       // Simulate/Trigger reset flow
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await new Promise((resolve) => setTimeout(() => resolve(undefined), 1200));
       setIsSent(true);
     } catch {
       setError('Unable to send password reset request. Please try again.');
@@ -145,7 +145,7 @@ export const ForgotPasswordScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceAlt,
   },
   flex: {
     flex: 1,
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     marginBottom: spacing.md,
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 4 },
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.lg,
     padding: spacing.xl,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -241,12 +241,12 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: '#F0F9FF',
+    backgroundColor: colors.infoBg,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: '#BAE6FD',
+    borderColor: colors.info,
   },
   successTitle: {
     color: colors.accent,
@@ -266,16 +266,16 @@ const styles = StyleSheet.create({
   securityTipCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFBEB',
+    backgroundColor: colors.warningBg,
     borderRadius: spacing.borderRadius.md,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: colors.warning,
     marginBottom: spacing.xxl,
   },
   securityTipText: {
     flex: 1,
-    color: '#92400E',
+    color: colors.warning,
     fontSize: 12,
     lineHeight: 17,
   },

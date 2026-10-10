@@ -2,9 +2,12 @@ import { InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { logger } from '../../../utils/logger';
 
 export const loggingRequestInterceptor = (config: InternalAxiosRequestConfig) => {
+  const headers = typeof (config.headers as any)?.toJSON === 'function'
+    ? (config.headers as any).toJSON()
+    : { ...config.headers };
   logger.api(`OUTBOUND ${config.method?.toUpperCase()} ${config.url}`, {
     params: config.params,
-    headers: { ...config.headers },
+    headers,
   });
   return config;
 };

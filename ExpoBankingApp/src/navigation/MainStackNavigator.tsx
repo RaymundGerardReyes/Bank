@@ -12,6 +12,7 @@ import { AuditLogScreen } from '../screens/admin/AuditLogScreen';
 import { ProductCatalogScreen } from '../screens/products/ProductCatalogScreen';
 import { DeviceManagementScreen } from '../screens/profile/DeviceManagementScreen';
 import { SecuritySettingsScreen } from '../screens/profile/SecuritySettingsScreen';
+import { FaceEnrollmentScreen } from '../screens/profile/FaceEnrollmentScreen';
 import { StatementListScreen } from '../screens/statements/StatementListScreen';
 import { StatementViewerScreen } from '../screens/statements/StatementViewerScreen';
 import { TransactionDetailScreen } from '../screens/transactions/TransactionDetailScreen';
@@ -24,6 +25,7 @@ import { WithdrawScreen } from '../screens/transfers/WithdrawScreen';
 import { QrScannerScreen } from '../screens/qr/QrScannerScreen';
 
 import { colors } from '../theme/colors';
+import { typography } from '../theme/typography';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
 
@@ -32,9 +34,13 @@ export const MainStackNavigator = () => {
         <Stack.Navigator
             screenOptions={{
                 headerShown: true,
-                headerStyle: { backgroundColor: colors.dominant },
-                headerTintColor: colors.accent,
-                headerTitleStyle: { fontWeight: '800' },
+                headerStyle: { backgroundColor: colors.background },
+                headerTintColor: colors.primary,
+                headerTitleStyle: {
+                    fontSize: typography.fontSize.lg,
+                    fontWeight: typography.fontWeight.bold,
+                    color: colors.textPrimary,
+                },
                 headerShadowVisible: false,
             }}
         >
@@ -126,6 +132,11 @@ export const MainStackNavigator = () => {
                 name="AuditLogs"
                 component={AuditLogScreen}
                 options={{ title: 'Audit Trail' }}
+            />
+            <Stack.Screen
+                name="FaceEnrollment"
+                component={FaceEnrollmentScreen}
+                options={{ title: 'Face ID Registration' }}
             />
 
             {/* 6. QR Scanner & Live Passkey Authorization */}

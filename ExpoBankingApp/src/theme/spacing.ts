@@ -1,15 +1,20 @@
 export const spacing = {
   xs: 4,
   sm: 8,
+  ms: 12,
   md: 16,
+  ml: 20,
   lg: 24,
   xl: 32,
   xxl: 48,
+  screen: 20,
+  touchTarget: 44,
   borderRadius: {
-    sm: 6,
+    xs: 4,
+    sm: 8,
     md: 12,
-    lg: 20,
-    xl: 28,
+    lg: 16,
+    xl: 22,
     full: 9999,
   },
 };
