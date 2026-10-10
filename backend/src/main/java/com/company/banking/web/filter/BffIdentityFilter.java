@@ -34,7 +34,7 @@ public class BffIdentityFilter extends OncePerRequestFilter {
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/api/v1/auth/")
                 || path.startsWith("/api/v1/webhooks/payment/")
-                || path.startsWith("/api/v1/checkout/sessions/")
+                || path.startsWith("/api/v1/checkout/sessions")
                 || path.startsWith("/ws/")
                 || path.equals("/status")
                 || path.startsWith("/api/v1/health")

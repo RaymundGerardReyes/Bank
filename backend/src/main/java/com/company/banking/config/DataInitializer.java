@@ -17,6 +17,8 @@ import com.company.banking.orchestration.domain.PaymentRailConfiguration;
 import com.company.banking.orchestration.infrastructure.PaymentRailConfigurationJpaRepository;
 import com.company.banking.merchant.infrastructure.MerchantJpaRepository;
 import com.company.banking.merchant.domain.Merchant;
+import com.company.banking.payment.domain.PaymentParticipant;
+import com.company.banking.payment.infrastructure.PaymentParticipantJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -40,6 +42,7 @@ public class DataInitializer implements CommandLineRunner {
     private final StatementPersistencePort statementPersistencePort;
     private final AuditLogPersistencePort auditLogPersistencePort;
     private final PaymentRailConfigurationJpaRepository paymentRailConfigurationJpaRepository;
+    private final PaymentParticipantJpaRepository paymentParticipantJpaRepository;
     private final MerchantJpaRepository merchantJpaRepository;
     private final com.company.banking.apigateway.infrastructure.ApiKeyJpaRepository apiKeyJpaRepository;
     private final jakarta.persistence.EntityManager entityManager;
@@ -64,6 +67,24 @@ public class DataInitializer implements CommandLineRunner {
                 PaymentRailConfiguration.builder().railName("PESONET").processingType("BATCH").maxAmountPerTx(new BigDecimal("500000.00")).active(true).build(),
                 PaymentRailConfiguration.builder().railName("FEDWIRE").processingType("REAL_TIME").maxAmountPerTx(new BigDecimal("1000000.00")).active(true).build(),
                 PaymentRailConfiguration.builder().railName("ACH").processingType("BATCH").maxAmountPerTx(new BigDecimal("1000000.00")).active(true).build()
+            ));
+        }
+
+        // Seed payment participants (institutions) if not present
+        if (paymentParticipantJpaRepository.count() == 0) {
+            log.info("Seeding Payment Participants / Financial Institutions Directory");
+            paymentParticipantJpaRepository.saveAll(List.of(
+                PaymentParticipant.builder().bic("021000021").institutionName("Chase Bank").role("RECEIVER").rail("FEDWIRE,ACH").status("ACTIVE").settlementAccount("SETTLE-CHASE-01").connectivityStatus("ONLINE").build(),
+                PaymentParticipant.builder().bic("026009593").institutionName("Bank of America").role("RECEIVER").rail("FEDWIRE,ACH").status("ACTIVE").settlementAccount("SETTLE-BOFA-01").connectivityStatus("ONLINE").build(),
+                PaymentParticipant.builder().bic("121000248").institutionName("Wells Fargo").role("RECEIVER").rail("FEDWIRE,ACH").status("ACTIVE").settlementAccount("SETTLE-WF-01").connectivityStatus("ONLINE").build(),
+                PaymentParticipant.builder().bic("021000089").institutionName("Citibank N.A.").role("RECEIVER").rail("FEDWIRE,ACH").status("ACTIVE").settlementAccount("SETTLE-CITI-01").connectivityStatus("ONLINE").build(),
+                PaymentParticipant.builder().bic("BDOUPHM2").institutionName("BDO Unibank").role("RECEIVER").rail("INSTAPAY,PESONET").status("ACTIVE").settlementAccount("SETTLE-BDO-01").connectivityStatus("ONLINE").build(),
+                PaymentParticipant.builder().bic("BOPIPHMM").institutionName("Bank of the Philippine Islands").role("RECEIVER").rail("INSTAPAY,PESONET").status("ACTIVE").settlementAccount("SETTLE-BPI-01").connectivityStatus("ONLINE").build(),
+                PaymentParticipant.builder().bic("MBTCPHMM").institutionName("Metrobank").role("RECEIVER").rail("INSTAPAY,PESONET").status("ACTIVE").settlementAccount("SETTLE-METRO-01").connectivityStatus("ONLINE").build(),
+                PaymentParticipant.builder().bic("UBPHPHMM").institutionName("UnionBank of the Philippines").role("RECEIVER").rail("INSTAPAY,PESONET").status("ACTIVE").settlementAccount("SETTLE-UBP-01").connectivityStatus("ONLINE").build(),
+                PaymentParticipant.builder().bic("HSBCUS33").institutionName("HSBC Bank USA").role("RECEIVER").rail("SWIFT").status("ACTIVE").settlementAccount("SETTLE-HSBC-01").connectivityStatus("ONLINE").build(),
+                PaymentParticipant.builder().bic("SCBLUS33").institutionName("Standard Chartered Bank").role("RECEIVER").rail("SWIFT").status("ACTIVE").settlementAccount("SETTLE-STAN-01").connectivityStatus("ONLINE").build(),
+                PaymentParticipant.builder().bic("BARCGB22").institutionName("Barclays Bank").role("RECEIVER").rail("SWIFT").status("ACTIVE").settlementAccount("SETTLE-BARC-01").connectivityStatus("ONLINE").build()
             ));
         }
         // DEV NOTE: This is the primary seeded test account.

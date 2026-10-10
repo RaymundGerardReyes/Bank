@@ -76,3 +76,13 @@ tasks.named('test') {
     forkEvery = 20
     maxHeapSize = "384m"
 }
+
+tasks.named('bootRun') {
+    jvmArgs(
+        '-Xmx384m',
+        '-XX:MaxMetaspaceSize=192m',
+        '-XX:+UseSerialGC',
+        '-XX:TieredStopAtLevel=1'
+    )
+}
+

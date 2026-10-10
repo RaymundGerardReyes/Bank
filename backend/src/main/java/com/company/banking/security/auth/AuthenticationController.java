@@ -38,6 +38,7 @@ import java.util.Optional;
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
+    private final DeviceAuthenticationService deviceAuthenticationService;
     private final CreateCustomerUseCase createCustomerUseCase;
     private final OtpService otpService;
     private final OtpVerificationService otpVerificationService;
@@ -70,6 +71,55 @@ public class AuthenticationController {
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
         AuthenticationResponse response = authenticationService.verifyFace(request);
         return ResponseEntity.ok(ApiResponse.success(response, "Biometric authentication successful", correlationId));
+    }
+
+    @PostMapping("/device/register")
+    public ResponseEntity<ApiResponse<Void>> registerDevice(@Valid @RequestBody com.company.banking.security.auth.dto.DeviceRegistrationRequest request) {
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        org.springframework.security.core.Authentication authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getName())) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Authenticated session required to register device");
+        }
+        Customer customer = customerPersistencePort.findByEmail(authentication.getName())
+                .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("Authenticated customer not found"));
+
+        deviceAuthenticationService.registerDevice(customer.getId(), request);
+        return ResponseEntity.ok(ApiResponse.success(null, "Device credential registered successfully", correlationId));
+    }
+
+    @PostMapping("/challenge")
+    public ResponseEntity<ApiResponse<com.company.banking.security.auth.dto.DeviceChallengeResponse>> createChallenge(@Valid @RequestBody com.company.banking.security.auth.dto.DeviceChallengeRequest request) {
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        com.company.banking.security.auth.dto.DeviceChallengeResponse response = deviceAuthenticationService.createChallenge(request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Challenge generated", correlationId));
+    }
+
+    @PostMapping("/device/login")
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> loginWithDevice(@Valid @RequestBody com.company.banking.security.auth.dto.DeviceLoginRequest request) {
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        AuthenticationResponse response = deviceAuthenticationService.loginWithDevice(request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Device biometric authentication successful", correlationId));
+    }
+
+    @PostMapping("/device/revoke")
+    public ResponseEntity<ApiResponse<Void>> revokeDevice(@Valid @RequestBody com.company.banking.security.auth.dto.DeviceRevocationRequest request) {
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        org.springframework.security.core.Authentication authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getName())) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Authenticated session required to revoke device");
+        }
+        Customer customer = customerPersistencePort.findByEmail(authentication.getName())
+                .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("Authenticated customer not found"));
+
+        deviceAuthenticationService.revokeDevice(customer.getId(), request);
+        return ResponseEntity.ok(ApiResponse.success(null, "Device credential revoked successfully", correlationId));
+    }
+
+    @GetMapping("/device/{deviceId}/status")
+    public ResponseEntity<ApiResponse<com.company.banking.security.auth.dto.DeviceStatusResponse>> getDeviceStatus(@PathVariable String deviceId) {
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        com.company.banking.security.auth.dto.DeviceStatusResponse response = deviceAuthenticationService.getDeviceStatus(deviceId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Device status retrieved", correlationId));
     }
 
     // NEW: Endpoint to generate and email the OTP with deduplication and cooldown guards

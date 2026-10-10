@@ -28,6 +28,11 @@ fx:
   provider:
     type: fake
 
+banking:
+  security:
+    biometric:
+      provider: mock
+
 logging:
   level:
     root: INFO

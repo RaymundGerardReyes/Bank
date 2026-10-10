@@ -51,6 +51,11 @@ payment:
   webhook-public-url: ${PAYMENT_WEBHOOK_PUBLIC_URL:}
   webhook-host: ${PAYMENT_WEBHOOK_HOST:}
 
+banking:
+  security:
+    biometric:
+      provider: ${BIOMETRIC_PROVIDER_TYPE:production}
+
 fx:
   provider:
     type: ${FX_PROVIDER_TYPE:fake}

@@ -23,6 +23,15 @@ public class TransferController {
 
     private final TransactionUseCase transactionUseCase;
     private final ExternalPaymentUseCase externalPaymentUseCase;
+    private final com.company.banking.transaction.application.port.in.GetPaymentParticipantsUseCase getPaymentParticipantsUseCase;
+
+    @org.springframework.web.bind.annotation.GetMapping({"/institutions", "/institutions/", "/banks", "/banks/"})
+    public ResponseEntity<ApiResponse<java.util.List<com.company.banking.transaction.api.dto.InstitutionResponse>>> getInstitutions(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String rail) {
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        java.util.List<com.company.banking.transaction.api.dto.InstitutionResponse> institutions = getPaymentParticipantsUseCase.getActiveInstitutions(rail);
+        return ResponseEntity.ok(ApiResponse.success(institutions, "Active financial institutions retrieved successfully", correlationId));
+    }
 
     @PostMapping({"", "/", "/internal", "/internal/"})
     public ResponseEntity<ApiResponse<TransactionResponse>> transferInternal(

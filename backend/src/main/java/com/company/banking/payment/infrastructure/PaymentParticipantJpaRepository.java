@@ -9,4 +9,6 @@ import java.util.Optional;
 @Repository
 public interface PaymentParticipantJpaRepository extends JpaRepository<PaymentParticipant, Long> {
     Optional<PaymentParticipant> findByBic(String bic);
+    java.util.List<PaymentParticipant> findByStatus(String status);
+    java.util.List<PaymentParticipant> findByRailContainingIgnoreCaseAndStatus(String rail, String status);
 }

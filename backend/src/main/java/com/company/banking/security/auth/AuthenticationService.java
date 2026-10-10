@@ -20,6 +20,7 @@ public class AuthenticationService {
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
     private final LoginAttemptService loginAttemptService;
+    private final com.company.banking.security.auth.application.port.out.BiometricAuthenticationPort biometricAuthenticationPort;
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         // SANITIZE: Normalize to lowercase and trim so login always works regardless of typos/case
@@ -51,19 +52,9 @@ public class AuthenticationService {
     }
 
     public AuthenticationResponse verifyFace(com.company.banking.security.auth.dto.FaceVerificationRequest request) {
-        if (request.getEmbedding() == null || request.getEmbedding().isEmpty()) {
-            throw new IllegalArgumentException("Invalid face embedding vector");
+        if (request == null) {
+            throw new IllegalArgumentException("Biometric verification request cannot be null");
         }
-        
-        // Biometric login authentication guard
-        Customer customer = customerPersistencePort.findById(1L)
-                .orElseThrow(() -> new RuntimeException("No suitable user found for biometric login mock"));
-
-        if (customer.isLocked()) {
-            throw new org.springframework.security.authentication.LockedException("Customer account is locked");
-        }
-
-        String jwtToken = jwtTokenProvider.generateToken(customer);
-        return AuthenticationResponse.bearer(jwtToken, CustomerResponse.fromEntity(customer));
+        return biometricAuthenticationPort.authenticateBiometric(request);
     }
 }

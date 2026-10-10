@@ -69,16 +69,20 @@ public class InternalTransferService implements TransactionUseCase {
             return TransactionResponse.fromEntity(existingTx.get());
         }
 
-        if (request.getScheduledDate() != null && !request.getScheduledDate().trim().isEmpty()) {
-            return scheduledTransferService.scheduleTransfer(request);
-        }
-
         // 2. Prevent logical errors
-        if (request.getSourceAccountNumber().equals(request.getDestinationAccountNumber())) {
+        if (request.getSourceAccountNumber() == null || request.getDestinationAccountNumber() == null) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Source and destination account numbers are required.");
+        }
+        if (request.getSourceAccountNumber().trim().equals(request.getDestinationAccountNumber().trim())) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Source and destination accounts cannot be the same.");
         }
         if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Transfer amount must be strictly positive.");
+        }
+
+        // 3. Deferred execution path
+        if (request.getScheduledDate() != null && !request.getScheduledDate().trim().isEmpty()) {
+            return scheduledTransferService.scheduleTransfer(request);
         }
 
         // Validate accounts exist before locking to throw specific 404s

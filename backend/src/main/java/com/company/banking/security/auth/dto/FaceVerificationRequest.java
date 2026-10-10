@@ -12,4 +12,17 @@ import java.util.List;
 @AllArgsConstructor
 public class FaceVerificationRequest {
     private List<Double> embedding;
+    private String email;
+    private String deviceId;
+    private String challenge;
+    private String signature;
+
+    public FaceVerificationRequest(List<Double> embedding) {
+        this.embedding = embedding;
+    }
+
+    public FaceVerificationRequest(List<Double> embedding, String email) {
+        this.embedding = embedding;
+        this.email = email;
+    }
 }
