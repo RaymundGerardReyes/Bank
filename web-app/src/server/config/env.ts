@@ -1,23 +1,30 @@
 import "server-only";
 import { z } from "zod";
 
-const resolveBackendOrigin = (url?: string): string => {
+export const resolveBackendUrl = (url?: string): string => {
   if (!url) return "";
   let resolved = url;
   const isDockerContainer = process.env.RUNTIME_ENV === "docker";
 
-  if (!isDockerContainer && process.env.NODE_ENV === "development") {
+  if (!isDockerContainer) {
     if (resolved.includes("://backend:8080")) {
       resolved = resolved.replace("://backend:8080", "://127.0.0.1:8086");
+    } else if (resolved.includes("://backend:8086")) {
+      resolved = resolved.replace("://backend:8086", "://127.0.0.1:8086");
     } else if (resolved.includes("://backend")) {
       resolved = resolved.replace("://backend", "://127.0.0.1:8086");
     }
-  } else if (isDockerContainer) {
+  } else {
     if (resolved.includes("://backend:8086")) {
       resolved = resolved.replace("://backend:8086", "://backend:8080");
     }
   }
+  return resolved;
+};
 
+export const resolveBackendOrigin = (url?: string): string => {
+  const resolved = resolveBackendUrl(url);
+  if (!resolved) return "";
   try {
     const parsedUrl = new URL(resolved);
     return `${parsedUrl.protocol}//${parsedUrl.host}`;
@@ -43,8 +50,8 @@ const serverEnvSchema = z.object({
   ),
   OPENAPI_SPEC_URL: z.preprocess(
     emptyToUndefined,
-    z.string().url().default("http://localhost:8080/v3/api-docs")
-  ),
+    z.string().url().default("http://127.0.0.1:8086/v3/api-docs")
+  ).transform(resolveBackendUrl),
   ENABLE_PASSKEY_AUTH: z.string().optional().default("true"),
   ENABLE_DEV_API_DOCS: z.string().optional().default("true"),
   UPSTASH_REDIS_REST_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),

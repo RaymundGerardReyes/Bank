@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       {/* We set a clean white background and deep navy text as the global default */}
       <body className="antialiased bg-dominant text-accent min-h-screen">
         <Providers>{children}</Providers>

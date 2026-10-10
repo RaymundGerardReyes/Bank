@@ -69,14 +69,18 @@ const MERCHANT_ROUTES = [
   "/settlements",
 ];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
   if (pathname === "/api/health") {
     return NextResponse.next();
   }
 
-  const sessionToken = request.cookies.get("bank_session")?.value;
+  // Extract session token from either HTTP-only cookie OR Authorization header (for mobile / API clients)
+  const cookieToken = request.cookies.get("bank_session")?.value;
+  const authHeader = request.headers.get("authorization");
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7).trim() : undefined;
+  const sessionToken = cookieToken || bearerToken;
   
   // Rate Limiting (Stateless Edge)
   if (ratelimit) {
@@ -91,13 +95,20 @@ export async function middleware(request: NextRequest) {
       }
     } catch (error) {
       // FAIL-SAFE: If Upstash is temporarily unreachable, log the error but allow the request.
-      console.error("[Middleware] Redis rate limiter unavailable:", error);
+      console.error("[Proxy] Redis rate limiter unavailable:", error);
     }
   }
 
   const isProtectedRoute = PROTECTED_ROUTES.some((route) => pathname === route || pathname.startsWith(route + "/"));
   const isInternalProxyRoute = INTERNAL_PROXY_ROUTES.some((route) => pathname.startsWith(route));
-  const isPublicProxyRoute = pathname.startsWith("/api/proxy/auth");
+  
+  // Public proxy routes allow unauthenticated clients (e.g. mobile app on splash/dashboard or guest checkout)
+  const isPublicProxyRoute = 
+    pathname.startsWith("/api/proxy/auth") ||
+    pathname.startsWith("/api/proxy/fx") ||
+    pathname.startsWith("/api/proxy/checkout/sessions") ||
+    pathname.startsWith("/api/proxy/webhooks");
+
   const isAdminOpsRoute = ADMIN_OPS_ROUTES.some((route) => pathname === route || pathname.startsWith(route + "/"));
   const isMerchantRoute = MERCHANT_ROUTES.some((route) => pathname === route || pathname.startsWith(route + "/"));
   const isExternalApiRoute = pathname === "/api/v1" || pathname.startsWith("/api/v1/");
@@ -117,18 +128,30 @@ export async function middleware(request: NextRequest) {
     try {
       const decoded = jwtDecode<{ role: string; exp?: number }>(sessionToken);
       if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+        if (pathname.startsWith("/api/")) {
+          return NextResponse.json({ success: false, message: "Unauthorized: Token expired" }, { status: 401 });
+        }
         const loginUrl = new URL("/login", request.url);
         loginUrl.searchParams.set("redirect", pathname);
         return NextResponse.redirect(loginUrl);
       }
       if (isAdminOpsRoute && decoded.role !== "ADMIN" && decoded.role !== "OPS_OFFICER") {
+        if (pathname.startsWith("/api/")) {
+          return NextResponse.json({ success: false, message: "Forbidden: Admin privileges required" }, { status: 403 });
+        }
         return NextResponse.redirect(new URL("/unauthorized", request.url));
       }
       if (isMerchantRoute && decoded.role !== "MERCHANT" && decoded.role !== "ADMIN" && decoded.role !== "OPS_OFFICER") {
+        if (pathname.startsWith("/api/")) {
+          return NextResponse.json({ success: false, message: "Forbidden: Merchant privileges required" }, { status: 403 });
+        }
         return NextResponse.redirect(new URL("/unauthorized", request.url));
       }
     } catch {
-      // If JWT is malformed, force re-login
+      // If JWT is malformed, force re-login or return 401
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ success: false, message: "Unauthorized: Malformed session token" }, { status: 401 });
+      }
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
@@ -143,6 +166,9 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
+// Backward compatibility alias for middleware callers
+export const middleware = proxy;
+
 export const config = {
   matcher: [
     /*
@@ -156,3 +182,4 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|api/auth|api/health).*)",
   ],
 };
+
