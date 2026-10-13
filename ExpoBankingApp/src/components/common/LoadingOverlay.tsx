@@ -13,7 +13,7 @@ export const LoadingOverlay = ({ visible, message = 'Processing...' }: LoadingOv
 
   return (
     <View style={styles.overlay}>
-      <ActivityIndicator size="large" color={colors.accent} />
+      <ActivityIndicator size="large" color={colors.textInverse} />
       <Text style={styles.message}>{message}</Text>
     </View>
   );
@@ -26,14 +26,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(9, 13, 22, 0.85)',
+    backgroundColor: 'rgba(18, 49, 43, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 999,
   },
   message: {
-    color: colors.textPrimary,
+    color: colors.textInverse,
     marginTop: spacing.md,
     fontSize: 16,
+    fontWeight: '600',
   },
 });

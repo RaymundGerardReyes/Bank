@@ -196,7 +196,9 @@ export const DashboardScreen = () => {
               <View style={styles.actionIcon}>
                 <Ionicons name={action.icon} size={22} color={colors.primary} />
               </View>
-              <Text style={styles.actionLabel} numberOfLines={1}>{action.label}</Text>
+              <Text style={styles.actionLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                {action.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>

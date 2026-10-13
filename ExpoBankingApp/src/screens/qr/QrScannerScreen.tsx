@@ -596,7 +596,7 @@ const styles = StyleSheet.create({
   },
   centerContainer: {
     flex: 1,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
@@ -772,7 +772,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: spacing.xl,

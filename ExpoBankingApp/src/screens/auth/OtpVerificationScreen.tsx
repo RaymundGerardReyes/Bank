@@ -60,6 +60,7 @@ export const OtpVerificationScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   keyboardAvoid: {
     flex: 1,

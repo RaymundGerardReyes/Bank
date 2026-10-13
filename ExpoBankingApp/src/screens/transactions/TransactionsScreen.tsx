@@ -1,5 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 
 // Mock Data representing your backend Ledger
@@ -12,30 +14,38 @@ const TRANSACTIONS = [
 ];
 
 export default function TransactionsScreen() {
+    const insets = useSafeAreaInsets();
 
-    const renderTransaction = ({ item }: any) => (
-        <TouchableOpacity style={styles.transactionRow} activeOpacity={0.7}>
-            <View style={styles.leftSection}>
-                {/* Visual indicator for debit/credit */}
-                <View style={[styles.iconContainer, item.type === 'credit' ? styles.iconCredit : styles.iconDebit]}>
-                    <Text style={styles.iconText}>{item.title.charAt(0)}</Text>
+    const renderTransaction = ({ item }: any) => {
+        const isCredit = item.type === 'credit';
+        return (
+            <TouchableOpacity style={styles.transactionRow} activeOpacity={0.7}>
+                <View style={styles.leftSection}>
+                    {/* Visual indicator for debit/credit */}
+                    <View style={[styles.iconContainer, isCredit ? styles.iconCredit : styles.iconDebit]}>
+                        <Ionicons
+                            name={isCredit ? 'arrow-down' : 'arrow-up'}
+                            size={20}
+                            color={isCredit ? colors.success : colors.textPrimary}
+                        />
+                    </View>
+                    <View>
+                        <Text style={styles.txTitle}>{item.title}</Text>
+                        <Text style={styles.txCategory}>{item.category} • {item.date}</Text>
+                    </View>
                 </View>
-                <View>
-                    <Text style={styles.txTitle}>{item.title}</Text>
-                    <Text style={styles.txCategory}>{item.category} • {item.date}</Text>
+                <View style={styles.rightSection}>
+                    <Text style={[styles.txAmount, isCredit ? styles.amountCredit : styles.amountDebit]}>
+                        {item.amount}
+                    </Text>
                 </View>
-            </View>
-            <View style={styles.rightSection}>
-                <Text style={[styles.txAmount, item.type === 'credit' ? styles.amountCredit : styles.amountDebit]}>
-                    {item.amount}
-                </Text>
-            </View>
-        </TouchableOpacity>
-    );
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
                 <Text style={styles.headerTitle}>Transactions</Text>
                 <Text style={styles.headerSubtitle}>Recent Ledger Activity</Text>
             </View>
@@ -66,26 +76,26 @@ export default function TransactionsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    header: { paddingHorizontal: 24, paddingTop: 40, paddingBottom: 20 },
+    header: { paddingHorizontal: 24, paddingBottom: 20 },
     headerTitle: { fontSize: 28, fontWeight: '800', color: colors.primary },
-    headerSubtitle: { fontSize: 16, fontWeight: '500', color: colors.info, marginTop: 4 },
+    headerSubtitle: { fontSize: 16, fontWeight: '500', color: colors.textSecondary, marginTop: 4 },
     filterContainer: { flexDirection: 'row', paddingHorizontal: 24, marginBottom: 16, gap: 12 },
     filterChip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
     filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     filterText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
-    filterTextActive: { fontSize: 14, fontWeight: '700', color: colors.surface },
+    filterTextActive: { fontSize: 14, fontWeight: '700', color: colors.textInverse },
     listContainer: { paddingHorizontal: 24, paddingBottom: 40 },
     transactionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
     leftSection: { flexDirection: 'row', alignItems: 'center', flex: 1 },
     iconContainer: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
     iconCredit: { backgroundColor: colors.successBg },
-    iconDebit: { backgroundColor: colors.infoBg },
+    iconDebit: { backgroundColor: colors.surfaceAlt },
     iconText: { fontSize: 18, fontWeight: '800', color: colors.primary },
-    txTitle: { fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: 4 },
-    txCategory: { fontSize: 13, fontWeight: '500', color: colors.info },
+    txTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 },
+    txCategory: { fontSize: 13, fontWeight: '500', color: colors.textSecondary },
     rightSection: { alignItems: 'flex-end' },
     txAmount: { fontSize: 16, fontWeight: '800' },
     amountCredit: { color: colors.success },
-    amountDebit: { color: colors.primary },
+    amountDebit: { color: colors.textPrimary },
     separator: { height: 1, backgroundColor: colors.divider },
 });

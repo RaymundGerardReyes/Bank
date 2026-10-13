@@ -25,8 +25,10 @@ export const BiometricPrompt = ({
 const styles = StyleSheet.create({
   container: {
     padding: spacing.lg,
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     marginVertical: spacing.md,
   },

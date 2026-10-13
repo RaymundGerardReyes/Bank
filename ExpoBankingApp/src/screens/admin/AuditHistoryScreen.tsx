@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,13 +17,13 @@ export default function AuditHistoryScreen() {
     const insets = useSafeAreaInsets();
     const [activeFilter, setActiveFilter] = useState('All');
 
-    // Helper to determine icon letter and color based on event type
+    // Helper to determine icon name and color based on event type
     const getIconConfig = (type: string) => {
         switch (type) {
-            case 'security': return { letter: 'S', bg: colors.dangerBg, color: colors.danger };
-            case 'transaction': return { letter: 'T', bg: colors.infoBg, color: colors.info };
-            case 'system': return { letter: 'C', bg: colors.surfaceAlt, color: colors.textSecondary };
-            default: return { letter: 'A', bg: colors.primaryLight, color: colors.primary };
+            case 'security': return { iconName: 'shield-checkmark-outline' as const, bg: colors.dangerBg, color: colors.danger };
+            case 'transaction': return { iconName: 'swap-horizontal' as const, bg: colors.infoBg, color: colors.info };
+            case 'system': return { iconName: 'settings-outline' as const, bg: colors.surfaceAlt, color: colors.textSecondary };
+            default: return { iconName: 'document-text-outline' as const, bg: colors.primaryLight, color: colors.primary };
         }
     };
 
@@ -35,7 +36,7 @@ export default function AuditHistoryScreen() {
                 <View style={styles.leftSection}>
                     {/* Event Type Icon */}
                     <View style={[styles.iconContainer, { backgroundColor: icon.bg }]}>
-                        <Text style={[styles.iconText, { color: icon.color }]}>{icon.letter}</Text>
+                        <Ionicons name={icon.iconName} size={22} color={icon.color} />
                     </View>
 
                     {/* Event Details */}
@@ -107,7 +108,7 @@ const styles = StyleSheet.create({
     filterChip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
     filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     filterText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
-    filterTextActive: { fontSize: 13, fontWeight: '700', color: colors.surface },
+    filterTextActive: { fontSize: 13, fontWeight: '700', color: colors.textInverse },
 
     listContainer: { paddingHorizontal: 24, paddingBottom: 40 },
 

@@ -226,7 +226,11 @@ export const NotificationsScreen = () => {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollBody}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.modalScrollView}
+                contentContainerStyle={styles.modalScrollBody}
+              >
                 <Text style={styles.modalMessage}>{selectedNotification.message}</Text>
                 <Card style={styles.auditCard}>
                   <View style={styles.auditRow}>
@@ -394,7 +398,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: `${colors.textPrimary}80`,
+    backgroundColor: 'rgba(18, 49, 43, 0.75)',
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -426,6 +430,9 @@ const styles = StyleSheet.create({
     height: spacing.touchTarget,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modalScrollView: {
+    flexShrink: 1,
   },
   modalScrollBody: {
     paddingBottom: spacing.md,

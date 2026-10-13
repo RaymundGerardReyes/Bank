@@ -272,6 +272,11 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.medium,
     marginTop: spacing.md,
   },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
+    padding: spacing.lg,
+  },
   successContainer: {
     flex: 1,
     padding: spacing.lg,
@@ -355,6 +360,7 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     flex: 1,
+    width: '100%',
     padding: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -389,6 +395,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   footer: {
-    padding: spacing.lg,
+    width: '100%',
+    paddingTop: spacing.lg,
   },
 });

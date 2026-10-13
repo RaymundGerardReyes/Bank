@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: spacing.borderRadius.full,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     marginBottom: spacing.md,
   },
   iconMark: {

@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   currencySymbol: {
-    color: colors.primary,
+    color: colors.textPrimary,
     fontSize: typography.fontSize.lg,
     lineHeight: typography.lineHeight.lg,
     fontWeight: typography.fontWeight.heavy,

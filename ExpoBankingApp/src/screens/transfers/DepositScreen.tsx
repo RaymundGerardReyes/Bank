@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   currencySymbol: {
     fontSize: 36,
     fontWeight: typography.fontWeight.heavy,
-    color: colors.primary,
+    color: colors.textPrimary,
     marginRight: 6,
     marginTop: -4,
   },

@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   enrolledMeta: {
-    color: colors.textSecondary,
+    color: 'rgba(255, 255, 255, 0.75)',
     fontSize: 12,
     marginTop: 4,
   },
