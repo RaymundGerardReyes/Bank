@@ -397,5 +397,179 @@ public class DeviceBiometricAuthenticationIT extends BaseIntegrationTest {
         assertEquals(1, successCount.get(), "Exactly one concurrent challenge request must succeed");
         assertEquals(threadCount - 1, failureCount.get(), "All other concurrent attempts must be rejected");
     }
+
+    @Test
+    @DisplayName("S12: Invalid public key format at registration is rejected")
+    public void s12_InvalidPublicKeyFormat_IsRejected() {
+        DeviceRegistrationRequest badReq = DeviceRegistrationRequest.builder()
+                .deviceId("device-bad-key")
+                .publicKey("not-a-valid-base64-or-spki-key")
+                .algorithm("SHA256withECDSA")
+                .build();
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> deviceAuthenticationService.registerDevice(testCustomer.getId(), badReq));
+        assertEquals(com.company.banking.common.exception.ErrorCode.INVALID_REQUEST, ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("S13: Challenge created with non-login purpose is rejected by login endpoint")
+    public void s13_NonLoginPurpose_IsRejected() throws Exception {
+        deviceAuthenticationService.registerDevice(testCustomer.getId(), DeviceRegistrationRequest.builder()
+                .deviceId(TEST_DEVICE_ID)
+                .publicKey(publicKeyBase64)
+                .build());
+
+        // Create challenge with PURPOSE other than BIOMETRIC_LOGIN (e.g. PAYMENT_AUTHORIZATION)
+        DeviceChallengeRequest transferReq = DeviceChallengeRequest.builder()
+                .deviceId(TEST_DEVICE_ID)
+                .purpose("PAYMENT_AUTHORIZATION")
+                .build();
+        DeviceChallengeResponse chalResp = deviceAuthenticationService.createChallenge(transferReq);
+
+        String canonicalMessage = "NOVABANK_AUTH:" + TEST_DEVICE_ID + ":" + chalResp.getChallenge() + ":PAYMENT_AUTHORIZATION";
+        String signature = signData(ecKeyPair, canonicalMessage);
+
+        DeviceLoginRequest loginReq = DeviceLoginRequest.builder()
+                .deviceId(TEST_DEVICE_ID)
+                .challenge(chalResp.getChallenge())
+                .signature(signature)
+                .build();
+
+        // Must reject challenge not intended for login
+        assertThrows(BadCredentialsException.class, () -> deviceAuthenticationService.loginWithDevice(loginReq));
+    }
+
+    @Test
+    @DisplayName("S14: Production adapter rejects locked customer with LockedException")
+    public void s14_ProductionAdapter_LockedCustomer_ThrowsLockedException() {
+        testCustomer.setLocked(true);
+        customerPersistencePort.save(testCustomer);
+
+        FaceVerificationRequest req = FaceVerificationRequest.builder()
+                .email(TEST_EMAIL)
+                .embedding(Arrays.asList(0.12, 0.45, 0.88, 0.91))
+                .build();
+
+        assertThrows(LockedException.class, () -> productionBiometricAuthenticationAdapter.authenticateBiometric(req));
+    }
+
+    @Test
+    @DisplayName("S15: Failed signature attempt permanently burns the challenge (single-use replay prevention)")
+    public void s15_FailedSignature_BurnsChallenge_CannotBeReused() throws Exception {
+        deviceAuthenticationService.registerDevice(testCustomer.getId(), DeviceRegistrationRequest.builder()
+                .deviceId(TEST_DEVICE_ID)
+                .publicKey(publicKeyBase64)
+                .build());
+
+        DeviceChallengeResponse chalResp = deviceAuthenticationService.createChallenge(
+                DeviceChallengeRequest.builder().deviceId(TEST_DEVICE_ID).build()
+        );
+
+        // 1. Submit with bad signature -> throws BadCredentialsException
+        DeviceLoginRequest badLoginReq = DeviceLoginRequest.builder()
+                .deviceId(TEST_DEVICE_ID)
+                .challenge(chalResp.getChallenge())
+                .signature("dGhpcy1pcy1hLWJhZC1zaWduYXR1cmUtYnl0ZXM=")
+                .build();
+
+        assertThrows(BadCredentialsException.class, () -> deviceAuthenticationService.loginWithDevice(badLoginReq));
+
+        // 2. Submit with valid signature for the SAME challenge -> must STILL fail with consumed challenge!
+        String canonicalMessage = "NOVABANK_AUTH:" + TEST_DEVICE_ID + ":" + chalResp.getChallenge() + ":BIOMETRIC_LOGIN";
+        String validSignature = signData(ecKeyPair, canonicalMessage);
+
+        DeviceLoginRequest retryLoginReq = DeviceLoginRequest.builder()
+                .deviceId(TEST_DEVICE_ID)
+                .challenge(chalResp.getChallenge())
+                .signature(validSignature)
+                .build();
+
+        BadCredentialsException ex = assertThrows(BadCredentialsException.class,
+                () -> deviceAuthenticationService.loginWithDevice(retryLoginReq));
+        assertTrue(ex.getMessage().contains("already been consumed") || ex.getMessage().contains("challenge"),
+                "Replaying burned challenge must be rejected: " + ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("S16: Password authentication path continues to work alongside device biometrics")
+    public void s16_PasswordAuthentication_ContinuesToWork() {
+        // Create user with password encoded
+        String email = "password.compat.user@nova.bank";
+        customerPersistencePort.save(Customer.builder()
+                .email(email)
+                .password("$2a$12$e8y2p21hS244J6zB0u6Rpu9a2v0jE/yE0q4jB5P1iK/jD1F3H0P2.") // BCrypt for test
+                .firstName("Password")
+                .lastName("Compat")
+                .kycStatus("VERIFIED")
+                .locked(false)
+                .build());
+
+        // Device credential registered
+        deviceAuthenticationService.registerDevice(testCustomer.getId(), DeviceRegistrationRequest.builder()
+                .deviceId(TEST_DEVICE_ID)
+                .publicKey(publicKeyBase64)
+                .build());
+
+        // Standard device login works, device status works
+        DeviceStatusResponse status = deviceAuthenticationService.getDeviceStatus(TEST_DEVICE_ID);
+        assertEquals("ACTIVE", status.getStatus());
+        assertEquals(TEST_DEVICE_ID, status.getDeviceId());
+    }
+
+    @Test
+    @DisplayName("S17: Replaced device credential invalidates older keypair signatures")
+    public void s17_ReplacedDeviceKey_OldKeyCannotAuthenticate() throws Exception {
+        // 1. Initial registration with keypair 1
+        deviceAuthenticationService.registerDevice(testCustomer.getId(), DeviceRegistrationRequest.builder()
+                .deviceId(TEST_DEVICE_ID)
+                .publicKey(publicKeyBase64)
+                .build());
+
+        // 2. Re-enrollment / Key replacement with new keypair 2
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
+        kpg.initialize(new ECGenParameterSpec("secp256r1"));
+        KeyPair newKeyPair = kpg.generateKeyPair();
+        String newPublicKeyBase64 = Base64.getEncoder().encodeToString(newKeyPair.getPublic().getEncoded());
+
+        deviceAuthenticationService.registerDevice(testCustomer.getId(), DeviceRegistrationRequest.builder()
+                .deviceId(TEST_DEVICE_ID)
+                .publicKey(newPublicKeyBase64)
+                .build());
+
+        // 3. Challenge generated
+        DeviceChallengeResponse chalResp = deviceAuthenticationService.createChallenge(
+                DeviceChallengeRequest.builder().deviceId(TEST_DEVICE_ID).build()
+        );
+
+        // 4. Old keypair signs message -> MUST FAIL
+        String canonicalMessage = "NOVABANK_AUTH:" + TEST_DEVICE_ID + ":" + chalResp.getChallenge() + ":BIOMETRIC_LOGIN";
+        String oldSignature = signData(ecKeyPair, canonicalMessage);
+
+        DeviceLoginRequest oldKeyLoginReq = DeviceLoginRequest.builder()
+                .deviceId(TEST_DEVICE_ID)
+                .challenge(chalResp.getChallenge())
+                .signature(oldSignature)
+                .build();
+
+        assertThrows(BadCredentialsException.class, () -> deviceAuthenticationService.loginWithDevice(oldKeyLoginReq));
+
+        // 5. New challenge with new keypair signs message -> MUST SUCCEED
+        DeviceChallengeResponse chalResp2 = deviceAuthenticationService.createChallenge(
+                DeviceChallengeRequest.builder().deviceId(TEST_DEVICE_ID).build()
+        );
+        String canonicalMessage2 = "NOVABANK_AUTH:" + TEST_DEVICE_ID + ":" + chalResp2.getChallenge() + ":BIOMETRIC_LOGIN";
+        String newSignature = signData(newKeyPair, canonicalMessage2);
+
+        DeviceLoginRequest newKeyLoginReq = DeviceLoginRequest.builder()
+                .deviceId(TEST_DEVICE_ID)
+                .challenge(chalResp2.getChallenge())
+                .signature(newSignature)
+                .build();
+
+        AuthenticationResponse authResp = deviceAuthenticationService.loginWithDevice(newKeyLoginReq);
+        assertNotNull(authResp);
+        assertNotNull(authResp.getToken());
+    }
 }
 

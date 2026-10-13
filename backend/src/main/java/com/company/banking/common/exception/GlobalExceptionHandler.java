@@ -72,4 +72,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error(message, "ERR_409", correlationId));
     }
+
+    @ExceptionHandler(org.springframework.security.authentication.LockedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleLockedException(org.springframework.security.authentication.LockedException ex) {
+        String correlationId = org.slf4j.MDC.get(com.company.banking.web.filter.CorrelationIdFilter.MDC_KEY);
+        return ResponseEntity.status(HttpStatus.LOCKED)
+                .body(ApiResponse.error(423, ex.getMessage() != null ? ex.getMessage() : "Customer account is locked", "LOCKED", correlationId));
+    }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex) {
+        String correlationId = org.slf4j.MDC.get(com.company.banking.web.filter.CorrelationIdFilter.MDC_KEY);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(401, ex.getMessage() != null ? ex.getMessage() : "Authentication failed", "UNAUTHORIZED", correlationId));
+    }
 }

@@ -119,20 +119,13 @@ public class AuthenticationSecurityPathIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("P04: Face Verification - Valid biometric embedding skips password check and returns JWT")
-    public void p04_BiometricLogin_BypassesPasswordManager() {
+    @DisplayName("P04: Face Verification - Standalone unverified embedding is rejected in production")
+    public void p04_BiometricLogin_StandaloneEmbedding_IsRejected() {
         FaceVerificationRequest req = new FaceVerificationRequest(Arrays.asList(0.12, 0.45, 0.88, 0.91));
-        
-        // Verify customer ID 1 exists (required by the mock implementation in the service)
-        if (customerPersistencePort.findById(1L).isEmpty()) {
-            jdbcTemplate.execute("INSERT INTO customers (id, email, password, first_name, last_name, kyc_status, locked, role, created_at) " +
-                    "VALUES (1, 'admin@nova.bank', 'password123', 'Admin', 'User', 'VERIFIED', false, 'CUSTOMER', CURRENT_TIMESTAMP)");
-        }
 
-        AuthenticationResponse response = authenticationService.verifyFace(req);
-        
-        assertNotNull(response.getToken());
-        
+        // Mandatory containment: standalone client-supplied embeddings cannot issue JWT in production
+        assertThrows(BadCredentialsException.class, () -> authenticationService.verifyFace(req));
+
         // Verify AuthenticationManager was NEVER called for biometric login
         verify(authenticationManager, never()).authenticate(any());
     }

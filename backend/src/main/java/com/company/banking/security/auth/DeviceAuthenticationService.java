@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +50,13 @@ public class DeviceAuthenticationService {
      */
     @Transactional
     public void registerDevice(Long customerId, DeviceRegistrationRequest request) {
+        if (request == null || request.getDeviceId() == null || request.getDeviceId().trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Device ID is required");
+        }
+        if (request.getPublicKey() == null || request.getPublicKey().trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Public key is required");
+        }
+
         Customer customer = customerPersistencePort.findById(customerId)
                 .orElseThrow(() -> new UsernameNotFoundException("Customer not found: " + customerId));
 
@@ -57,6 +65,12 @@ public class DeviceAuthenticationService {
         }
 
         String deviceId = request.getDeviceId().trim();
+        String algorithm = request.getAlgorithm() != null ? request.getAlgorithm() : "SHA256withECDSA";
+
+        if (!deviceSignatureVerifier.isValidPublicKey(request.getPublicKey(), algorithm)) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Invalid or unsupported public key format");
+        }
+
         Optional<DeviceCredential> existingOpt = deviceCredentialPersistencePort.findByDeviceId(deviceId);
 
         if (existingOpt.isPresent()) {
@@ -96,6 +110,9 @@ public class DeviceAuthenticationService {
      */
     @Transactional
     public DeviceChallengeResponse createChallenge(DeviceChallengeRequest request) {
+        if (request == null || request.getDeviceId() == null || request.getDeviceId().trim().isEmpty()) {
+            throw new BadCredentialsException("Device ID is required");
+        }
         String deviceId = request.getDeviceId().trim();
         DeviceCredential credential = deviceCredentialPersistencePort.findByDeviceId(deviceId)
                 .orElseThrow(() -> new BadCredentialsException("Device not registered or revoked"));
@@ -139,7 +156,7 @@ public class DeviceAuthenticationService {
     /**
      * Verifies signed challenge proof, atomically marks challenge consumed, and issues a JWT session.
      */
-    @Transactional
+    @Transactional(noRollbackFor = {AuthenticationException.class})
     public AuthenticationResponse loginWithDevice(DeviceLoginRequest request) {
         String challengeStr = request.getChallenge() != null ? request.getChallenge().trim() : "";
         String deviceId = request.getDeviceId() != null ? request.getDeviceId().trim() : "";
@@ -151,8 +168,15 @@ public class DeviceAuthenticationService {
 
         // 2. Prevent replay attacks
         if (challenge.isConsumed()) {
-            log.warn("[SECURITY ALERT] Replay attack detected on challenge: {} for device: {}", challengeStr, deviceId);
-            auditEventPublisher.publishEvent("CHALLENGE_REPLAY_DETECTED", "unknown",
+            String auditUser = "cust-" + challenge.getCustomerId();
+            try {
+                Customer chalCustomer = customerPersistencePort.findById(challenge.getCustomerId()).orElse(null);
+                if (chalCustomer != null) {
+                    auditUser = chalCustomer.getEmail();
+                }
+            } catch (Exception ignored) {}
+            log.warn("[SECURITY ALERT] Replay attack detected on challenge: {} for device: {} user: {}", challengeStr, deviceId, auditUser);
+            auditEventPublisher.publishEvent("CHALLENGE_REPLAY_DETECTED", auditUser,
                     "Detected duplicate consumption attempt on challenge", "CHAL-" + challengeStr);
             throw new BadCredentialsException("Authentication challenge has already been consumed");
         }
@@ -167,6 +191,12 @@ public class DeviceAuthenticationService {
             throw new BadCredentialsException("Authentication challenge has expired");
         }
 
+        // 4b. Validate purpose domain separation (login endpoint requires BIOMETRIC_LOGIN)
+        if (!"BIOMETRIC_LOGIN".equalsIgnoreCase(challenge.getPurpose())) {
+            log.warn("Invalid challenge purpose: {}. Expected: BIOMETRIC_LOGIN", challenge.getPurpose());
+            throw new BadCredentialsException("Invalid authentication challenge purpose");
+        }
+
         // 5. Validate device binding
         if (!challenge.getDeviceId().equals(deviceId)) {
             log.warn("Device mismatch on challenge. Expected: {}, Provided: {}", challenge.getDeviceId(), deviceId);
@@ -179,6 +209,12 @@ public class DeviceAuthenticationService {
 
         if (!"ACTIVE".equalsIgnoreCase(credential.getStatus())) {
             throw new BadCredentialsException("Device is revoked or inactive");
+        }
+
+        // 6b. Validate account binding (challenge must match credential's customer)
+        if (!challenge.getCustomerId().equals(credential.getCustomerId())) {
+            log.warn("Challenge account mismatch. Challenge customerId: {}, Credential customerId: {}", challenge.getCustomerId(), credential.getCustomerId());
+            throw new BadCredentialsException("Challenge does not match registered account");
         }
 
         // 7. Resolve customer from trusted server-side record (never client-supplied email!)
@@ -230,6 +266,9 @@ public class DeviceAuthenticationService {
      */
     @Transactional
     public void revokeDevice(Long customerId, DeviceRevocationRequest request) {
+        if (request == null || request.getDeviceId() == null || request.getDeviceId().trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Device ID is required");
+        }
         String deviceId = request.getDeviceId().trim();
         DeviceCredential credential = deviceCredentialPersistencePort.findByDeviceId(deviceId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Device not found"));

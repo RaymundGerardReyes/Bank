@@ -55,8 +55,20 @@ public class DeviceSignatureVerifier {
                 log.debug("Standard signature verification failed, testing alternative encodings: {}", e.getMessage());
             }
 
-            // 2. If ECDSA and length is exactly 64 bytes (WebCrypto IEEE P1363 raw r||s), convert to DER ASN.1
+            // 2. If ECDSA and length is exactly 64 bytes (WebCrypto IEEE P1363 raw r||s)
             if (standardAlgorithm.contains("ECDSA") && sigBytes.length == 64) {
+                // Try SunEC P1363 native signature format first
+                try {
+                    Signature p1363Verifier = Signature.getInstance("SHA256withECDSAinP1363Format");
+                    p1363Verifier.initVerify(publicKey);
+                    p1363Verifier.update(dataBytes);
+                    if (p1363Verifier.verify(sigBytes)) {
+                        return true;
+                    }
+                } catch (Exception ignored) {
+                }
+
+                // Fall back to DER ASN.1 conversion
                 byte[] derSig = convertP1363ToDer(sigBytes);
                 if (derSig != null) {
                     Signature derVerifier = Signature.getInstance("SHA256withECDSA");
@@ -71,6 +83,25 @@ public class DeviceSignatureVerifier {
             return false;
         } catch (Exception e) {
             log.warn("Cryptographic signature verification encountered error: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Validates whether a given public key string is a valid Base64-encoded X.509 SubjectPublicKeyInfo for the algorithm.
+     */
+    public boolean isValidPublicKey(String publicKeyBase64, String algorithm) {
+        if (publicKeyBase64 == null || publicKeyBase64.trim().isEmpty() || algorithm == null) {
+            return false;
+        }
+        try {
+            byte[] keyBytes = Base64.getDecoder().decode(publicKeyBase64.trim());
+            String standardAlgorithm = normalizeAlgorithm(algorithm);
+            String keyAlgorithm = standardAlgorithm.contains("ECDSA") ? "EC" : "RSA";
+            KeyFactory keyFactory = KeyFactory.getInstance(keyAlgorithm);
+            PublicKey key = keyFactory.generatePublic(new X509EncodedKeySpec(keyBytes));
+            return key != null;
+        } catch (Exception e) {
             return false;
         }
     }
