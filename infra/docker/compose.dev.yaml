@@ -40,6 +40,7 @@ services:
     # As per PORT_REGISTRY.md: host 8086 -> container 8080
     ports:
       - "127.0.0.1:${PORT:-8086}:8080"
+      - "0.0.0.0:8085:8080"
 
   # ==========================================================
   # FRONTEND (Next.js) — DEV HOT-RELOAD MODE
