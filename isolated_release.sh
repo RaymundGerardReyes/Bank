@@ -132,7 +132,7 @@ confirm() {
   if [ "$AUTO_YES" = true ] || [ "$DRY_RUN" = true ]; then
     return 0
   fi
-  read -r -p "$prompt [y/N]: " reply
+  read -r -p "$prompt [y/N]: " reply < /dev/tty
   [[ "$reply" =~ ^[Yy]$ ]]
 }
 
@@ -281,12 +281,12 @@ Bump reason: ${bump_reason}"
   fi
 }
 
-while IFS= read -u 3 -r line || [ -n "$line" ]; do
+while IFS= read -r line || [ -n "$line" ]; do
   line="${line%$'\r'}"
   [[ -z "$line" || "$line" =~ ^# ]] && continue
   IFS='|' read -r scope tag_prefix commit_type commit_desc paths_csv commit_body <<< "$line"
   process_module "$scope" "$tag_prefix" "$commit_type" "$commit_desc" "$paths_csv" "$commit_body"
-done 3< "$CONFIG_FILE"
+done < "$CONFIG_FILE"
 
 log "=============================================================="
 log "Run finished: $(date)"
