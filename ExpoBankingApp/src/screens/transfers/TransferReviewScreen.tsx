@@ -1,6 +1,7 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../../components/common/Button';
 import { ErrorBanner } from '../../components/common/ErrorBanner';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
@@ -13,6 +14,7 @@ import { formatCurrency } from '../../utils/formatters';
 export const TransferReviewScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const { sourceAccountNumber, destinationAccountNumber, amount, currency, description, idempotencyKey } = route.params || {};
   const { accounts } = useAccounts();
 
@@ -43,65 +45,73 @@ export const TransferReviewScreen = () => {
 
   return (
     <SecureScreenWrapper style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Review Transfer</Text>
-        <Text style={styles.subtitle}>Verify details before biometric authorization.</Text>
-      </View>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + spacing.xl },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Review Transfer</Text>
+          <Text style={styles.subtitle}>Verify details before biometric authorization.</Text>
+        </View>
 
-      {validationError ? (
-        <View style={styles.bannerContainer}>
-          <ErrorBanner message={validationError} />
-        </View>
-      ) : null}
-
-      <View style={styles.receiptCard}>
-        <View style={styles.row}>
-          <Text style={styles.label}>From Account</Text>
-          <Text style={styles.value}>{displaySource}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>To Account</Text>
-          <Text style={styles.value}>{displayDest}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Currency</Text>
-          <Text style={styles.value}>{effectiveCurrency}</Text>
-        </View>
-        {description ? (
-          <View style={styles.row}>
-            <Text style={styles.label}>Memo</Text>
-            <Text style={styles.value}>{description}</Text>
+        {validationError ? (
+          <View style={styles.bannerContainer}>
+            <ErrorBanner message={validationError} />
           </View>
         ) : null}
 
-        <View style={styles.dashedDivider} />
+        <View style={styles.receiptCard}>
+          <View style={styles.row}>
+            <Text style={styles.label}>From Account</Text>
+            <Text style={styles.value}>{displaySource}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>To Account</Text>
+            <Text style={styles.value}>{displayDest}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Currency</Text>
+            <Text style={styles.value}>{effectiveCurrency}</Text>
+          </View>
+          {description ? (
+            <View style={styles.row}>
+              <Text style={styles.label}>Memo</Text>
+              <Text style={styles.value}>{description}</Text>
+            </View>
+          ) : null}
 
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total Amount</Text>
-          <Text style={styles.totalValue}>{formatCurrency(amount, effectiveCurrency)}</Text>
+          <View style={styles.dashedDivider} />
+
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total Amount</Text>
+            <Text style={styles.totalValue}>{formatCurrency(amount, effectiveCurrency)}</Text>
+          </View>
         </View>
-      </View>
 
-      <Text style={styles.idempotencyText}>Trace Ref: {idempotencyKey?.split('-')[0]}</Text>
+        <Text style={styles.idempotencyText}>Trace Ref: {idempotencyKey?.split('-')[0]}</Text>
 
-      <View style={styles.footer}>
-        {validationError ? (
-          <Button
-            title="Edit Transfer Details"
-            onPress={() => navigation.goBack()}
-          />
-        ) : (
-          <Button
-            title="Authorize with Passkey"
-            onPress={() =>
-              navigation.navigate('TransferConfirm', {
-                ...route.params,
-                currency: effectiveCurrency,
-              })
-            }
-          />
-        )}
-      </View>
+        <View style={styles.footer}>
+          {validationError ? (
+            <Button
+              title="Edit Transfer Details"
+              onPress={() => navigation.goBack()}
+            />
+          ) : (
+            <Button
+              title="Authorize with Passkey"
+              onPress={() =>
+                navigation.navigate('TransferConfirm', {
+                  ...route.params,
+                  currency: effectiveCurrency,
+                })
+              }
+            />
+          )}
+        </View>
+      </ScrollView>
     </SecureScreenWrapper>
   );
 };
@@ -110,6 +120,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: spacing.xxl,
   },
   header: {
     padding: spacing.lg,
@@ -191,13 +205,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: spacing.lg,
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderColor: colors.divider,
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
   },
 });

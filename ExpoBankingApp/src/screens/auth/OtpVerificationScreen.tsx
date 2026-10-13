@@ -1,11 +1,18 @@
 import * as React from 'react';
-import { Text, StyleSheet } from 'react-native';
-import { Input } from '../../components/common/Input';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+} from 'react-native';
 import { Button } from '../../components/common/Button';
+import { Input } from '../../components/common/Input';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
 import { authService } from '../../services/auth/authService';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 
 export const OtpVerificationScreen = () => {
   const [code, setCode] = React.useState('');
@@ -24,35 +31,55 @@ export const OtpVerificationScreen = () => {
 
   return (
     <SecureScreenWrapper style={styles.container}>
-      <Text style={styles.title}>Two-Factor Authentication</Text>
-      <Text style={styles.subtitle}>Enter the 6-digit OTP code sent to your registered mobile number.</Text>
-      <Input
-        label="OTP Verification Code"
-        placeholder="123456"
-        keyboardType="number-pad"
-        value={code}
-        onChangeText={setCode}
-        maxLength={6}
-      />
-      <Button title="Verify OTP" onPress={handleVerify} loading={loading} />
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.title}>Two-Factor Authentication</Text>
+          <Text style={styles.subtitle}>Enter the 6-digit OTP code sent to your registered mobile number.</Text>
+          <Input
+            label="OTP Verification Code"
+            placeholder="123456"
+            keyboardType="number-pad"
+            value={code}
+            onChangeText={setCode}
+            maxLength={6}
+          />
+          <Button title="Verify OTP" onPress={handleVerify} loading={loading} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SecureScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: spacing.lg,
+    flex: 1,
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    padding: spacing.lg,
   },
   title: {
     color: colors.textPrimary,
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: typography.fontSize.xxl,
+    lineHeight: typography.lineHeight.xxl,
+    fontWeight: typography.fontWeight.bold,
     marginBottom: spacing.xs,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 14,
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.lineHeight.sm,
     marginBottom: spacing.lg,
   },
 });

@@ -57,15 +57,15 @@ export const ForgotPasswordScreen = () => {
       <SecureScreenWrapper style={styles.container}>
         <View style={styles.centeredContent}>
           <View style={styles.successIconBg}>
-            <Ionicons name="mail-unread-outline" size={54} color={colors.accent} />
+            <Ionicons name="mail-unread-outline" size={54} color={colors.primary} />
           </View>
           <Text style={styles.successTitle}>Instructions Dispatched</Text>
           <Text style={styles.successDesc}>
-            If an account matches <Text style={{ fontWeight: '700', color: colors.accent }}>{email}</Text>, you will receive a cryptographically signed password reset link shortly.
+            If an account matches <Text style={{ fontWeight: '700', color: colors.primary }}>{email}</Text>, you will receive a cryptographically signed password reset link shortly.
           </Text>
 
           <View style={styles.securityTipCard}>
-            <Ionicons name="shield-checkmark" size={20} color={colors.accent} style={{ marginRight: 8 }} />
+            <Ionicons name="shield-checkmark" size={20} color={colors.warning} style={{ marginRight: 8 }} />
             <Text style={styles.securityTipText}>
               Security Notice: Reset tokens expire in 15 minutes. NovaBank staff will never ask for your recovery link or password.
             </Text>
@@ -95,14 +95,14 @@ export const ForgotPasswordScreen = () => {
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={22} color={colors.accent} />
+            <Ionicons name="arrow-back" size={22} color={colors.primary} />
             <Text style={styles.backBtnText}>Back to Sign In</Text>
           </TouchableOpacity>
 
           {/* Header Branding */}
           <View style={styles.headerContainer}>
             <View style={styles.iconCircle}>
-              <Ionicons name="key-outline" size={36} color={colors.accent} />
+              <Ionicons name="key-outline" size={36} color={colors.primary} />
             </View>
             <Text style={styles.title}>Account Recovery</Text>
             <Text style={styles.subtitle}>
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   backBtnText: {
-    color: colors.accent,
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '700',
     marginLeft: 6,
@@ -179,14 +179,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: spacing.md,
-    shadowColor: colors.accent,
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
   title: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 26,
     fontWeight: '900',
     letterSpacing: -0.5,
@@ -201,12 +201,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   formCard: {
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.lg,
     padding: spacing.xl,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: colors.accent,
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 12,
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   footerHelpEmail: {
-    color: colors.accent,
+    color: colors.primary,
     fontSize: 12,
     fontWeight: '700',
     marginTop: 2,
@@ -241,15 +241,15 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: colors.infoBg,
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.info,
+    borderColor: colors.primary,
   },
   successTitle: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 24,
     fontWeight: '900',
     textAlign: 'center',

@@ -88,7 +88,7 @@ export const ProductCatalogScreen = () => {
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         <View style={styles.header}>
           <Text style={styles.title}>Bank Products & Rates</Text>
@@ -117,7 +117,7 @@ export const ProductCatalogScreen = () => {
 
         {isLoading ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color={colors.accent} />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>Fetching published rate card...</Text>
           </View>
         ) : (
@@ -175,7 +175,7 @@ export const ProductCatalogScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     padding: spacing.lg,
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   title: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 26,
     fontWeight: '900',
     letterSpacing: -0.5,
@@ -209,8 +209,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   filterChipActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   filterText: {
     color: colors.textSecondary,
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   filterTextActive: {
-    color: colors.dominant,
+    color: colors.textInverse,
   },
   loadingBox: {
     padding: spacing.xxl,
@@ -233,12 +233,12 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   productCard: {
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.lg,
     padding: spacing.lg,
     borderWidth: 1.5,
     borderColor: colors.border,
-    shadowColor: colors.accent,
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   productName: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '800',
   },

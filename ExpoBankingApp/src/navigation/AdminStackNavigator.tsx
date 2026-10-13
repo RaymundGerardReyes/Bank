@@ -5,6 +5,9 @@ import { AdminStackParamList } from './types';
 import { AuditLogScreen } from '../screens/admin/AuditLogScreen';
 import { AccountStatusManagementScreen } from '../screens/admin/AccountStatusManagementScreen';
 
+import { colors } from '../theme/colors';
+import { typography } from '../theme/typography';
+
 const Stack = createNativeStackNavigator<AdminStackParamList>();
 
 export const AdminStackNavigator = () => {
@@ -12,7 +15,15 @@ export const AdminStackNavigator = () => {
     <Stack.Navigator
       initialRouteName="AuditLogs"
       screenOptions={{
-        headerStyle: { backgroundColor: '#FFD700' }, // Gold header for admin screens
+        headerShown: true,
+        headerStyle: { backgroundColor: colors.background },
+        headerTintColor: colors.primary,
+        headerTitleStyle: {
+          fontSize: typography.fontSize.lg,
+          fontWeight: typography.fontWeight.bold,
+          color: colors.textPrimary,
+        },
+        headerShadowVisible: false,
       }}
     >
       <Stack.Screen 

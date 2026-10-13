@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useState } from 'react';
-import { FlatList, Modal, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Modal, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -207,7 +207,7 @@ export const NotificationsScreen = () => {
           onRequestClose={() => setSelectedNotification(null)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, spacing.screen) }]}>
               <View style={styles.modalHeader}>
                 <View style={styles.modalTitleGroup}>
                   <StatusBadge
@@ -226,25 +226,27 @@ export const NotificationsScreen = () => {
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.modalMessage}>{selectedNotification.message}</Text>
-              <Card style={styles.auditCard}>
-                <View style={styles.auditRow}>
-                  <Text style={styles.auditKey}>Reference</Text>
-                  <Text style={styles.auditValue}>{selectedNotification.referenceId}</Text>
-                </View>
-                <View style={styles.auditRow}>
-                  <Text style={styles.auditKey}>Device</Text>
-                  <Text style={styles.auditValue}>{selectedNotification.deviceInfo}</Text>
-                </View>
-                <View style={styles.auditRow}>
-                  <Text style={styles.auditKey}>Channel</Text>
-                  <Text style={styles.auditValue}>{selectedNotification.channel}</Text>
-                </View>
-                <View style={styles.auditRow}>
-                  <Text style={styles.auditKey}>Time</Text>
-                  <Text style={styles.auditValue}>{selectedNotification.timestamp}</Text>
-                </View>
-              </Card>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollBody}>
+                <Text style={styles.modalMessage}>{selectedNotification.message}</Text>
+                <Card style={styles.auditCard}>
+                  <View style={styles.auditRow}>
+                    <Text style={styles.auditKey}>Reference</Text>
+                    <Text style={styles.auditValue}>{selectedNotification.referenceId}</Text>
+                  </View>
+                  <View style={styles.auditRow}>
+                    <Text style={styles.auditKey}>Device</Text>
+                    <Text style={styles.auditValue}>{selectedNotification.deviceInfo}</Text>
+                  </View>
+                  <View style={styles.auditRow}>
+                    <Text style={styles.auditKey}>Channel</Text>
+                    <Text style={styles.auditValue}>{selectedNotification.channel}</Text>
+                  </View>
+                  <View style={styles.auditRow}>
+                    <Text style={styles.auditKey}>Time</Text>
+                    <Text style={styles.auditValue}>{selectedNotification.timestamp}</Text>
+                  </View>
+                </Card>
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -424,6 +426,9 @@ const styles = StyleSheet.create({
     height: spacing.touchTarget,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modalScrollBody: {
+    paddingBottom: spacing.md,
   },
   modalMessage: {
     color: colors.textSecondary,

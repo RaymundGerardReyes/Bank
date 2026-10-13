@@ -33,6 +33,7 @@ export const FaceVerificationScreen = () => {
     
     // JS Thread lock to debounce repeated triggers
     const isVerifyingRef = React.useRef(false);
+    const hasAutoPromptedRef = React.useRef(false);
 
     // Smooth Animation for scanning laser line
     const scanLineAnim = React.useRef(new Animated.Value(0)).current;
@@ -143,6 +144,21 @@ export const FaceVerificationScreen = () => {
             const faceMeta = await faceEnrollmentService.getEnrolledFaceInfo();
             const enrolledEmail = faceMeta?.email;
 
+            const isDeviceKeyEnrolled = await deviceCryptoService.isDeviceEnrolled(enrolledEmail);
+            if (!isDeviceKeyEnrolled) {
+                setIsProcessing(false);
+                isVerifyingRef.current = false;
+                Alert.alert(
+                    'Biometric Key Missing',
+                    'Your device biometric key is missing or expired.\n\nPlease sign in with your email and password, then re-register Face ID under Profile > Security Controls.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Sign in with Password', onPress: () => navigation.goBack() }
+                    ]
+                );
+                return;
+            }
+
             // 2. Hardware biometric authentication gate (Face ID / Touch ID policy)
             setStatusMessage('Verifying biometric sensor...');
             const hw = await LocalAuthentication.authenticateAsync({
@@ -242,9 +258,10 @@ export const FaceVerificationScreen = () => {
         }
     }, [navigation, setAuthenticated]);
 
-    // Auto-prompt once on focus after brief camera stabilization
+    // Auto-prompt once per focus entrance after brief camera stabilization
     React.useEffect(() => {
-        if (isFocused && !isProcessing) {
+        if (isFocused && !hasAutoPromptedRef.current) {
+            hasAutoPromptedRef.current = true;
             let active = true;
             const timer = setTimeout(() => {
                 if (!active) return;
@@ -254,8 +271,10 @@ export const FaceVerificationScreen = () => {
                 active = false;
                 clearTimeout(timer);
             };
+        } else if (!isFocused) {
+            hasAutoPromptedRef.current = false;
         }
-    }, [isFocused, isProcessing, handleFaceVerification]);
+    }, [isFocused, handleFaceVerification]);
 
     if (!hasPermission) {
         return (

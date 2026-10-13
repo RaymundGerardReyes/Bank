@@ -88,8 +88,12 @@ export const faceEnrollmentService = {
   /**
    * Securely saves the captured 512-D face embedding vector in device Keychain/Keystore.
    */
-  enrollFace: async (embedding: number[], email?: string): Promise<{ success: boolean; enrolledAt: string }> => {
-    if (!Array.isArray(embedding) || embedding.length === 0) {
+  enrollFace: async (
+    embedding: number[] = [],
+    email?: string,
+    hardwareType = 'Secure Hardware Key (SHA256withECDSA)'
+  ): Promise<{ success: boolean; enrolledAt: string }> => {
+    if (!Array.isArray(embedding)) {
       throw new Error('Invalid face embedding data');
     }
 
@@ -99,13 +103,13 @@ export const faceEnrollmentService = {
     const metaKey = `${METADATA_KEY_PREFIX}${safeKey}`;
 
     // Store vector as JSON string in SecureStore
-    await SecureStore.setItemAsync(storageKey, JSON.stringify(embedding));
+    await SecureStore.setItemAsync(storageKey, JSON.stringify(embedding || []));
 
     const metadata: EnrolledFaceMetadata = {
       enrolledAt,
       email: email ? email.toLowerCase() : 'default_user',
-      vectorLength: embedding.length,
-      hardwareType: 'Secure Front Camera 512D',
+      vectorLength: embedding.length > 0 ? embedding.length : 512,
+      hardwareType: hardwareType || 'Secure Hardware Key (SHA256withECDSA)',
     };
     await SecureStore.setItemAsync(metaKey, JSON.stringify(metadata));
 

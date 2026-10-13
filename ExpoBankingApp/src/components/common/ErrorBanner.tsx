@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: colors.dangerBg,
-    borderColor: '#E9B7B1',
+    borderColor: `${colors.danger}40`,
     borderWidth: 1,
     borderRadius: spacing.borderRadius.md,
     padding: spacing.md,

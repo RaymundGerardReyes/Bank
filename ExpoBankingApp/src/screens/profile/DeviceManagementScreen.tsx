@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import * as LocalAuthentication from 'expo-local-authentication';
 import * as React from 'react';
 import {
   Alert,
@@ -8,10 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import * as LocalAuthentication from 'expo-local-authentication';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
 import { useAuth } from '../../hooks/useAuth';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { spacing } from '../../theme/spacing';
 
 export const DeviceManagementScreen = () => {
@@ -85,7 +87,11 @@ export const DeviceManagementScreen = () => {
         <View style={styles.currentDeviceCard}>
           <View style={styles.deviceRow}>
             <View style={styles.iconContainer}>
-              <Text style={styles.deviceIcon}>{Platform.OS === 'ios' ? '🍏' : '📱'}</Text>
+              <Ionicons
+                name={Platform.OS === 'ios' ? 'logo-apple' : 'phone-portrait-outline'}
+                size={28}
+                color={colors.primary}
+              />
             </View>
             <View style={styles.deviceInfo}>
               <Text style={styles.deviceName}>{deviceName}</Text>
@@ -103,24 +109,29 @@ export const DeviceManagementScreen = () => {
           <Text style={styles.integrityTitle}>Security & Hardware Checks</Text>
 
           <View style={styles.checkRow}>
-            <Text style={styles.checkIcon}>✅</Text>
+            <Ionicons name="checkmark-circle" size={16} color={colors.success} style={styles.checkIcon} />
             <Text style={styles.checkText}>Environment Integrity (Root / Jailbreak)</Text>
             <Text style={styles.passText}>PASS</Text>
           </View>
           <View style={styles.checkRow}>
-            <Text style={styles.checkIcon}>✅</Text>
+            <Ionicons name="checkmark-circle" size={16} color={colors.success} style={styles.checkIcon} />
             <Text style={styles.checkText}>Transport Security (TLS / Edge Proxy)</Text>
             <Text style={styles.passText}>PASS</Text>
           </View>
           <View style={styles.checkRow}>
-            <Text style={styles.checkIcon}>{hasBiometrics ? '✅' : 'ℹ️'}</Text>
+            <Ionicons
+              name={hasBiometrics ? 'checkmark-circle' : 'information-circle'}
+              size={16}
+              color={hasBiometrics ? colors.success : colors.textMuted}
+              style={styles.checkIcon}
+            />
             <Text style={styles.checkText}>Hardware Sensor ({biometricName})</Text>
             <Text style={hasBiometrics ? styles.passText : styles.infoText}>
               {hasBiometrics ? 'AVAILABLE' : 'NOT DETECTED'}
             </Text>
           </View>
           <View style={styles.checkRow}>
-            <Text style={styles.checkIcon}>✅</Text>
+            <Ionicons name="checkmark-circle" size={16} color={colors.success} style={styles.checkIcon} />
             <Text style={styles.checkText}>Overlay Protection (FLAG_SECURE)</Text>
             <Text style={styles.passText}>ACTIVE</Text>
           </View>
@@ -132,7 +143,7 @@ export const DeviceManagementScreen = () => {
         <View style={styles.deviceCard}>
           <View style={styles.deviceRow}>
             <View style={styles.iconContainerOther}>
-              <Text style={styles.deviceIcon}>💻</Text>
+              <Ionicons name="laptop-outline" size={28} color={colors.textSecondary} />
             </View>
             <View style={styles.deviceInfo}>
               <Text style={styles.deviceNameOther}>Next.js Web Portal (BFF Gateway)</Text>
@@ -157,7 +168,7 @@ export const DeviceManagementScreen = () => {
               activeOpacity={0.7}
               onPress={handleRevokeOtherSession}
             >
-              <Text style={styles.unlinkIcon}>🔗</Text>
+              <Ionicons name="link-outline" size={16} color={colors.danger} style={styles.unlinkIcon} />
               <Text style={styles.unlinkText}>Revoke Access</Text>
             </TouchableOpacity>
           )}
@@ -172,17 +183,15 @@ const cardBaseStyle = {
   borderRadius: spacing.borderRadius.lg,
   padding: spacing.lg,
   marginBottom: spacing.lg,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.05,
-  shadowRadius: 2,
-  elevation: 1,
+  borderWidth: 1,
+  borderColor: colors.border,
+  ...shadows.subtle,
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   scroll: {
     padding: spacing.lg,
@@ -191,7 +200,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xl,
   },
   title: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 32,
     fontWeight: '700',
     letterSpacing: -0.5,
@@ -225,7 +234,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: `${colors.accent}10`,
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
@@ -234,19 +243,16 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: `${colors.textMuted}10`,
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
-  },
-  deviceIcon: {
-    fontSize: 28,
   },
   deviceInfo: {
     flex: 1,
   },
   deviceName: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 17,
     fontWeight: '600',
   },
@@ -268,11 +274,11 @@ const styles = StyleSheet.create({
   },
   integrityDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: `${colors.textMuted}40`,
+    backgroundColor: colors.divider,
     marginVertical: spacing.lg,
   },
   integrityTitle: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 12,
     fontWeight: '700',
     marginBottom: spacing.sm,
@@ -285,7 +291,6 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   checkIcon: {
-    fontSize: 14,
     marginRight: 6,
   },
   checkText: {
@@ -307,14 +312,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     paddingTop: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: `${colors.textMuted}30`,
+    borderTopColor: colors.divider,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
   unlinkIcon: {
     marginRight: 6,
-    fontSize: 14,
   },
   unlinkText: {
     color: colors.danger,
@@ -326,7 +330,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
     borderRadius: spacing.borderRadius.sm,
-    backgroundColor: `${colors.danger}15`,
+    backgroundColor: colors.dangerBg,
     alignSelf: 'flex-start',
   },
   revokedBadgeText: {

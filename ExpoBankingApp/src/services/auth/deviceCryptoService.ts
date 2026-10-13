@@ -39,13 +39,38 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binaryString = typeof atob === 'function' ? atob(base64) : '';
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+  if (typeof atob === 'function') {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
   }
-  return bytes.buffer;
+
+  // Pure JavaScript Base64 decoding fallback for Hermes / React Native
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const clean = base64.replace(/[^A-Za-z0-9+/]/g, '');
+  const len = clean.length;
+  const bufferLen = Math.floor((len * 3) / 4);
+  const bytes = new Uint8Array(bufferLen);
+  let p = 0;
+  for (let i = 0; i < len; i += 4) {
+    const enc1 = chars.indexOf(clean[i]);
+    const enc2 = chars.indexOf(clean[i + 1]);
+    const enc3 = i + 2 < len ? chars.indexOf(clean[i + 2]) : 64;
+    const enc4 = i + 3 < len ? chars.indexOf(clean[i + 3]) : 64;
+
+    const chr1 = (enc1 << 2) | (enc2 >> 4);
+    const chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+    const chr3 = ((enc3 & 3) << 6) | enc4;
+
+    if (p < bufferLen) bytes[p++] = chr1;
+    if (enc3 !== 64 && p < bufferLen) bytes[p++] = chr2;
+    if (enc4 !== 64 && p < bufferLen) bytes[p++] = chr3;
+  }
+  return bytes.slice(0, p).buffer;
 }
 
 export const deviceCryptoService = {
@@ -198,6 +223,7 @@ export const deviceCryptoService = {
       const safeKey = sanitizeSecureStoreKey(email);
       await SecureStore.deleteItemAsync(`${DEVICE_KEY_PREFIX}${safeKey}`);
       await SecureStore.deleteItemAsync(`${DEVICE_PUB_PREFIX}${safeKey}`);
+      await SecureStore.deleteItemAsync(DEVICE_ID_KEY);
     } catch {
       // Ignore cleanup error
     }

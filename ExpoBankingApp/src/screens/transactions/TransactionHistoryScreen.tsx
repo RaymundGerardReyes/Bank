@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as React from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -50,7 +51,11 @@ export const TransactionHistoryScreen = () => {
       >
         <View style={styles.txnLeft}>
           <View style={[styles.iconBg, isCredit ? styles.iconBgCredit : styles.iconBgDebit]}>
-            <Text style={styles.iconText}>{isCredit ? '↓' : '↑'}</Text>
+            <Ionicons
+              name={isCredit ? 'arrow-down' : 'arrow-up'}
+              size={18}
+              color={isCredit ? colors.success : colors.textPrimary}
+            />
           </View>
           <View>
             <Text style={styles.txnDesc} numberOfLines={1}>{displayTitle}</Text>
@@ -82,12 +87,14 @@ export const TransactionHistoryScreen = () => {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📭</Text>
+              <View style={styles.emptyIconWrap}>
+                <Ionicons name="receipt-outline" size={48} color={colors.textSecondary} />
+              </View>
               <Text style={styles.emptyTitle}>No Transactions Found</Text>
               <Text style={styles.emptyText}>Your ledger history for this account is completely clear.</Text>
             </View>
@@ -101,17 +108,17 @@ export const TransactionHistoryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   header: {
     padding: spacing.lg,
     paddingTop: spacing.xl,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.secondary,
+    borderBottomColor: colors.border,
   },
   title: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 28,
     fontWeight: '900',
     letterSpacing: -0.5,
@@ -130,10 +137,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.surface,
     paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
+    paddingHorizontal: spacing.md,
+    borderRadius: spacing.borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.sm,
   },
   txnLeft: {
     flexDirection: 'row',
@@ -153,13 +163,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.successBg,
   },
   iconBgDebit: {
-    backgroundColor: colors.infoBg,
-  },
-  iconText: {
-    fontSize: 16,
+    backgroundColor: colors.surfaceAlt,
   },
   txnDesc: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '700',
     marginBottom: 2,
@@ -187,25 +194,23 @@ const styles = StyleSheet.create({
     color: colors.success,
   },
   debitText: {
-    color: colors.accent,
+    color: colors.textPrimary,
   },
   txnStatus: {
     color: colors.textMuted,
     fontSize: 10,
     fontWeight: '800',
   },
-  // Upgraded Empty State Styles mapped perfectly to Notifications
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 60,
   },
-  emptyIcon: {
-    fontSize: 48,
+  emptyIconWrap: {
     marginBottom: spacing.sm,
   },
   emptyTitle: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 17,
     fontWeight: '800',
     marginBottom: spacing.xs,

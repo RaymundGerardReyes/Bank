@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 
 // Mock Data representing your backend Audit Logs
@@ -12,6 +13,7 @@ const AUDIT_LOGS = [
 ];
 
 export default function AuditHistoryScreen() {
+    const insets = useSafeAreaInsets();
     const [activeFilter, setActiveFilter] = useState('All');
 
     // Helper to determine icon letter and color based on event type
@@ -61,7 +63,7 @@ export default function AuditHistoryScreen() {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
                 <Text style={styles.headerTitle}>Audit Trail</Text>
                 <Text style={styles.headerSubtitle}>Immutable Security & System Logs</Text>
             </View>
@@ -97,9 +99,9 @@ export default function AuditHistoryScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
 
-    header: { paddingHorizontal: 24, paddingTop: 40, paddingBottom: 20 },
+    header: { paddingHorizontal: 24, paddingBottom: 20 },
     headerTitle: { fontSize: 28, fontWeight: '800', color: colors.primary },
-    headerSubtitle: { fontSize: 16, fontWeight: '500', color: colors.info, marginTop: 4 },
+    headerSubtitle: { fontSize: 16, fontWeight: '500', color: colors.textSecondary, marginTop: 4 },
 
     filterContainer: { flexDirection: 'row', paddingHorizontal: 24, marginBottom: 16, gap: 10 },
     filterChip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
@@ -118,7 +120,7 @@ const styles = StyleSheet.create({
     textDataContainer: { flex: 1, paddingRight: 10 },
     actionTitle: { fontSize: 15, fontWeight: '800', color: colors.primary, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
     actorSubtitle: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 2 },
-    dateText: { fontSize: 12, fontWeight: '500', color: colors.info },
+    dateText: { fontSize: 12, fontWeight: '500', color: colors.textMuted },
 
     rightSection: { alignItems: 'flex-end', justifyContent: 'center' },
 

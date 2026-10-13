@@ -196,7 +196,7 @@ export const DashboardScreen = () => {
               <View style={styles.actionIcon}>
                 <Ionicons name={action.icon} size={22} color={colors.primary} />
               </View>
-              <Text style={styles.actionLabel}>{action.label}</Text>
+              <Text style={styles.actionLabel} numberOfLines={1}>{action.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -406,34 +406,34 @@ const styles = StyleSheet.create({
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.ms,
+    gap: spacing.sm,
     marginBottom: spacing.lg,
   },
   actionButton: {
-    width: '30.8%',
-    minHeight: 88,
+    width: '22.8%',
+    minHeight: 80,
     borderRadius: spacing.borderRadius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.sm,
   },
   actionIcon: {
-    width: 38,
-    height: 38,
+    width: 36,
+    height: 36,
     borderRadius: spacing.borderRadius.sm,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   actionLabel: {
     color: colors.textPrimary,
-    fontSize: typography.fontSize.xs,
-    lineHeight: typography.lineHeight.xs,
+    fontSize: 11,
+    lineHeight: 14,
     fontWeight: typography.fontWeight.semibold,
     textAlign: 'center',
   },

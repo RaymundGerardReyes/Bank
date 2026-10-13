@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePendingAuthorizations } from '../../hooks/usePendingAuthorizations';
@@ -92,94 +93,100 @@ export const PushAuthorizationModal: React.FC = () => {
     <Modal visible={true} transparent={true} animationType="fade" statusBarTranslucent>
       <View style={styles.overlay}>
         <View style={styles.card}>
-          {/* Header Badge */}
-          <View style={styles.header}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="shield-checkmark" size={32} color={colors.primary} />
-            </View>
-            <View style={styles.badgePill}>
-              <View style={styles.liveDot} />
-              <Text style={styles.badgeText}>WEBAUTH OOB REQUEST</Text>
-            </View>
-            <Text style={styles.title}>Authorize Transfer</Text>
-            <Text style={styles.subtitle}>
-              A session on NovaBank Web Portal is requesting transaction authorization.
-            </Text>
-          </View>
-
-          {/* Transaction Metadata Card */}
-          <View style={styles.detailsContainer}>
-            <View style={styles.amountRow}>
-              <Text style={styles.amountLabel}>Requested Amount</Text>
-              <Text style={styles.amountValue}>₱{request.amount?.toFixed(2)}</Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.metaRow}>
-              <Text style={styles.label}>From Account</Text>
-              <Text style={styles.value} numberOfLines={1}>{request.sourceAccount}</Text>
-            </View>
-            <View style={styles.divider} />
-
-            <View style={styles.metaRow}>
-              <Text style={styles.label}>To Recipient</Text>
-              <Text style={styles.value} numberOfLines={1}>{request.destinationAccount}</Text>
-            </View>
-            <View style={styles.divider} />
-
-            <View style={styles.metaRow}>
-              <Text style={styles.label}>Request Origin</Text>
-              <View style={styles.ipContainer}>
-                <Ionicons name="globe-outline" size={12} color={colors.primary} style={{ marginRight: 4 }} />
-                <Text style={styles.ipValue}>{request.ipAddress || 'Web Client'}</Text>
+          <ScrollView
+            contentContainerStyle={styles.cardScroll}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {/* Header Badge */}
+            <View style={styles.header}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="shield-checkmark" size={32} color={colors.primary} />
               </View>
-            </View>
-            <View style={styles.divider} />
-
-            <View style={styles.metaRow}>
-              <Text style={styles.label}>Expires In</Text>
-              <View style={[styles.timerPill, secondsRemaining < 60 && styles.timerPillUrgent]}>
-                <Ionicons
-                  name="time-outline"
-                  size={12}
-                  color={secondsRemaining < 60 ? colors.danger : colors.primary}
-                  style={{ marginRight: 3 }}
-                />
-                <Text style={[styles.timerText, secondsRemaining < 60 && styles.timerTextUrgent]}>
-                  {formatTimer(secondsRemaining)}
-                </Text>
+              <View style={styles.badgePill}>
+                <View style={styles.liveDot} />
+                <Text style={styles.badgeText}>WEBAUTH OOB REQUEST</Text>
               </View>
+              <Text style={styles.title}>Authorize Transfer</Text>
+              <Text style={styles.subtitle}>
+                A session on NovaBank Web Portal is requesting transaction authorization.
+              </Text>
             </View>
-          </View>
 
-          {/* Action Buttons */}
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.approveButton, isBusy && styles.buttonDisabled]}
-              onPress={handleApprove}
-              disabled={isBusy}
-              activeOpacity={0.8}
-            >
-              {isBusy ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <View style={styles.buttonContent}>
-                  <Ionicons name="finger-print-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                  <Text style={styles.approveButtonText}>Confirm & Authorize</Text>
+            {/* Transaction Metadata Card */}
+            <View style={styles.detailsContainer}>
+              <View style={styles.amountRow}>
+                <Text style={styles.amountLabel}>Requested Amount</Text>
+                <Text style={styles.amountValue}>₱{request.amount?.toFixed(2)}</Text>
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.metaRow}>
+                <Text style={styles.label}>From Account</Text>
+                <Text style={styles.value} numberOfLines={1}>{request.sourceAccount}</Text>
+              </View>
+              <View style={styles.divider} />
+
+              <View style={styles.metaRow}>
+                <Text style={styles.label}>To Recipient</Text>
+                <Text style={styles.value} numberOfLines={1}>{request.destinationAccount}</Text>
+              </View>
+              <View style={styles.divider} />
+
+              <View style={styles.metaRow}>
+                <Text style={styles.label}>Request Origin</Text>
+                <View style={styles.ipContainer}>
+                  <Ionicons name="globe-outline" size={12} color={colors.primary} style={{ marginRight: 4 }} />
+                  <Text style={styles.ipValue}>{request.ipAddress || 'Web Client'}</Text>
                 </View>
-              )}
-            </TouchableOpacity>
+              </View>
+              <View style={styles.divider} />
 
-            <TouchableOpacity
-              style={[styles.denyButton, isBusy && styles.buttonDisabled]}
-              onPress={handleDeny}
-              disabled={isBusy}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.denyButtonText}>Deny & Reject</Text>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.metaRow}>
+                <Text style={styles.label}>Expires In</Text>
+                <View style={[styles.timerPill, secondsRemaining < 60 && styles.timerPillUrgent]}>
+                  <Ionicons
+                    name="time-outline"
+                    size={12}
+                    color={secondsRemaining < 60 ? colors.danger : colors.primary}
+                    style={{ marginRight: 3 }}
+                  />
+                  <Text style={[styles.timerText, secondsRemaining < 60 && styles.timerTextUrgent]}>
+                    {formatTimer(secondsRemaining)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.actions}>
+              <TouchableOpacity
+                style={[styles.approveButton, isBusy && styles.buttonDisabled]}
+                onPress={handleApprove}
+                disabled={isBusy}
+                activeOpacity={0.8}
+              >
+                {isBusy ? (
+                  <ActivityIndicator color={colors.textInverse} />
+                ) : (
+                  <View style={styles.buttonContent}>
+                    <Ionicons name="finger-print-outline" size={20} color={colors.textInverse} style={{ marginRight: 8 }} />
+                    <Text style={styles.approveButtonText}>Confirm & Authorize</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.denyButton, isBusy && styles.buttonDisabled]}
+                onPress={handleDeny}
+                disabled={isBusy}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.denyButtonText}>Deny & Reject</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -189,22 +196,26 @@ export const PushAuthorizationModal: React.FC = () => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 44, 89, 0.65)', // High-contrast navy overlay
+    backgroundColor: 'rgba(18, 49, 43, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.md,
   },
   card: {
-    backgroundColor: '#FFFFFF', // 60% dominant
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 24,
     width: '100%',
     maxWidth: 400,
-    shadowColor: '#0F2C59',
+    maxHeight: '90%',
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25,
     shadowRadius: 20,
     elevation: 10,
+  },
+  cardScroll: {
+    flexGrow: 1,
   },
   header: {
     alignItems: 'center',
@@ -214,7 +225,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: colors.primaryLight, // #E0F2FE
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -244,7 +255,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: colors.textPrimary, // #0F2C59
+    color: colors.textPrimary,
     marginBottom: 4,
     textAlign: 'center',
   },
@@ -257,10 +268,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   detailsContainer: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     padding: 16,
     marginBottom: 20,
   },
@@ -283,7 +294,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.divider,
     marginVertical: 12,
   },
   metaRow: {
@@ -307,7 +318,7 @@ const styles = StyleSheet.create({
   ipContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EDF2F7',
+    backgroundColor: colors.divider,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
@@ -326,7 +337,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   timerPillUrgent: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.dangerBg,
   },
   timerText: {
     fontSize: 12,
@@ -341,7 +352,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   approveButton: {
-    backgroundColor: colors.primary, // 10% accent #0F2C59
+    backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
@@ -361,14 +372,14 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   approveButtonText: {
-    color: '#FFFFFF',
+    color: colors.textInverse,
     fontSize: 16,
     fontWeight: '800',
   },
   denyButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',

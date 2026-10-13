@@ -79,7 +79,7 @@ export const AccountDetailScreen = () => {
   if (isLoading) {
     return (
       <SecureScreenWrapper style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.accent} />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Loading account details...</Text>
       </SecureScreenWrapper>
     );
@@ -103,7 +103,7 @@ export const AccountDetailScreen = () => {
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {/* Top Hero Account Card */}
         <View style={styles.heroCard}>
@@ -134,7 +134,7 @@ export const AccountDetailScreen = () => {
                 <Ionicons
                   name={isNumberRevealed ? 'eye-off-outline' : 'eye-outline'}
                   size={18}
-                  color={colors.accent}
+                  color={colors.textInverse}
                 />
               </TouchableOpacity>
               <TouchableOpacity
@@ -145,7 +145,7 @@ export const AccountDetailScreen = () => {
                 <Ionicons
                   name={copied ? 'checkmark-circle-outline' : 'copy-outline'}
                   size={18}
-                  color={copied ? colors.success : colors.accent}
+                  color={copied ? colors.success : colors.textInverse}
                 />
               </TouchableOpacity>
             </View>
@@ -184,7 +184,7 @@ export const AccountDetailScreen = () => {
             onPress={() => navigation.navigate('Transfers', { sourceAccountNumber: account.accountNumber })}
           >
             <View style={[styles.actionIconBg, { backgroundColor: colors.infoBg }]}>
-              <Ionicons name="swap-horizontal" size={22} color={colors.accent} />
+              <Ionicons name="swap-horizontal" size={22} color={colors.primary} />
             </View>
             <Text style={styles.actionLabel}>Transfer</Text>
           </TouchableOpacity>
@@ -215,7 +215,7 @@ export const AccountDetailScreen = () => {
             onPress={() => navigation.navigate('Statements', { accountNumber: account.accountNumber })}
           >
             <View style={[styles.actionIconBg, { backgroundColor: colors.surfaceAlt }]}>
-              <Ionicons name="document-text-outline" size={22} color={colors.accent} />
+              <Ionicons name="document-text-outline" size={22} color={colors.primary} />
             </View>
             <Text style={styles.actionLabel}>Statements</Text>
           </TouchableOpacity>
@@ -272,7 +272,7 @@ export const AccountDetailScreen = () => {
         <View style={styles.transactionsCard}>
           {loadingTxns ? (
             <View style={styles.loadingTxnsBox}>
-              <ActivityIndicator size="small" color={colors.accent} />
+              <ActivityIndicator size="small" color={colors.primary} />
               <Text style={styles.loadingTxnsText}>Loading ledger activity...</Text>
             </View>
           ) : transactions.length === 0 ? (
@@ -305,7 +305,7 @@ export const AccountDetailScreen = () => {
                     <Ionicons
                       name={isCredit ? 'arrow-down' : 'arrow-up'}
                       size={16}
-                      color={isCredit ? colors.success : colors.accent}
+                      color={isCredit ? colors.success : colors.textPrimary}
                     />
                   </View>
                   <View style={styles.txnCenter}>
@@ -335,7 +335,7 @@ export const AccountDetailScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   scroll: {
     padding: spacing.lg,
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: spacing.md,
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   errorTitle: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 20,
     fontWeight: '800',
     marginTop: spacing.md,
@@ -367,22 +367,22 @@ const styles = StyleSheet.create({
   },
   retryBtn: {
     marginTop: spacing.lg,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: spacing.borderRadius.md,
   },
   retryText: {
-    color: colors.dominant,
+    color: colors.textInverse,
     fontWeight: '700',
     fontSize: 14,
   },
   heroCard: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     borderRadius: spacing.borderRadius.xl,
     padding: spacing.xl,
     marginBottom: spacing.lg,
-    shadowColor: colors.accent,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
@@ -395,13 +395,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   accountType: {
-    color: colors.dominant,
+    color: colors.textInverse,
     fontSize: 18,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
   accountSub: {
-    color: colors.secondary,
+    color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   accountNumberText: {
-    color: colors.dominant,
+    color: colors.textInverse,
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: 1.5,
@@ -476,14 +476,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   balanceLabel: {
-    color: colors.secondary,
+    color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 13,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   balanceAmount: {
-    color: colors.dominant,
+    color: colors.textInverse,
     fontSize: 36,
     fontWeight: '900',
     letterSpacing: -1,
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   balanceMetaValue: {
-    color: colors.dominant,
+    color: colors.textInverse,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -541,14 +541,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
-    shadowColor: colors.accent,
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
   },
   actionLabel: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   cardSectionTitle: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '800',
     marginBottom: spacing.md,
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   detailValue: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -594,17 +594,17 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   sectionTitle: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '800',
   },
   viewAllText: {
-    color: colors.secondary,
+    color: colors.primary,
     fontSize: 13,
     fontWeight: '700',
   },
   transactionsCard: {
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.lg,
     paddingHorizontal: spacing.md,
     borderWidth: 1,
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
     padding: spacing.xxl,
   },
   emptyTxnTitle: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '800',
     marginTop: spacing.sm,
@@ -659,14 +659,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.successBg,
   },
   iconDebit: {
-    backgroundColor: colors.infoBg,
+    backgroundColor: colors.surfaceAlt,
   },
   txnCenter: {
     flex: 1,
     paddingRight: 8,
   },
   txnTitle: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 2,
@@ -687,7 +687,7 @@ const styles = StyleSheet.create({
     color: colors.success,
   },
   debitAmount: {
-    color: colors.accent,
+    color: colors.textPrimary,
   },
   txnStatus: {
     color: colors.textMuted,

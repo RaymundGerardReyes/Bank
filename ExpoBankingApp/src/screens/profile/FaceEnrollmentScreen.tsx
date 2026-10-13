@@ -146,12 +146,13 @@ export const FaceEnrollmentScreen = () => {
       );
 
       // 5. Save local enrollment metadata
-      const res = await faceEnrollmentService.enrollFace([], user?.email);
+      const hardwareDesc = `Secure Hardware Key (${keyInfo.algorithm})`;
+      const res = await faceEnrollmentService.enrollFace([], user?.email, hardwareDesc);
       setExistingEnrollment({
         enrolledAt: res.enrolledAt,
         email: user?.email,
         vectorLength: 512,
-        hardwareType: `Secure Hardware Key (${keyInfo.algorithm})`,
+        hardwareType: hardwareDesc,
       });
 
       setStepMessage('Biometric enrollment complete!');
@@ -270,7 +271,7 @@ export const FaceEnrollmentScreen = () => {
             <View style={styles.enrolledInfoCard}>
               <Text style={styles.enrolledTitle}>Active Face ID Enrollment</Text>
               <Text style={styles.enrolledMeta}>
-                Registered: {new Date(existingEnrollment.enrolledAt).toLocaleDateString()} • 512D Vector
+                Registered: {new Date(existingEnrollment.enrolledAt).toLocaleDateString()} • {existingEnrollment.hardwareType || 'Device Key (ECDSA P-256)'}
               </Text>
             </View>
           ) : null}

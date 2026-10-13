@@ -177,7 +177,7 @@ export const OpenAccountScreen = () => {
                         <Ionicons
                           name={prod.icon}
                           size={22}
-                          color={isSelected ? colors.dominant : colors.accent}
+                          color={isSelected ? colors.textInverse : colors.primary}
                         />
                       </View>
                       <View>
@@ -274,7 +274,7 @@ export const OpenAccountScreen = () => {
             <Ionicons
               name={acceptedTerms ? 'checkbox' : 'square-outline'}
               size={22}
-              color={acceptedTerms ? colors.accent : colors.textMuted}
+              color={acceptedTerms ? colors.primary : colors.textMuted}
             />
             <Text style={styles.termsText}>
               I agree to the NovaBank Account Agreement, Deposit Terms, and Electronic Disclosures.
@@ -297,7 +297,7 @@ export const OpenAccountScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   flex: {
     flex: 1,
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   title: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 26,
     fontWeight: '900',
     letterSpacing: -0.5,
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   sectionLabel: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '800',
     marginBottom: spacing.sm,
@@ -338,9 +338,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   productCardSelected: {
-    borderColor: colors.accent,
+    borderColor: colors.primary,
     backgroundColor: colors.surface,
-    shadowColor: colors.accent,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -366,15 +366,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   productIconBgActive: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
   },
   productName: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '800',
   },
   productNameActive: {
-    color: colors.accent,
+    color: colors.primary,
   },
   productRateBadge: {
     color: colors.success,
@@ -433,13 +433,13 @@ const styles = StyleSheet.create({
   currencySymbol: {
     fontSize: 36,
     fontWeight: '800',
-    color: colors.accent,
+    color: colors.textPrimary,
     marginRight: 6,
   },
   amountInput: {
     fontSize: 40,
     fontWeight: '900',
-    color: colors.accent,
+    color: colors.textPrimary,
     minWidth: 120,
     textAlign: 'center',
   },
@@ -450,27 +450,27 @@ const styles = StyleSheet.create({
   },
   chip: {
     flex: 1,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.surfaceAlt,
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
   },
   chipSelected: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   chipText: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
   },
   chipTextSelected: {
-    color: colors.dominant,
+    color: colors.textInverse,
   },
   previewCard: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     borderRadius: spacing.borderRadius.lg,
     padding: spacing.lg,
     marginBottom: spacing.lg,
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   previewType: {
-    color: colors.dominant,
+    color: colors.textInverse,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1,
@@ -505,13 +505,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   previewBalanceLabel: {
-    color: colors.secondary,
+    color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 11,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   previewBalanceValue: {
-    color: colors.dominant,
+    color: colors.textInverse,
     fontSize: 22,
     fontWeight: '900',
     marginTop: 2,
@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   previewYieldText: {
-    color: colors.dominant,
+    color: colors.textInverse,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   successCard: {
     width: '100%',
@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   successTitle: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 24,
     fontWeight: '900',
     textAlign: 'center',
@@ -579,11 +579,11 @@ const styles = StyleSheet.create({
   },
   accountCardSnippet: {
     width: '100%',
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.surfaceAlt,
     borderRadius: spacing.borderRadius.md,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
     marginBottom: spacing.xl,
   },
   snippetLabel: {
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   snippetNumber: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '800',
     letterSpacing: 1.5,
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   homeBtnText: {
-    color: colors.secondary,
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '700',
   },

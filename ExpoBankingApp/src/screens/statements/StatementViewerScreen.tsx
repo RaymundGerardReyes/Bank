@@ -1,30 +1,32 @@
 import { useRoute } from '@react-navigation/native';
 import * as React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 
 export const StatementViewerScreen = () => {
   const route = useRoute<any>();
+  const insets = useSafeAreaInsets();
   const { statement } = route.params || {};
 
   return (
     <SecureScreenWrapper style={styles.container}>
-      <View style={styles.toolbar}>
+      <View style={[styles.toolbar, { paddingTop: insets.top + spacing.sm }]}>
         <Text style={styles.toolbarTitle}>Secure Document Viewer</Text>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>ENCRYPTED</Text>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.xl }]}>
         <View style={styles.documentFrame}>
           {/* Simulated PDF Watermark/Content */}
           <Text style={styles.watermark}>CONFIDENTIAL</Text>
 
           <View style={styles.docHeader}>
-            <Text style={styles.bankName}>HARDBANK INC.</Text>
+            <Text style={styles.bankName}>NOVABANK INC.</Text>
             <Text style={styles.docPeriod}>{statement?.statementPeriod || 'Account Statement'}</Text>
           </View>
 
@@ -45,31 +47,31 @@ export const StatementViewerScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.background,
   },
   toolbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.accent,
-    padding: spacing.lg,
-    paddingTop: 60, // Adjust for notch
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.secondary,
+    borderBottomColor: colors.border,
   },
   toolbarTitle: {
-    color: colors.dominant,
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
   badge: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
   badgeText: {
-    color: colors.dominant,
+    color: colors.primary,
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
@@ -80,37 +82,38 @@ const styles = StyleSheet.create({
   },
   documentFrame: {
     width: '100%',
-    minHeight: 500,
-    backgroundColor: colors.dominant, // 60% White "Paper"
+    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.md,
     padding: spacing.xl,
     overflow: 'hidden',
-    shadowColor: '#000',
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.08,
     shadowRadius: 10,
-    elevation: 8,
+    elevation: 3,
   },
   watermark: {
     position: 'absolute',
-    top: '50%',
+    top: '40%',
     left: '10%',
-    fontSize: 48,
-    color: colors.surface,
+    fontSize: 44,
+    color: colors.divider,
     fontWeight: '900',
     transform: [{ rotate: '-45deg' }],
-    opacity: 0.5,
+    opacity: 0.6,
     zIndex: 0,
   },
   docHeader: {
     borderBottomWidth: 2,
-    borderBottomColor: colors.accent,
+    borderBottomColor: colors.primary,
     paddingBottom: spacing.md,
     marginBottom: spacing.lg,
     zIndex: 1,
   },
   bankName: {
-    color: colors.accent,
+    color: colors.primary,
     fontSize: 24,
     fontWeight: '900',
     letterSpacing: -0.5,
@@ -125,16 +128,15 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   mockContent: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 8,
   },
   mockDivider: {
     height: 1,
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.divider,
     marginVertical: spacing.xl,
-    opacity: 0.5,
   },
   mockInfo: {
     color: colors.textMuted,

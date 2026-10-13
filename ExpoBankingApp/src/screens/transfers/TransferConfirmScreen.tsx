@@ -1,6 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { Button } from '../../components/common/Button';
 import { BiometricPrompt } from '../../components/security/BiometricPrompt';
@@ -138,10 +139,13 @@ export const TransferConfirmScreen = () => {
       )}
 
       {status === 'SUCCESS' && receipt && (
-        <View style={styles.successContainer}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.successHeader}>
             <View style={styles.successIconBg}>
-              <Text style={styles.successIcon}>✓</Text>
+              <Ionicons name="checkmark" size={32} color={colors.textInverse} />
             </View>
             <Text style={styles.successTitle}>Transfer Successful</Text>
             <Text style={styles.successAmount}>{formatCurrency(receipt.amount, receipt.currency || effectiveCurrency)}</Text>
@@ -174,65 +178,70 @@ export const TransferConfirmScreen = () => {
               onPress={() => navigation.navigate('MainTabs', { screen: 'Dashboard' })}
             />
           </View>
-        </View>
+        </ScrollView>
       )}
 
       {status === 'ERROR' && (
-        <View style={styles.errorContainer}>
-          <View style={styles.errorIconBg}>
-            <Text style={styles.errorIcon}>!</Text>
-          </View>
-          <Text style={styles.errorTitle}>
-            {errorType === 'NETWORK' ? 'Connection Interrupted' : 'Transfer Failed'}
-          </Text>
-          <Text style={styles.errorMessage}>{errorMessage}</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.errorContainer}>
+            <View style={styles.errorIconBg}>
+              <Ionicons name="alert-circle" size={36} color={colors.textInverse} />
+            </View>
+            <Text style={styles.errorTitle}>
+              {errorType === 'NETWORK' ? 'Connection Interrupted' : 'Transfer Failed'}
+            </Text>
+            <Text style={styles.errorMessage}>{errorMessage}</Text>
 
-          <View style={styles.footer}>
-            {errorType === 'TRANSIENT' ? (
-              <>
-                <Button
-                  title="Retry Transfer"
-                  onPress={handleConfirm}
-                  style={{ width: '100%', marginTop: spacing.xl }}
-                />
-                <Button
-                  title="Edit Transfer Details"
-                  onPress={() => navigation.goBack()}
-                  variant="secondary"
-                  style={{ width: '100%', marginTop: spacing.sm }}
-                />
-              </>
-            ) : errorType === 'NETWORK' ? (
-              <>
-                <Button
-                  title="Check Transaction History"
-                  onPress={() => navigation.navigate('TransactionHistory', { accountNumber: cleanSource })}
-                  style={{ width: '100%', marginTop: spacing.xl }}
-                />
-                <Button
-                  title="Return to Dashboard"
-                  onPress={() => navigation.navigate('MainTabs', { screen: 'Dashboard' })}
-                  variant="secondary"
-                  style={{ width: '100%', marginTop: spacing.sm }}
-                />
-              </>
-            ) : (
-              <>
-                <Button
-                  title="Edit Transfer Details"
-                  onPress={() => navigation.goBack()}
-                  style={{ width: '100%', marginTop: spacing.xl }}
-                />
-                <Button
-                  title="Return to Dashboard"
-                  onPress={() => navigation.navigate('MainTabs', { screen: 'Dashboard' })}
-                  variant="secondary"
-                  style={{ width: '100%', marginTop: spacing.sm }}
-                />
-              </>
-            )}
+            <View style={styles.footer}>
+              {errorType === 'TRANSIENT' ? (
+                <>
+                  <Button
+                    title="Retry Transfer"
+                    onPress={handleConfirm}
+                    style={{ width: '100%', marginTop: spacing.xl }}
+                  />
+                  <Button
+                    title="Edit Transfer Details"
+                    onPress={() => navigation.goBack()}
+                    variant="secondary"
+                    style={{ width: '100%', marginTop: spacing.sm }}
+                  />
+                </>
+              ) : errorType === 'NETWORK' ? (
+                <>
+                  <Button
+                    title="Check Transaction History"
+                    onPress={() => navigation.navigate('TransactionHistory', { accountNumber: cleanSource })}
+                    style={{ width: '100%', marginTop: spacing.xl }}
+                  />
+                  <Button
+                    title="Return to Dashboard"
+                    onPress={() => navigation.navigate('MainTabs', { screen: 'Dashboard' })}
+                    variant="secondary"
+                    style={{ width: '100%', marginTop: spacing.sm }}
+                  />
+                </>
+              ) : (
+                <>
+                  <Button
+                    title="Edit Transfer Details"
+                    onPress={() => navigation.goBack()}
+                    style={{ width: '100%', marginTop: spacing.xl }}
+                  />
+                  <Button
+                    title="Return to Dashboard"
+                    onPress={() => navigation.navigate('MainTabs', { screen: 'Dashboard' })}
+                    variant="secondary"
+                    style={{ width: '100%', marginTop: spacing.sm }}
+                  />
+                </>
+              )}
+            </View>
           </View>
-        </View>
+        </ScrollView>
       )}
     </SecureScreenWrapper>
   );

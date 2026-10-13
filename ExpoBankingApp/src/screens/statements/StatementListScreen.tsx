@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as React from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -12,13 +13,13 @@ import { formatDate } from '../../utils/formatters';
 const SkeletonStatementCard = () => (
   <View style={styles.statementCard}>
     <View style={styles.cardLeft}>
-      <View style={[styles.iconBg, { backgroundColor: `${colors.secondary}20`, borderColor: 'transparent' }]} />
+      <View style={[styles.iconBg, { backgroundColor: colors.surfaceAlt, borderColor: 'transparent' }]} />
       <View style={{ gap: 6 }}>
-        <View style={{ width: 120, height: 16, backgroundColor: `${colors.secondary}20`, borderRadius: 4 }} />
-        <View style={{ width: 80, height: 12, backgroundColor: `${colors.secondary}10`, borderRadius: 4 }} />
+        <View style={{ width: 120, height: 16, backgroundColor: colors.surfaceAlt, borderRadius: 4 }} />
+        <View style={{ width: 80, height: 12, backgroundColor: colors.divider, borderRadius: 4 }} />
       </View>
     </View>
-    <View style={{ width: 70, height: 24, backgroundColor: `${colors.secondary}20`, borderRadius: 12 }} />
+    <View style={{ width: 70, height: 24, backgroundColor: colors.surfaceAlt, borderRadius: 12 }} />
   </View>
 );
 
@@ -48,7 +49,7 @@ export const StatementListScreen = () => {
       >
         <View style={styles.cardLeft}>
           <View style={styles.iconBg}>
-            <Text style={styles.iconText}>📄</Text>
+            <Ionicons name="document-text-outline" size={22} color={colors.primary} />
           </View>
           <View>
             <Text style={styles.periodText}>{periodName}</Text>
@@ -87,7 +88,7 @@ export const StatementListScreen = () => {
           ) : (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconBg}>
-                <Text style={styles.emptyIcon}>🗄️</Text>
+                <Ionicons name="file-tray-outline" size={36} color={colors.textSecondary} />
               </View>
               <Text style={styles.emptyTitle}>No Statements Available</Text>
               <Text style={styles.emptyText}>
@@ -104,14 +105,14 @@ export const StatementListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.background,
   },
   header: {
     padding: spacing.lg,
     paddingTop: spacing.xl,
   },
   title: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 28,
     fontWeight: '900',
     letterSpacing: -0.5,
@@ -134,7 +135,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: spacing.borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.secondary,
+    borderColor: colors.border,
     marginBottom: spacing.md,
   },
   cardLeft: {
@@ -145,18 +146,15 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: spacing.borderRadius.md,
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
     borderWidth: 1,
-    borderColor: colors.secondary,
-  },
-  iconText: {
-    fontSize: 20,
+    borderColor: colors.border,
   },
   periodText: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '800',
   },
@@ -167,15 +165,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   cardRight: {
-    backgroundColor: colors.dominant,
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
     borderRadius: spacing.borderRadius.full,
     borderWidth: 1,
-    borderColor: colors.secondary,
+    borderColor: colors.border,
   },
   viewText: {
-    color: colors.accent,
+    color: colors.primary,
     fontSize: 11,
     fontWeight: '800',
   },
@@ -193,13 +191,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.secondary,
-  },
-  emptyIcon: {
-    fontSize: 32,
+    borderColor: colors.border,
   },
   emptyTitle: {
-    color: colors.accent,
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '800',
     marginBottom: spacing.xs,
