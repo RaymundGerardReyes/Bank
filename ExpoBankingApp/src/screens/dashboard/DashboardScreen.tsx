@@ -434,8 +434,8 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     color: colors.textPrimary,
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: typography.fontSize.xs,
+    lineHeight: typography.lineHeight.xs,
     fontWeight: typography.fontWeight.semibold,
     textAlign: 'center',
   },

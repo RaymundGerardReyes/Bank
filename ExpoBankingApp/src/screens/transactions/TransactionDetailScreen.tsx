@@ -5,6 +5,7 @@ import { Button } from '../../components/common/Button';
 import { SecureScreenWrapper } from '../../components/security/SecureScreenWrapper';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 export const TransactionDetailScreen = () => {
@@ -108,22 +109,22 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingTop: spacing.xl },
   errorText: { color: colors.danger, textAlign: 'center', marginTop: spacing.xxl },
-  receiptCard: { backgroundColor: colors.surface, borderRadius: spacing.borderRadius.lg, padding: spacing.xl, borderWidth: 1, borderColor: colors.border, shadowColor: colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 4 },
+  receiptCard: { backgroundColor: colors.surface, borderRadius: spacing.borderRadius.lg, padding: spacing.xl, borderWidth: 1, borderColor: colors.border, shadowColor: colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 4, maxWidth: 400, width: '100%', alignSelf: 'center' },
   receiptHeader: { alignItems: 'center', marginBottom: spacing.lg },
   statusBadge: { paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: spacing.borderRadius.full, marginBottom: spacing.md },
   badgeSuccess: { backgroundColor: colors.successBg },
   badgeNeutral: { backgroundColor: colors.surfaceAlt },
-  statusText: { color: colors.primary, fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  amount: { color: colors.textPrimary, fontSize: 36, fontWeight: '900', letterSpacing: -1, marginBottom: spacing.xs },
-  description: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  statusText: { color: colors.primary, fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.heavy, letterSpacing: 1 },
+  amount: { color: colors.textPrimary, fontSize: typography.fontSize.hero, fontWeight: typography.fontWeight.heavy, letterSpacing: -1, marginBottom: spacing.xs },
+  description: { color: colors.textSecondary, fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold },
   divider: { height: 1, backgroundColor: colors.divider, marginVertical: spacing.lg },
   dividerDashed: { height: 1, borderWidth: 1, borderColor: colors.divider, borderStyle: 'dashed', marginVertical: spacing.lg },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
-  label: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
-  value: { color: colors.textPrimary, fontSize: 13, fontWeight: '800', textAlign: 'right', flex: 1, marginLeft: spacing.lg },
+  label: { color: colors.textSecondary, fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold },
+  value: { color: colors.textPrimary, fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.heavy, textAlign: 'right', flex: 1, marginLeft: spacing.lg },
   auditSection: { backgroundColor: colors.surfaceAlt, padding: spacing.md, borderRadius: spacing.borderRadius.md },
-  auditLabel: { color: colors.textMuted, fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: spacing.md },
-  auditValue: { color: colors.textMuted, fontSize: 11, fontFamily: 'monospace', textAlign: 'right', flex: 1, marginLeft: spacing.md },
+  auditLabel: { color: colors.textMuted, fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.heavy, letterSpacing: 1, marginBottom: spacing.md },
+  auditValue: { color: colors.textMuted, fontSize: typography.fontSize.xs, fontFamily: 'monospace', textAlign: 'right', flex: 1, marginLeft: spacing.md },
   disputeContainer: { marginTop: spacing.xl },
   disputeButton: { borderColor: colors.primary },
 });

@@ -155,6 +155,9 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    maxWidth: 400,
+    width: '100%',
+    alignSelf: 'center',
   },
   row: {
     flexDirection: 'row',
@@ -198,11 +201,11 @@ const styles = StyleSheet.create({
   },
   idempotencyText: {
     color: colors.textMuted,
-    fontSize: 10,
+    fontSize: typography.fontSize.xs,
     textAlign: 'center',
     marginTop: spacing.xl,
     fontFamily: 'monospace',
-    fontWeight: '700',
+    fontWeight: typography.fontWeight.bold,
   },
   footer: {
     marginTop: spacing.xl,

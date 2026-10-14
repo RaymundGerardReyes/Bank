@@ -295,11 +295,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.md,
   },
-  successIcon: {
-    color: colors.textInverse,
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
   successTitle: {
     color: colors.textPrimary,
     fontSize: typography.fontSize.xl,
@@ -328,6 +323,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginVertical: spacing.xl,
+    maxWidth: 400,
+    width: '100%',
+    alignSelf: 'center',
   },
   row: {
     flexDirection: 'row',
@@ -373,11 +371,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
-  },
-  errorIcon: {
-    color: colors.textInverse,
-    fontSize: 32,
-    fontWeight: 'bold',
   },
   errorTitle: {
     color: colors.textPrimary,

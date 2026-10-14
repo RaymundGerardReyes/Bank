@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
+import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 
 // Mock Data representing your backend Audit Logs
 const AUDIT_LOGS = [
@@ -100,36 +102,35 @@ export default function AuditHistoryScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
 
-    header: { paddingHorizontal: 24, paddingBottom: 20 },
-    headerTitle: { fontSize: 28, fontWeight: '800', color: colors.primary },
-    headerSubtitle: { fontSize: 16, fontWeight: '500', color: colors.textSecondary, marginTop: 4 },
+    header: { paddingHorizontal: spacing.xl, paddingBottom: spacing.lg },
+    headerTitle: { fontSize: typography.fontSize.hero, fontWeight: typography.fontWeight.heavy, color: colors.primary },
+    headerSubtitle: { fontSize: typography.fontSize.md, fontWeight: typography.fontWeight.medium, color: colors.textSecondary, marginTop: spacing.xs },
 
-    filterContainer: { flexDirection: 'row', paddingHorizontal: 24, marginBottom: 16, gap: 10 },
-    filterChip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
+    filterContainer: { flexDirection: 'row', paddingHorizontal: spacing.xl, marginBottom: spacing.md, gap: spacing.sm },
+    filterChip: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: spacing.borderRadius.full, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
     filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-    filterText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
-    filterTextActive: { fontSize: 13, fontWeight: '700', color: colors.textInverse },
+    filterText: { fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: colors.textSecondary },
+    filterTextActive: { fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.bold, color: colors.textInverse },
 
-    listContainer: { paddingHorizontal: 24, paddingBottom: 40 },
+    listContainer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl },
 
-    auditRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
+    auditRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md },
     leftSection: { flexDirection: 'row', alignItems: 'center', flex: 1 },
 
-    iconContainer: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-    iconText: { fontSize: 18, fontWeight: '800' },
+    iconContainer: { width: 44, height: 44, borderRadius: spacing.borderRadius.md, justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
 
-    textDataContainer: { flex: 1, paddingRight: 10 },
-    actionTitle: { fontSize: 15, fontWeight: '800', color: colors.primary, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
-    actorSubtitle: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 2 },
-    dateText: { fontSize: 12, fontWeight: '500', color: colors.textMuted },
+    textDataContainer: { flex: 1, paddingRight: spacing.sm },
+    actionTitle: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.heavy, color: colors.primary, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+    actorSubtitle: { fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: colors.textSecondary, marginBottom: 2 },
+    dateText: { fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: colors.textMuted },
 
     rightSection: { alignItems: 'flex-end', justifyContent: 'center' },
 
-    statusBadge: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1 },
+    statusBadge: { paddingVertical: 6, paddingHorizontal: spacing.sm, borderRadius: spacing.borderRadius.sm, borderWidth: 1 },
     badgeSuccess: { backgroundColor: colors.successBg, borderColor: colors.success },
     badgeFailed: { backgroundColor: colors.dangerBg, borderColor: colors.danger },
 
-    statusText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+    statusText: { fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.heavy, letterSpacing: 0.5 },
     textSuccess: { color: colors.success },
     textFailed: { color: colors.danger },
 

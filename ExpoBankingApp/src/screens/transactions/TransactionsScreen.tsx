@@ -3,6 +3,8 @@ import React from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
+import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 
 // Mock Data representing your backend Ledger
 const TRANSACTIONS = [
@@ -76,25 +78,24 @@ export default function TransactionsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    header: { paddingHorizontal: 24, paddingBottom: 20 },
-    headerTitle: { fontSize: 28, fontWeight: '800', color: colors.primary },
-    headerSubtitle: { fontSize: 16, fontWeight: '500', color: colors.textSecondary, marginTop: 4 },
-    filterContainer: { flexDirection: 'row', paddingHorizontal: 24, marginBottom: 16, gap: 12 },
-    filterChip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
+    header: { paddingHorizontal: spacing.xl, paddingBottom: spacing.lg },
+    headerTitle: { fontSize: typography.fontSize.hero, fontWeight: typography.fontWeight.heavy, color: colors.primary },
+    headerSubtitle: { fontSize: typography.fontSize.md, fontWeight: typography.fontWeight.medium, color: colors.textSecondary, marginTop: spacing.xs },
+    filterContainer: { flexDirection: 'row', paddingHorizontal: spacing.xl, marginBottom: spacing.md, gap: spacing.md },
+    filterChip: { paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, borderRadius: spacing.borderRadius.full, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
     filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-    filterText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
-    filterTextActive: { fontSize: 14, fontWeight: '700', color: colors.textInverse },
-    listContainer: { paddingHorizontal: 24, paddingBottom: 40 },
-    transactionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
+    filterText: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.textSecondary },
+    filterTextActive: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold, color: colors.textInverse },
+    listContainer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl },
+    transactionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md },
     leftSection: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-    iconContainer: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+    iconContainer: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
     iconCredit: { backgroundColor: colors.successBg },
     iconDebit: { backgroundColor: colors.surfaceAlt },
-    iconText: { fontSize: 18, fontWeight: '800', color: colors.primary },
-    txTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 },
-    txCategory: { fontSize: 13, fontWeight: '500', color: colors.textSecondary },
+    txTitle: { fontSize: typography.fontSize.md, fontWeight: typography.fontWeight.bold, color: colors.textPrimary, marginBottom: spacing.xs },
+    txCategory: { fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: colors.textSecondary },
     rightSection: { alignItems: 'flex-end' },
-    txAmount: { fontSize: 16, fontWeight: '800' },
+    txAmount: { fontSize: typography.fontSize.md, fontWeight: typography.fontWeight.heavy },
     amountCredit: { color: colors.success },
     amountDebit: { color: colors.textPrimary },
     separator: { height: 1, backgroundColor: colors.divider },

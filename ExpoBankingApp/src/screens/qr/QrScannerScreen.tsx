@@ -9,6 +9,7 @@ import {
   Easing,
   Linking,
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -533,55 +534,62 @@ export const QrScannerScreen: React.FC = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <View style={styles.modalHeaderIcon}>
-              <Ionicons name="finger-print" size={36} color={colors.primary} />
-            </View>
-
-            <View style={styles.modalBadge}>
-              <Text style={styles.modalBadgeText}>USE PASSKEY TO AUTHORIZE</Text>
-            </View>
-
-            <Text style={styles.modalTitle}>Desktop Web Approval</Text>
-            <Text style={styles.modalSub}>
-              A live authorization request was scanned from your desktop web portal.
-            </Text>
-
-            <View style={styles.detailsBox}>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Transaction Intent</Text>
-                <Text style={styles.detailValue}>#{detectedAuthIntent?.intentId}</Text>
+            <ScrollView
+              contentContainerStyle={styles.modalScrollContent}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              style={{ width: '100%' }}
+            >
+              <View style={styles.modalHeaderIcon}>
+                <Ionicons name="finger-print" size={36} color={colors.primary} />
               </View>
-              {detectedAuthIntent?.amount !== undefined && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Amount</Text>
-                  <Text style={[styles.detailValue, styles.detailAmount]}>
-                    {formatCurrency(detectedAuthIntent.amount, detectedAuthIntent.currency || 'PHP')}
-                  </Text>
-                </View>
-              )}
-              {detectedAuthIntent?.recipient && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Recipient</Text>
-                  <Text style={styles.detailValue}>{detectedAuthIntent.recipient}</Text>
-                </View>
-              )}
-            </View>
 
-            <View style={styles.modalActions}>
-              <Button
-                title={isApproving ? 'Verifying...' : 'Authorize with Biometrics'}
-                onPress={handleApproveIntent}
-                loading={isApproving}
-                style={styles.approveBtn}
-              />
-              <Button
-                title="Deny Transfer"
-                variant="secondary"
-                onPress={handleDenyIntent}
-                disabled={isApproving}
-                style={styles.denyBtn}
-              />
-            </View>
+              <View style={styles.modalBadge}>
+                <Text style={styles.modalBadgeText}>USE PASSKEY TO AUTHORIZE</Text>
+              </View>
+
+              <Text style={styles.modalTitle}>Desktop Web Approval</Text>
+              <Text style={styles.modalSub}>
+                A live authorization request was scanned from your desktop web portal.
+              </Text>
+
+              <View style={styles.detailsBox}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Transaction Intent</Text>
+                  <Text style={styles.detailValue}>#{detectedAuthIntent?.intentId}</Text>
+                </View>
+                {detectedAuthIntent?.amount !== undefined && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Amount</Text>
+                    <Text style={[styles.detailValue, styles.detailAmount]}>
+                      {formatCurrency(detectedAuthIntent.amount, detectedAuthIntent.currency || 'PHP')}
+                    </Text>
+                  </View>
+                )}
+                {detectedAuthIntent?.recipient && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Recipient</Text>
+                    <Text style={styles.detailValue}>{detectedAuthIntent.recipient}</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.modalActions}>
+                <Button
+                  title={isApproving ? 'Verifying...' : 'Authorize with Biometrics'}
+                  onPress={handleApproveIntent}
+                  loading={isApproving}
+                  style={styles.approveBtn}
+                />
+                <Button
+                  title="Deny Transfer"
+                  variant="secondary"
+                  onPress={handleDenyIntent}
+                  disabled={isApproving}
+                  style={styles.denyBtn}
+                />
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -770,6 +778,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(18, 49, 43, 0.75)',
     justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   modalCard: {
     backgroundColor: colors.surface,
@@ -777,6 +786,15 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     padding: spacing.xl,
     alignItems: 'center',
+    maxWidth: 400,
+    width: '100%',
+    maxHeight: '90%',
+    flexShrink: 1,
+    alignSelf: 'center',
+  },
+  modalScrollContent: {
+    alignItems: 'center',
+    width: '100%',
   },
   modalHeaderIcon: {
     width: 64,

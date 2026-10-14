@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Button } from '../common/Button';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 
 export interface BiometricPromptProps {
   onAuthenticate: () => void;
@@ -34,13 +35,13 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
     marginBottom: spacing.xs,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 14,
+    fontSize: typography.fontSize.sm,
     textAlign: 'center',
     marginBottom: spacing.lg,
   },

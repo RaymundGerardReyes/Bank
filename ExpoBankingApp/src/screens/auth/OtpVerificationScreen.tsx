@@ -69,6 +69,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: spacing.lg,
+    maxWidth: 400,
+    width: '100%',
+    alignSelf: 'center',
   },
   title: {
     color: colors.textPrimary,

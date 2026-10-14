@@ -432,6 +432,7 @@ const styles = StyleSheet.create({
   },
   successCard: {
     width: '100%',
+    maxWidth: 400,
     backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.xl,
     padding: spacing.xl,

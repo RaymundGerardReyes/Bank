@@ -2,6 +2,7 @@ import * as React from 'react';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
 
 interface LoadingOverlayProps {
   visible: boolean;
@@ -34,7 +35,7 @@ const styles = StyleSheet.create({
   message: {
     color: colors.textInverse,
     marginTop: spacing.md,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.semibold,
   },
 });
